@@ -64,10 +64,6 @@ function doPost(e) {
 function doGet(e) {
   const params = e.parameter;
 
-  if (params.data === 'true') {
-    return getData(params.period || '24h');
-  }
-
   const html = HtmlService.createHtmlOutputFromFile('index')
     .setTitle('Lac Manitou — Températures')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.SAMEORIGIN)
@@ -77,63 +73,33 @@ function doGet(e) {
   return html;
 }
 
-function getData(period) {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sheet = ss.getSheetByName(SHEET_NAME);
-
-  if (!sheet || sheet.getLastRow() < 2) {
-    return ContentService
-      .createTextOutput(JSON.stringify({ data: [] }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-
-  const now = new Date();
-  let cutoff;
-  switch (period) {
-    case '7d':  cutoff = new Date(now - 7  * 24 * 60 * 60 * 1000); break;
-    case '30d': cutoff = new Date(now - 30 * 24 * 60 * 60 * 1000); break;
-    default:    cutoff = new Date(now -      24 * 60 * 60 * 1000);
-  }
-
-  const rows = sheet.getDataRange().getValues();
-  const data = [];
-
-  for (let i = 1; i < rows.length; i++) {
-    const ts = new Date(rows[i][0]);
-    if (ts >= cutoff) {
-      data.push({
-        t:       ts.toISOString(),
-        air:     rows[i][1],
-        surface: rows[i][2],
-        depth:   rows[i][3]
-      });
-    }
-  }
-
-  return ContentService
-    .createTextOutput(JSON.stringify({ data }))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
 // Appelée via google.script.run depuis le client
 function getDataJson(period) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const sheet = ss.getSheetByName(SHEET_NAME);
 
-  if (!sheet || sheet.getLastRow() < 2) return [];
+  const lastRow = sheet ? sheet.getLastRow() : 0;
+  if (!sheet || lastRow < 2) return [];
 
   const now = new Date();
-  let cutoff;
+  let ms;
   switch (period) {
-    case '7d':  cutoff = new Date(now - 7  * 24 * 60 * 60 * 1000); break;
-    case '30d': cutoff = new Date(now - 30 * 24 * 60 * 60 * 1000); break;
-    default:    cutoff = new Date(now -      24 * 60 * 60 * 1000);
+    case '7d':  ms = 7  * 24 * 60 * 60 * 1000; break;
+    case '30d': ms = 30 * 24 * 60 * 60 * 1000; break;
+    default:    ms =      24 * 60 * 60 * 1000;
   }
+  const cutoff = new Date(now - ms);
 
-  const rows = sheet.getDataRange().getValues();
+  // Lire depuis la fin — les données sont triées par date ASC.
+  // On estime le nb de lignes nécessaires (5 min interval) + 20% marge.
+  const maxRows = Math.ceil(ms / (5 * 60 * 1000) * 1.2);
+  const startRow = Math.max(2, lastRow - maxRows + 1);
+  const numRows  = lastRow - startRow + 1;
+
+  const rows = sheet.getRange(startRow, 1, numRows, 4).getValues();
   const data = [];
 
-  for (let i = 1; i < rows.length; i++) {
+  for (let i = 0; i < rows.length; i++) {
     const ts = new Date(rows[i][0]);
     if (ts >= cutoff) {
       data.push({
