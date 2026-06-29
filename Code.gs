@@ -66,7 +66,7 @@ function doGet(e) {
 
   const html = HtmlService.createHtmlOutputFromFile('index')
     .setTitle('Lac Manitou — Températures')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.SAMEORIGIN)
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1.0')
     .setSandboxMode(HtmlService.SandboxMode.IFRAME);
 
