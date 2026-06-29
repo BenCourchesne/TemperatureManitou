@@ -1,0 +1,4 @@
+patch_*.py
+update_header.py
+__pycache__/
+*.pyc

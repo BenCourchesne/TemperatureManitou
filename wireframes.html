@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wireframes — Lac Manitou</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #111;
+      color: #fff;
+      padding: 2rem 1rem 4rem;
+    }
+    h1 { text-align: center; font-size: 1rem; font-weight: 500; color: #666; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 2.5rem; }
+
+    .options { display: flex; gap: 1.5rem; justify-content: center; flex-wrap: wrap; }
+
+    /* ── Card ── */
+    .option {
+      width: 280px;
+      border: 1px solid #333;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #161616;
+    }
+    .option-label {
+      padding: .6rem 1rem;
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: #555;
+      border-bottom: 1px solid #222;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .badge {
+      font-size: .65rem;
+      padding: .15rem .5rem;
+      border-radius: 20px;
+      font-weight: 600;
+    }
+    .badge-recommended { background: rgba(56,189,248,.15); color: #38bdf8; border: 1px solid rgba(56,189,248,.3); }
+    .badge-bold        { background: rgba(251,191,36,.12); color: #fbbf24; border: 1px solid rgba(251,191,36,.25); }
+    .badge-simple      { background: rgba(129,140,248,.12); color: #818cf8; border: 1px solid rgba(129,140,248,.25); }
+
+    .mockup {
+      padding: 1.5rem 1rem 1rem;
+      min-height: 320px;
+      display: flex;
+      flex-direction: column;
+      gap: .75rem;
+      position: relative;
+    }
+
+    /* ── Wireframe primitives ── */
+    .wf-block {
+      background: #222;
+      border: 1.5px dashed #333;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #444;
+      font-size: .65rem;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+    }
+    .wf-line {
+      height: 8px;
+      background: #252525;
+      border-radius: 4px;
+    }
+    .wf-line.short  { width: 55%; margin: 0 auto; }
+    .wf-line.medium { width: 75%; margin: 0 auto; }
+    .wf-line.full   { width: 100%; }
+
+    .wf-title {
+      height: 22px;
+      background: #2a2a2a;
+      border-radius: 4px;
+      width: 65%;
+      margin: 0 auto;
+    }
+    .wf-subtitle {
+      height: 10px;
+      background: #222;
+      border-radius: 3px;
+      width: 80%;
+      margin: 0 auto;
+    }
+    .wf-badge {
+      width: 70px; height: 18px;
+      background: #222;
+      border-radius: 20px;
+      border: 1px dashed #333;
+      margin: 0 auto;
+    }
+
+    .wf-cards { display: flex; gap: .4rem; }
+    .wf-card {
+      flex: 1;
+      height: 55px;
+      background: #1e1e1e;
+      border: 1.5px dashed #2d2d2d;
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+    .wf-card-val { width: 40%; height: 12px; background: #2d2d2d; border-radius: 3px; }
+    .wf-card-lbl { width: 60%; height: 7px; background: #262626; border-radius: 2px; }
+
+    .wf-chart {
+      flex: 1;
+      background: #1c1c1c;
+      border: 1.5px dashed #2a2a2a;
+      border-radius: 6px;
+      min-height: 70px;
+      position: relative;
+      overflow: hidden;
+    }
+    .wf-chart-line {
+      position: absolute;
+      bottom: 30%;
+      left: 0; right: 0;
+      height: 1.5px;
+      background: linear-gradient(90deg, transparent, #38bdf8 20%, #38bdf8 80%, transparent);
+      opacity: .3;
+    }
+    .wf-chart-line2 {
+      position: absolute;
+      bottom: 50%;
+      left: 0; right: 0;
+      height: 1.5px;
+      background: linear-gradient(90deg, transparent, #818cf8 20%, #818cf8 80%, transparent);
+      opacity: .25;
+    }
+    .wf-chart-label {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: .6rem;
+      color: #333;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    /* ══════════════════════════════════
+       OPTION 1 — Cercle médaillon
+    ══════════════════════════════════ */
+    .o1-circle {
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      border: 2px dashed #38bdf8;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #38bdf8;
+      font-size: .55rem;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      position: relative;
+    }
+    .o1-circle::after {
+      content: '';
+      position: absolute;
+      inset: 6px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(56,189,248,.15) 0%, transparent 70%);
+    }
+    .o1-lake {
+      width: 36px; height: 18px;
+      background: rgba(56,189,248,.25);
+      border-radius: 40% 60% 55% 45% / 50% 45% 55% 50%;
+      z-index: 1;
+    }
+    .o1-glow {
+      position: absolute;
+      inset: -8px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(56,189,248,.08) 0%, transparent 70%);
+    }
+
+    /* ══════════════════════════════════
+       OPTION 2 — Filigrane géant
+    ══════════════════════════════════ */
+    .o2-hero {
+      position: relative;
+      height: 110px;
+      overflow: hidden;
+      border-radius: 6px;
+      background: #181f28;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .o2-watermark {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: .08;
+    }
+    .o2-watermark-shape {
+      width: 160px; height: 80px;
+      background: #38bdf8;
+      border-radius: 40% 60% 55% 45% / 50% 45% 55% 50%;
+      filter: blur(2px);
+    }
+    .o2-title-big {
+      height: 20px; width: 70%;
+      background: #2e3a48;
+      border-radius: 4px;
+      z-index: 1;
+    }
+    .o2-sub {
+      height: 8px; width: 50%;
+      background: #243040;
+      border-radius: 3px;
+      z-index: 1;
+    }
+    .o2-badge-wrap {
+      display: flex;
+      gap: 6px;
+      z-index: 1;
+    }
+    .o2-badge-pill {
+      width: 48px; height: 14px;
+      background: #1e2d3a;
+      border: 1px dashed #2a4050;
+      border-radius: 10px;
+    }
+
+    /* ══════════════════════════════════
+       OPTION 3 — Hero pleine largeur
+    ══════════════════════════════════ */
+    .o3-hero {
+      margin: -1.5rem -1rem 0;
+      height: 120px;
+      background: linear-gradient(180deg, #0d1e30 0%, #161616 100%);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .o3-lake-bg {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .o3-lake-shape {
+      width: 200px; height: 95px;
+      background: rgba(56,189,248,.07);
+      border-radius: 40% 60% 55% 45% / 50% 45% 55% 50%;
+      border: 1px dashed rgba(56,189,248,.15);
+    }
+    .o3-overlay {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 40px;
+      background: linear-gradient(transparent, #161616);
+    }
+    .o3-text {
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+    }
+    .o3-title { width: 100px; height: 18px; background: rgba(255,255,255,.15); border-radius: 4px; }
+    .o3-sub   { width: 70px;  height: 8px;  background: rgba(255,255,255,.07); border-radius: 3px; }
+
+    /* ── Description ── */
+    .option-desc {
+      padding: .75rem 1rem 1rem;
+      border-top: 1px solid #1e1e1e;
+      font-size: .72rem;
+      color: #555;
+      line-height: 1.5;
+    }
+    .option-desc strong { color: #888; font-weight: 500; }
+
+    .choose-row {
+      display: flex;
+      justify-content: center;
+      gap: .75rem;
+      margin-top: 2.5rem;
+      flex-wrap: wrap;
+    }
+    .choose-btn {
+      padding: .5rem 1.4rem;
+      border-radius: 10px;
+      border: 1px solid #333;
+      background: #1a1a1a;
+      color: #aaa;
+      font-size: .8rem;
+      font-family: inherit;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all .15s;
+    }
+    .choose-btn:hover { border-color: #38bdf8; color: #38bdf8; }
+  </style>
+</head>
+<body>
+  <h1>Options d'en-tête — Lac Manitou</h1>
+
+  <div class="options">
+
+    <!-- ── OPTION 1 ── -->
+    <div class="option">
+      <div class="option-label">
+        Option 1 — Médaillon
+        <span class="badge badge-simple">Simple</span>
+      </div>
+      <div class="mockup">
+        <!-- Logo cercle -->
+        <div class="o1-circle">
+          <div class="o1-glow"></div>
+          <div class="o1-lake"></div>
+        </div>
+        <!-- Title -->
+        <div class="wf-title"></div>
+        <div class="wf-subtitle"></div>
+        <div class="wf-badge"></div>
+        <!-- Cards -->
+        <div class="wf-cards">
+          <div class="wf-card"><div class="wf-card-lbl"></div><div class="wf-card-val"></div></div>
+          <div class="wf-card"><div class="wf-card-lbl"></div><div class="wf-card-val"></div></div>
+          <div class="wf-card"><div class="wf-card-lbl"></div><div class="wf-card-val"></div></div>
+        </div>
+        <!-- Chart -->
+        <div class="wf-chart">
+          <div class="wf-chart-line"></div>
+          <div class="wf-chart-line2"></div>
+          <span class="wf-chart-label">Graphique</span>
+        </div>
+      </div>
+      <div class="option-desc">
+        <strong>Logo cercle isolé</strong> · Fond noir rendu transparent (blend mode). Seuls le cercle et le lac restent visibles. Texte du PNG masqué par crop CSS. Minimal, propre.
+      </div>
+    </div>
+
+    <!-- ── OPTION 2 ── -->
+    <div class="option">
+      <div class="option-label">
+        Option 2 — Filigrane
+        <span class="badge badge-recommended">Recommandé</span>
+      </div>
+      <div class="mockup">
+        <!-- Hero avec filigrane -->
+        <div class="o2-hero">
+          <div class="o2-watermark"><div class="o2-watermark-shape"></div></div>
+          <div class="o2-title-big"></div>
+          <div class="o2-sub"></div>
+          <div class="o2-badge-wrap">
+            <div class="o2-badge-pill"></div>
+            <div class="o2-badge-pill" style="width:80px"></div>
+          </div>
+        </div>
+        <!-- Cards -->
+        <div class="wf-cards">
+          <div class="wf-card"><div class="wf-card-lbl"></div><div class="wf-card-val"></div></div>
+          <div class="wf-card"><div class="wf-card-lbl"></div><div class="wf-card-val"></div></div>
+          <div class="wf-card"><div class="wf-card-lbl"></div><div class="wf-card-val"></div></div>
+        </div>
+        <!-- Chart -->
+        <div class="wf-chart">
+          <div class="wf-chart-line"></div>
+          <div class="wf-chart-line2"></div>
+          <span class="wf-chart-label">Graphique</span>
+        </div>
+      </div>
+      <div class="option-desc">
+        <strong>Lac en arrière-plan flou</strong> · La silhouette du lac devient un filigrane géant derrière le titre. Pas de "logo" séparé — le lac <em>est</em> l'ambiance. Très élégant.
+      </div>
+    </div>
+
+    <!-- ── OPTION 3 ── -->
+    <div class="option">
+      <div class="option-label">
+        Option 3 — Hero banner
+        <span class="badge badge-bold">Impactant</span>
+      </div>
+      <div class="mockup">
+        <!-- Hero pleine largeur -->
+        <div class="o3-hero">
+          <div class="o3-lake-bg"><div class="o3-lake-shape"></div></div>
+          <div class="o3-overlay"></div>
+          <div class="o3-text">
+            <div class="o3-title"></div>
+            <div class="o3-sub"></div>
+          </div>
+        </div>
+        <!-- Badge -->
+        <div class="wf-badge"></div>
+        <!-- Cards -->
+        <div class="wf-cards">
+          <div class="wf-card"><div class="wf-card-lbl"></div><div class="wf-card-val"></div></div>
+          <div class="wf-card"><div class="wf-card-lbl"></div><div class="wf-card-val"></div></div>
+          <div class="wf-card"><div class="wf-card-lbl"></div><div class="wf-card-val"></div></div>
+        </div>
+        <!-- Chart -->
+        <div class="wf-chart">
+          <div class="wf-chart-line"></div>
+          <div class="wf-chart-line2"></div>
+          <span class="wf-chart-label">Graphique</span>
+        </div>
+      </div>
+      <div class="option-desc">
+        <strong>Bandeau hero pleine largeur</strong> · Le lac occupe tout le haut de la page, le titre flotte par-dessus. Gradient vers le fond en bas. Effet cinématique, très immersif.
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>
