@@ -23,12 +23,23 @@ function doPost(e) {
 
     // Bulk insert (array) ou insertion simple
     const rows = Array.isArray(data) ? data : [data];
-    const values = rows.map(r => [
-      new Date(r.timestamp || Date.now()),
-      parseFloat(r.air),
-      parseFloat(r.surface),
-      parseFloat(r.depth)
-    ]);
+
+    if (rows.length > 1000) {
+      return ContentService
+        .createTextOutput(JSON.stringify({ status: 'error', message: 'Batch too large' }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    const TEMP_MIN = -50, TEMP_MAX = 60;
+    const values = rows.map(r => {
+      const air     = parseFloat(r.air);
+      const surface = parseFloat(r.surface);
+      const depth   = parseFloat(r.depth);
+      if ([air, surface, depth].some(v => isNaN(v) || v < TEMP_MIN || v > TEMP_MAX)) {
+        throw new Error('Temperature out of range');
+      }
+      return [new Date(r.timestamp || Date.now()), air, surface, depth];
+    });
 
     sheet.getRange(sheet.getLastRow() + 1, 1, values.length, 4).setValues(values);
 
@@ -43,8 +54,9 @@ function doPost(e) {
       .setMimeType(ContentService.MimeType.JSON);
 
   } catch (err) {
+    console.error('doPost error:', err.message);
     return ContentService
-      .createTextOutput(JSON.stringify({ status: 'error', message: err.message }))
+      .createTextOutput(JSON.stringify({ status: 'error', message: 'Internal error' }))
       .setMimeType(ContentService.MimeType.JSON);
   }
 }
@@ -58,7 +70,7 @@ function doGet(e) {
 
   const html = HtmlService.createHtmlOutputFromFile('index')
     .setTitle('Lac Manitou — Températures')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.SAMEORIGIN)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1.0')
     .setSandboxMode(HtmlService.SandboxMode.IFRAME);
 
@@ -138,6 +150,11 @@ function getDataJson(period) {
 
 // ── Visiteurs uniques ─────────────────────────────────────────────────────────
 function trackVisitor(visitorId) {
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (!visitorId || !UUID_RE.test(visitorId)) {
+    return { status: 'invalid' };
+  }
+
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   let sheet = ss.getSheetByName(VISITORS_SHEET);
 
