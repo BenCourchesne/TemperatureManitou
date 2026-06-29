@@ -446,9 +446,11 @@
 
   <!-- Period selector -->
   <div class="period-tabs">
-    <button class="tab active" data-period="24h" data-i18n="24h">24 heures</button>
-    <button class="tab" data-period="7d" data-i18n="7d">7 jours</button>
-    <button class="tab" data-period="30d" data-i18n="30d">30 jours</button>
+    <button class="tab active" data-period="24h"    data-i18n="24h">24 heures</button>
+    <button class="tab" data-period="7d"     data-i18n="7d">7 jours</button>
+    <button class="tab" data-period="30d"    data-i18n="30d">30 jours</button>
+    <button class="tab" data-period="season" data-i18n="season">Saison</button>
+    <button class="tab" data-period="year"   data-i18n="year">Année</button>
   </div>
 
   <!-- Chart -->
@@ -522,10 +524,14 @@
       '24h':         '24 heures',
       '7d':          '7 jours',
       '30d':         '30 jours',
+      'season':      'Saison',
+      'year':        'Année',
       chartTitle:    'Historique des températures',
       sub24h:        'Dernières 24 heures',
       sub7d:         'Derniers 7 jours',
       sub30d:        'Derniers 30 jours',
+      subSeason:     'Derniers 6 mois',
+      subYear:       'Dernière année',
       legendAir:     'Air',
       legendSurface: 'Surface',
       legendDepth:   '4 pieds',
@@ -544,10 +550,14 @@
       '24h':         '24 hours',
       '7d':          '7 days',
       '30d':         '30 days',
+      'season':      'Season',
+      'year':        'Year',
       chartTitle:    'Temperature history',
       sub24h:        'Last 24 hours',
       sub7d:         'Last 7 days',
       sub30d:        'Last 30 days',
+      subSeason:     'Last 6 months',
+      subYear:       'Last year',
       legendAir:     'Air',
       legendSurface: 'Surface',
       legendDepth:   '4 feet',
@@ -566,7 +576,7 @@
       if (t[key]) el.textContent = t[key];
     });
     // Subtitle du graphique
-    const subKeys = { '24h': 'sub24h', '7d': 'sub7d', '30d': 'sub30d' };
+    const subKeys = { '24h': 'sub24h', '7d': 'sub7d', '30d': 'sub30d', 'season': 'subSeason', 'year': 'subYear' };
     document.getElementById('chart-subtitle').textContent = t[subKeys[currentPeriod]];
     // Loading si pas encore de data
     const upd = document.getElementById('last-update');
@@ -748,7 +758,7 @@
   // ── Load ─────────────────────────────────────────────────────────────────────
   async function load(period) {
     currentPeriod = period;
-    const subKeys = { '24h': 'sub24h', '7d': 'sub7d', '30d': 'sub30d' };
+    const subKeys = { '24h': 'sub24h', '7d': 'sub7d', '30d': 'sub30d', 'season': 'subSeason', 'year': 'subYear' };
     document.getElementById('chart-subtitle').textContent = i18n[currentLang][subKeys[period]];
     try {
       const data = await fetchData(period);

@@ -84,34 +84,54 @@ function getDataJson(period) {
   const now = new Date();
   let ms;
   switch (period) {
-    case '7d':  ms = 7  * 24 * 60 * 60 * 1000; break;
-    case '30d': ms = 30 * 24 * 60 * 60 * 1000; break;
-    default:    ms =      24 * 60 * 60 * 1000;
+    case '7d':     ms = 7   * 24 * 60 * 60 * 1000; break;
+    case '30d':    ms = 30  * 24 * 60 * 60 * 1000; break;
+    case 'season': ms = 180 * 24 * 60 * 60 * 1000; break;
+    case 'year':   ms = 365 * 24 * 60 * 60 * 1000; break;
+    default:       ms =       24 * 60 * 60 * 1000;
   }
   const cutoff = new Date(now - ms);
 
-  // Lire depuis la fin — les données sont triées par date ASC.
-  // On estime le nb de lignes nécessaires (5 min interval) + 20% marge.
-  const maxRows = Math.ceil(ms / (5 * 60 * 1000) * 1.2);
+  // Lire depuis la fin — données triées ASC, + 20% marge
+  const maxRows  = Math.ceil(ms / (5 * 60 * 1000) * 1.2);
   const startRow = Math.max(2, lastRow - maxRows + 1);
-  const numRows  = lastRow - startRow + 1;
+  const rows     = sheet.getRange(startRow, 1, lastRow - startRow + 1, 4).getValues();
 
-  const rows = sheet.getRange(startRow, 1, numRows, 4).getValues();
-  const data = [];
+  // Granularité selon la période
+  // 24h → brut | 7d/30d → moyenne horaire | saison/année → moyenne journalière
+  const bucketMs = (period === 'season' || period === 'year')
+    ? 24 * 60 * 60 * 1000
+    : (period === '7d' || period === '30d')
+      ? 60 * 60 * 1000
+      : 0;
 
-  for (let i = 0; i < rows.length; i++) {
-    const ts = new Date(rows[i][0]);
-    if (ts >= cutoff) {
-      data.push({
-        t:       ts.toISOString(),
-        air:     rows[i][1],
-        surface: rows[i][2],
-        depth:   rows[i][3]
-      });
+  if (bucketMs === 0) {
+    const data = [];
+    for (let i = 0; i < rows.length; i++) {
+      const ts = new Date(rows[i][0]);
+      if (ts >= cutoff) data.push({ t: ts.toISOString(), air: rows[i][1], surface: rows[i][2], depth: rows[i][3] });
     }
+    return data;
   }
 
-  return data;
+  // Agréger par bucket (heure ou jour)
+  const buckets = {};
+  for (let i = 0; i < rows.length; i++) {
+    const ts = new Date(rows[i][0]);
+    if (ts < cutoff) continue;
+    const key = Math.floor(ts.getTime() / bucketMs) * bucketMs;
+    if (!buckets[key]) buckets[key] = { a: 0, s: 0, d: 0, n: 0 };
+    buckets[key].a += rows[i][1];
+    buckets[key].s += rows[i][2];
+    buckets[key].d += rows[i][3];
+    buckets[key].n++;
+  }
+
+  const round1 = v => Math.round(v * 10) / 10;
+  return Object.keys(buckets).sort((a, b) => a - b).map(key => {
+    const b = buckets[key];
+    return { t: new Date(+key).toISOString(), air: round1(b.a / b.n), surface: round1(b.s / b.n), depth: round1(b.d / b.n) };
+  });
 }
 
 // ── Visiteurs uniques ─────────────────────────────────────────────────────────
