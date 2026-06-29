@@ -5,6 +5,13 @@ const SPREADSHEET_ID = '1-bCZDpK7PwrMPeG7KcUEcpXs1LcsND7C4tnJMInwnoo';
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
+
+    const expected = PropertiesService.getScriptProperties().getProperty('POST_TOKEN');
+    if (!expected || data.token !== expected) {
+      return ContentService
+        .createTextOutput(JSON.stringify({ status: 'error', message: 'Unauthorized' }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     let sheet = ss.getSheetByName(SHEET_NAME);
 
