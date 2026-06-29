@@ -45,17 +45,6 @@ function doPost(e) {
 function doGet(e) {
   const params = e.parameter;
 
-  if (params.action === 'clear') {
-    const ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const sheet = ss.getSheetByName(SHEET_NAME);
-    if (sheet && sheet.getLastRow() > 1) {
-      sheet.deleteRows(2, sheet.getLastRow() - 1);
-    }
-    return ContentService
-      .createTextOutput(JSON.stringify({ status: 'cleared' }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-
   if (params.data === 'true') {
     return getData(params.period || '24h');
   }
