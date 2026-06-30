@@ -503,8 +503,6 @@
     set: (k, v)   => { try { localStorage.setItem(k, v); } catch(e) {} }
   };
 
-  const GAS_URL = 'https://script.google.com/macros/s/AKfycbwF_3eis5gtHZnV1znEYmQDjTM8DcxDqSR4YngAATKqLr2a1dtEfcWpC1ydgnXyG8g/exec';
-
   let currentPeriod     = '24h';
   let currentLang       = LS.get('lm_lang', 'fr');
   let currentUnit       = LS.get('lm_unit_chart', 'c');  // graphique
@@ -676,11 +674,14 @@
     });
   }
 
-  // ── Fetch data via API REST ──────────────────────────────────────────────────
+  // ── Fetch data via google.script.run ─────────────────────────────────────────
   function fetchData(period) {
-    return fetch(GAS_URL + '?action=getData&period=' + encodeURIComponent(period))
-      .then(function(r) { return r.json(); })
-      .catch(function(err) { console.error(err); return []; });
+    return new Promise((resolve, reject) => {
+      google.script.run
+        .withSuccessHandler(data => resolve(data || []))
+        .withFailureHandler(err => { console.error(err); resolve([]); })
+        .getDataJson(period);
+    });
   }
 
   // ── Trend helper ─────────────────────────────────────────────────────────────
