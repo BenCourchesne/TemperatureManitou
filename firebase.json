@@ -1,0 +1,15 @@
+{
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      ".firebaserc",
+      "*.gs",
+      "*.yaml",
+      ".gitignore",
+      "appsscript.json",
+      "wireframes.html",
+      "patch_*.py"
+    ]
+  }
+}

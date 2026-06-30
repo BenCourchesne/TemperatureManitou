@@ -62,15 +62,31 @@ function doPost(e) {
 }
 
 function doGet(e) {
-  const params = e.parameter;
+  const action = e.parameter && e.parameter.action;
 
-  const html = HtmlService.createHtmlOutputFromFile('index')
+  // ── API REST — appelée depuis Firebase Hosting ────────────────────────────
+  if (action === 'getData') {
+    const period = e.parameter.period || '24h';
+    const data = getDataJson(period);
+    return ContentService
+      .createTextOutput(JSON.stringify(data))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  if (action === 'trackVisitor') {
+    const vid = e.parameter.vid || '';
+    const result = trackVisitor(vid);
+    return ContentService
+      .createTextOutput(JSON.stringify(result))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  // ── HTML legacy (GAS hosting) ─────────────────────────────────────────────
+  return HtmlService.createHtmlOutputFromFile('index')
     .setTitle('Lac Manitou — Températures')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1.0')
     .setSandboxMode(HtmlService.SandboxMode.IFRAME);
-
-  return html;
 }
 
 // Appelée via google.script.run depuis le client

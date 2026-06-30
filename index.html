@@ -384,6 +384,14 @@
       font-size: .85rem;
     }
   </style>
+  <!-- Google Analytics 4 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-DPZEL02P7N"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-DPZEL02P7N');
+  </script>
 </head>
 
 <body>
@@ -495,6 +503,8 @@
     set: (k, v)   => { try { localStorage.setItem(k, v); } catch(e) {} }
   };
 
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbwF_3eis5gtHZnV1znEYmQDjTM8DcxDqSR4YngAATKqLr2a1dtEfcWpC1ydgnXyG8g/exec';
+
   let currentPeriod     = '24h';
   let currentLang       = LS.get('lm_lang', 'fr');
   let currentUnit       = LS.get('lm_unit_chart', 'c');  // graphique
@@ -504,23 +514,6 @@
     depth:   LS.get('lm_unit_depth',   'c'),
   };
 
-  // ── Visiteur unique ───────────────────────────────────────────────────────
-  function initVisitor() {
-    function genUUID() {
-      try { return crypto.randomUUID(); } catch(e) {}
-      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        var r = Math.random() * 16 | 0;
-        return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-      });
-    }
-    const UUID_RE_C = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    let vid = LS.get('lm_visitor_id', '');
-    if (!vid || !UUID_RE_C.test(vid)) {
-      vid = genUUID();
-      LS.set('lm_visitor_id', vid);
-    }
-    google.script.run.trackVisitor(vid);
-  }
 
   const i18n = {
     fr: {
@@ -683,14 +676,11 @@
     });
   }
 
-  // ── Fetch data via google.script.run ─────────────────────────────────────────
+  // ── Fetch data via API REST ──────────────────────────────────────────────────
   function fetchData(period) {
-    return new Promise((resolve, reject) => {
-      google.script.run
-        .withSuccessHandler(data => resolve(data || []))
-        .withFailureHandler(err => { console.error(err); resolve([]); })
-        .getDataJson(period);
-    });
+    return fetch(GAS_URL + '?action=getData&period=' + encodeURIComponent(period))
+      .then(function(r) { return r.json(); })
+      .catch(function(err) { console.error(err); return []; });
   }
 
   // ── Trend helper ─────────────────────────────────────────────────────────────
@@ -841,7 +831,6 @@
   initChart();
   applyLang();
   applyPrefsToButtons();
-  initVisitor();
   load('24h');
   setInterval(() => load(currentPeriod), 5 * 60 * 1000);
 </script>
