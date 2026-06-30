@@ -506,9 +506,17 @@
 
   // ── Visiteur unique ───────────────────────────────────────────────────────
   function initVisitor() {
+    function genUUID() {
+      try { return crypto.randomUUID(); } catch(e) {}
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        var r = Math.random() * 16 | 0;
+        return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+      });
+    }
+    const UUID_RE_C = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     let vid = LS.get('lm_visitor_id', '');
-    if (!vid) {
-      vid = crypto.randomUUID();
+    if (!vid || !UUID_RE_C.test(vid)) {
+      vid = genUUID();
       LS.set('lm_visitor_id', vid);
     }
     google.script.run.trackVisitor(vid);
