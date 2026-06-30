@@ -3,3 +3,7 @@ update_header.py
 __pycache__/
 *.pyc
 home_assistant.yaml
+.firebase/
+firebase-debug.log
+.clasp.json
+.claspignore
