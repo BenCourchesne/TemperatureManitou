@@ -508,7 +508,7 @@
   function initVisitor() {
     let vid = LS.get('lm_visitor_id', '');
     if (!vid) {
-      vid = 'v-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+      vid = crypto.randomUUID();
       LS.set('lm_visitor_id', vid);
     }
     google.script.run.trackVisitor(vid);
