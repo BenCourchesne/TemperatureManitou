@@ -3,13 +3,15 @@
     "public": ".",
     "ignore": [
       "firebase.json",
-      ".firebaserc",
+      "**/.*",
+      "**/node_modules/**",
       "*.gs",
       "*.yaml",
-      ".gitignore",
+      "*.py",
+      "*.png",
+      "*.jpg",
       "appsscript.json",
-      "wireframes.html",
-      "patch_*.py"
+      "wireframes.html"
     ]
   }
 }
