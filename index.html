@@ -639,7 +639,6 @@
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        animation: false,
         resizeDelay: 200,
         interaction: { mode: 'index', intersect: false },
         plugins: {
@@ -745,7 +744,7 @@
   }
 
   // ── Update UI ────────────────────────────────────────────────────────────────
-  function updateUI(data) {
+  function updateUI(data, animate = false) {
     if (!data.length) return;
 
     const last = data[data.length - 1];
@@ -803,19 +802,19 @@
 
     const timeUnit = currentPeriod === '24h' ? 'hour' : 'day';
     chart.options.scales.x.time.unit = timeUnit;
-    chart.update();
+    chart.update(animate ? undefined : 'none');
   }
 
   // ── Period subtitles ─────────────────────────────────────────────────────────
   // ── Load ─────────────────────────────────────────────────────────────────────
-  async function load(period) {
+  async function load(period, animate = true) {
     currentPeriod = period;
     const subKeys = { '24h': 'sub24h', '7d': 'sub7d', '30d': 'sub30d', 'season': 'subSeason', 'year': 'subYear' };
     document.getElementById('chart-subtitle').textContent = i18n[currentLang][subKeys[period]];
     try {
       const data = await fetchData(period);
       allData = data;
-      updateUI(data);
+      updateUI(data, animate);
     } catch (e) {
       console.error(e);
     }
@@ -875,7 +874,7 @@
   applyLang();
   applyPrefsToButtons();
   load('24h');
-  setInterval(() => load(currentPeriod), 5 * 60 * 1000);
+  setInterval(() => load(currentPeriod, false), 5 * 60 * 1000);
 </script>
 </body>
 </html>
