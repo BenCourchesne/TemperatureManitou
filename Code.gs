@@ -1,6 +1,68 @@
 const SHEET_NAME     = 'Temperatures';
 const VISITORS_SHEET = 'Visiteurs';
 const SPREADSHEET_ID = '1-bCZDpK7PwrMPeG7KcUEcpXs1LcsND7C4tnJMInwnoo';
+const FIREBASE_URL   = 'https://lac-manitou-temperatures-d284a-default-rtdb.firebaseio.com';
+
+// ── Migration one-shot : Sheet Temperatures → Firebase /readings ──────────────
+// À lancer manuellement depuis l'éditeur GAS (bouton Run).
+//
+// Anti-doublon : ne migre QUE les lignes antérieures à la première écriture
+// live de HA dans Firebase (détectée automatiquement). Les lectures récentes
+// sont déjà dans Firebase via le dual-write, donc on ne les recopie pas.
+// Clé Firebase = timestamp ms → idempotent : relançable sans créer de doublon.
+function migrateSheetToFirebase() {
+  // 1) Détecter la plus ancienne clé live déjà présente dans Firebase
+  const firstRes = UrlFetchApp.fetch(
+    FIREBASE_URL + '/readings.json?orderBy=' + encodeURIComponent('"$key"') + '&limitToFirst=1',
+    { muteHttpExceptions: true }
+  );
+  let cutoff = Infinity;
+  try {
+    const obj = JSON.parse(firstRes.getContentText());
+    if (obj && typeof obj === 'object') {
+      const k = Object.keys(obj)[0];
+      if (k) cutoff = Number(k);
+    }
+  } catch (e) {}
+  Logger.log('Point de coupure (1re écriture live Firebase) : %s (%s)',
+             cutoff, cutoff === Infinity ? 'aucune' : new Date(cutoff).toISOString());
+
+  // 2) Lire le Sheet et ne garder que ts < cutoff
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName(SHEET_NAME);
+  const lastRow = sheet ? sheet.getLastRow() : 0;
+  if (lastRow < 2) { Logger.log('Aucune donnée à migrer'); return; }
+
+  const rows = sheet.getRange(2, 1, lastRow - 1, 4).getValues(); // Timestamp, Air, Surface, 4pi
+  const round2 = v => Math.round(parseFloat(v) * 100) / 100;
+
+  const BATCH = 2000;
+  let total = 0, skipped = 0;
+  for (let i = 0; i < rows.length; i += BATCH) {
+    const chunk = rows.slice(i, i + BATCH);
+    const payload = {};
+    chunk.forEach(function(r) {
+      const ts = new Date(r[0]).getTime();
+      if (!ts || isNaN(ts)) return;
+      if (ts >= cutoff) { skipped++; return; }   // déjà en live → on saute
+      const air = round2(r[1]), surface = round2(r[2]), depth = round2(r[3]);
+      if ([air, surface, depth].some(isNaN)) return;
+      payload[ts] = { air: air, surface: surface, depth: depth };
+    });
+    const n = Object.keys(payload).length;
+    if (!n) continue;
+    const res = UrlFetchApp.fetch(FIREBASE_URL + '/readings.json', {
+      method: 'patch',
+      contentType: 'application/json',
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    });
+    total += n;
+    Logger.log('Batch → HTTP %s (%s lignes)', res.getResponseCode(), n);
+  }
+  Logger.log('Migration terminée : %s lignes migrées, %s ignorées (déjà en live)',
+             total, skipped);
+}
 
 function doPost(e) {
   try {
@@ -181,6 +243,33 @@ function trackVisitor(visitorId) {
   // Nouveau visiteur
   sheet.appendRow([visitorId, now, now, 1]);
   return { status: 'new', visits: 1 };
+}
+
+// ── Google Analytics 4 via Measurement Protocol ──────────────────────────────
+function logGa4Event(eventName, params, clientId) {
+  try {
+    const apiSecret   = PropertiesService.getScriptProperties().getProperty('GA4_API_SECRET');
+    const measurementId = 'G-DPZEL02P7N';
+    if (!apiSecret) return;
+
+    const url = 'https://www.google-analytics.com/mp/collect'
+      + '?measurement_id=' + measurementId
+      + '&api_secret=' + apiSecret;
+
+    const payload = {
+      client_id: clientId || ('gas.' + Utilities.getUuid()),
+      events: [{ name: eventName, params: Object.assign({ engagement_time_msec: '100' }, params || {}) }]
+    };
+
+    UrlFetchApp.fetch(url, {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    });
+  } catch(e) {
+    console.error('GA4 event error:', e.message);
+  }
 }
 
 // ── Stats visiteurs (pour usage futur) ───────────────────────────────────────
