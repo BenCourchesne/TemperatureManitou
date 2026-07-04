@@ -390,10 +390,7 @@
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
-    gtag('config', 'G-DPZEL02P7N', {
-      'page_title': 'Lac Manitou — Températures',
-      'page_path': '/'
-    });
+    gtag('config', 'G-DPZEL02P7N');
   </script>
 </head>
 
@@ -677,14 +674,49 @@
     });
   }
 
-  // ── Fetch data via google.script.run ─────────────────────────────────────────
+  // ── Fetch data via Firebase Realtime Database (REST, lecture publique) ────────
+  const RTDB = 'https://lac-manitou-temperatures-d284a-default-rtdb.firebaseio.com';
+  // ms = fenêtre ; bucket = granularité d'agrégation (0 = brut)
+  //   24h → brut | 7d/30d → moyenne horaire | saison/année → moyenne journalière
+  const PERIOD_CFG = {
+    '24h':    { ms: 864e5,     bucket: 0    },
+    '7d':     { ms: 7 * 864e5, bucket: 36e5 },
+    '30d':    { ms: 30 * 864e5, bucket: 36e5 },
+    'season': { ms: 180 * 864e5, bucket: 864e5 },
+    'year':   { ms: 365 * 864e5, bucket: 864e5 },
+  };
+
   function fetchData(period) {
-    return new Promise((resolve, reject) => {
-      google.script.run
-        .withSuccessHandler(data => resolve(data || []))
-        .withFailureHandler(err => { console.error(err); resolve([]); })
-        .getDataJson(period);
-    });
+    const cfg = PERIOD_CFG[period] || PERIOD_CFG['24h'];
+    const limit = Math.ceil(cfg.ms / 3e5 * 1.2); // ~1 lecture / 5 min + marge
+    const url = RTDB + '/readings.json?orderBy=' + encodeURIComponent('"$key"') +
+                '&limitToLast=' + limit;
+    return fetch(url)
+      .then(r => r.json())
+      .then(obj => {
+        if (!obj) return [];
+        const cutoff = Date.now() - cfg.ms;
+        const rows = Object.keys(obj)
+          .map(k => ({ t: Number(k), air: obj[k].air, surface: obj[k].surface, depth: obj[k].depth }))
+          .filter(d => d.t >= cutoff)
+          .sort((a, b) => a.t - b.t);
+
+        if (cfg.bucket === 0) return rows;
+
+        // Agrégation par bucket (heure ou jour)
+        const buckets = {};
+        for (const d of rows) {
+          const key = Math.floor(d.t / cfg.bucket) * cfg.bucket;
+          const b = buckets[key] || (buckets[key] = { air: 0, surface: 0, depth: 0, n: 0 });
+          b.air += d.air; b.surface += d.surface; b.depth += d.depth; b.n++;
+        }
+        const round1 = v => Math.round(v * 10) / 10;
+        return Object.keys(buckets).sort((a, b) => a - b).map(key => {
+          const b = buckets[key];
+          return { t: Number(key), air: round1(b.air / b.n), surface: round1(b.surface / b.n), depth: round1(b.depth / b.n) };
+        });
+      })
+      .catch(err => { console.error(err); return []; });
   }
 
   // ── Trend helper ─────────────────────────────────────────────────────────────
@@ -832,18 +864,8 @@
     });
   }
 
-  // ── GA4 via Measurement Protocol (server-side) ───────────────────────────────
-  (function() {
-    var gaId = LS.get('ga_client_id', '');
-    if (!gaId) {
-      gaId = 'gas.' + Math.random().toString(36).slice(2) + Date.now().toString(36);
-      LS.set('ga_client_id', gaId);
-    }
-    google.script.run.logGa4Event('page_view', {
-      page_title: 'Lac Manitou — Températures',
-      page_location: 'https://lmtemps.bcourchesne.com/'
-    }, gaId);
-  })();
+  // GA4 : le tag client (gtag) dans le <head> envoie page_view automatiquement
+  // sur Firebase Hosting (l'iframe sandbox de GAS bloquait ces requêtes).
 
   initChart();
   applyLang();
