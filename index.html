@@ -21,8 +21,8 @@
       --text:        #e2eaf4;
       --muted:       #6b82a0;
       --air:         #fbbf24;
-      --surface:     #38bdf8;
-      --depth:       #818cf8;
+      --surface:     #bae6fd;
+      --depth:       #1e40af;
       --live:        #34d399;
       --radius:      18px;
     }
@@ -390,7 +390,10 @@
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
-    gtag('config', 'G-DPZEL02P7N');
+    gtag('config', 'G-DPZEL02P7N', {
+      'page_title': 'Lac Manitou — Températures',
+      'page_path': '/'
+    });
   </script>
 </head>
 
@@ -617,24 +620,24 @@
           },
           {
             label: 'Surface (°C)',
-            borderColor: '#38bdf8',
-            backgroundColor: 'rgba(56,189,248,.10)',
+            borderColor: '#bae6fd',
+            backgroundColor: 'rgba(186,230,253,.10)',
             borderWidth: 2,
             pointRadius: 0,
             pointHoverRadius: 5,
-            pointHoverBackgroundColor: '#38bdf8',
+            pointHoverBackgroundColor: '#bae6fd',
             tension: 0.4,
             fill: true,
             data: []
           },
           {
             label: '4 pieds (°C)',
-            borderColor: '#818cf8',
-            backgroundColor: 'rgba(129,140,248,.10)',
+            borderColor: '#1e40af',
+            backgroundColor: 'rgba(30,64,175,.12)',
             borderWidth: 2,
             pointRadius: 0,
             pointHoverRadius: 5,
-            pointHoverBackgroundColor: '#818cf8',
+            pointHoverBackgroundColor: '#1e40af',
             tension: 0.4,
             fill: true,
             data: []
@@ -828,6 +831,19 @@
       b.classList.toggle('active', b.dataset.unit === sensorUnits[b.dataset.sensor]);
     });
   }
+
+  // ── GA4 via Measurement Protocol (server-side) ───────────────────────────────
+  (function() {
+    var gaId = LS.get('ga_client_id', '');
+    if (!gaId) {
+      gaId = 'gas.' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+      LS.set('ga_client_id', gaId);
+    }
+    google.script.run.logGa4Event('page_view', {
+      page_title: 'Lac Manitou — Températures',
+      page_location: 'https://lmtemps.bcourchesne.com/'
+    }, gaId);
+  })();
 
   initChart();
   applyLang();
