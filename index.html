@@ -474,10 +474,6 @@
           <span class="legend-item"><span class="legend-dot" style="background:var(--surface)"></span><span data-i18n="legendSurface">Surface</span></span>
           <span class="legend-item"><span class="legend-dot" style="background:var(--depth)"></span><span data-i18n="legendDepth">4 pieds</span></span>
         </div>
-        <div class="unit-toggle">
-          <button class="utab active" data-unit="c">°C</button>
-          <button class="utab" data-unit="f">°F</button>
-        </div>
       </div>
     </div>
     <div class="chart-canvas-wrap"><canvas id="chart"></canvas></div>
@@ -505,7 +501,6 @@
 
   let currentPeriod     = '24h';
   let currentLang       = LS.get('lm_lang', 'fr');
-  let currentUnit       = LS.get('lm_unit_chart', 'c');  // graphique
   let sensorUnits = {
     air:     LS.get('lm_unit_air',     'c'),
     surface: LS.get('lm_unit_surface', 'c'),
@@ -657,7 +652,10 @@
             bodyColor: '#e2eaf4',
             padding: 12,
             callbacks: {
-              label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y?.toFixed(1)}°C`
+              label: ctx => {
+                const c = ctx.parsed.y;
+                return ` ${ctx.dataset.label}: ${c.toFixed(1)}°C  /  ${(c * 9/5 + 32).toFixed(1)}°F`;
+              }
             }
           }
         },
@@ -669,8 +667,14 @@
             ticks: { color: '#4b6280', font: { size: 11 }, maxTicksLimit: 8 }
           },
           y: {
+            position: 'left',
             grid: { color: 'rgba(255,255,255,.04)' },
             ticks: { color: '#4b6280', font: { size: 11 }, callback: v => v + '°C' }
+          },
+          yF: {
+            position: 'right',
+            grid: { drawOnChartArea: false },
+            ticks: { color: '#4b6280', font: { size: 11 }, callback: v => Math.round(v) + '°F' }
           }
         }
       }
@@ -774,17 +778,28 @@
     document.getElementById('last-update').textContent =
       i18n[currentLang].lastUpdate + ts.toLocaleString(locale, { hour:'2-digit', minute:'2-digit', day:'numeric', month:'short' });
 
-    // Chart
-    const convert = v => currentUnit === 'f' ? toF(v) : v;
-    const mkPoints = key => data.map(d => ({ x: new Date(d.t), y: convert(d[key]) }));
+    // Chart — données toujours en °C ; l'axe droit affiche l'équivalent °F
+    const mkPoints = key => data.map(d => ({ x: new Date(d.t), y: d[key] }));
     chart.data.datasets[0].data = mkPoints('air');
     chart.data.datasets[1].data = mkPoints('surface');
     chart.data.datasets[2].data = mkPoints('depth');
 
-    const unitLabel = currentUnit === 'f' ? '°F' : '°C';
-    chart.options.scales.y.ticks.callback = v => v + unitLabel;
-    chart.options.plugins.tooltip.callbacks.label = ctx =>
-      ` ${ctx.dataset.label.replace(/\(.*\)/, `(${unitLabel})`)}: ${ctx.parsed.y?.toFixed(1)}${unitLabel}`;
+    // Aligner l'axe °F (droite) sur la plage °C (gauche)
+    let lo = Infinity, hi = -Infinity;
+    for (const d of data) {
+      [d.air, d.surface, d.depth].forEach(v => {
+        if (v == null) return;
+        if (v < lo) lo = v;
+        if (v > hi) hi = v;
+      });
+    }
+    if (lo === Infinity) { lo = 0; hi = 30; }
+    const pad = Math.max(1, (hi - lo) * 0.08);
+    const yMin = Math.floor(lo - pad), yMax = Math.ceil(hi + pad);
+    chart.options.scales.y.min  = yMin;
+    chart.options.scales.y.max  = yMax;
+    chart.options.scales.yF.min = toF(yMin);
+    chart.options.scales.yF.max = toF(yMax);
 
     const timeUnit = currentPeriod === '24h' ? 'hour' : 'day';
     chart.options.scales.x.time.unit = timeUnit;
@@ -815,16 +830,6 @@
     });
   });
 
-  // ── Unit toggle ──────────────────────────────────────────────────────────────
-  document.querySelectorAll('.utab').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.utab').forEach(t => t.classList.remove('active'));
-      btn.classList.add('active');
-      currentUnit = btn.dataset.unit;
-      LS.set('lm_unit_chart', currentUnit);
-      if (allData.length) updateUI(allData);
-    });
-  });
 
   // ── Lang toggle ──────────────────────────────────────────────────────────────
   document.querySelectorAll('.ltab').forEach(btn => {
@@ -856,10 +861,6 @@
     // Langue
     document.querySelectorAll('.ltab').forEach(b => {
       b.classList.toggle('active', b.dataset.lang === currentLang);
-    });
-    // Unité graphique
-    document.querySelectorAll('.utab').forEach(b => {
-      b.classList.toggle('active', b.dataset.unit === currentUnit);
     });
     // Unités par capteur
     document.querySelectorAll('.cutab').forEach(b => {
