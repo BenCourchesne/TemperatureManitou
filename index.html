@@ -126,7 +126,7 @@
       .card-temp { font-size: 2.2rem; }
       .chart-header { flex-direction: column; gap: .75rem; }
       .chart-header > div:last-child { flex-direction: row; flex-wrap: wrap; gap: .5rem; }
-      canvas { max-height: 240px; }
+      .chart-canvas-wrap { height: 240px; }
     }
 
     /* ══ MOBILE (≤ 480px) ════════════════════════════════════════════════════ */
@@ -163,7 +163,7 @@
       .chart-header { flex-direction: column; gap: .6rem; }
       .chart-header > div:last-child { justify-content: flex-start; flex-wrap: wrap; gap: .4rem; }
 
-      canvas { max-height: 200px; }
+      .chart-canvas-wrap { height: 200px; }
 
       /* Hero */
       .hero { padding: 1.5rem .5rem 1.2rem; }
@@ -292,7 +292,7 @@
     .legend-item { display: flex; align-items: center; gap: .35rem; font-size: .75rem; color: var(--muted); }
     .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
 
-    canvas { max-height: 300px; }
+    .chart-canvas-wrap { position: relative; height: 300px; }
 
     /* ── Footer ── */
     footer {
@@ -480,7 +480,7 @@
         </div>
       </div>
     </div>
-    <canvas id="chart"></canvas>
+    <div class="chart-canvas-wrap"><canvas id="chart"></canvas></div>
   </div>
 
   <footer>
@@ -643,6 +643,7 @@
       },
       options: {
         responsive: true,
+        maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
         plugins: {
           legend: { display: false },
