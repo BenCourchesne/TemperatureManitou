@@ -124,9 +124,27 @@ function doPost(e) {
 }
 
 function doGet(e) {
+  // ── Redirection vers le nouveau domaine Firebase ──────────────────────────
+  // Pour REVENIR à l'ancienne page GAS : commenter ce bloc de redirection
+  // et décommenter le bloc « ANCIEN CODE » plus bas.
+  var url = 'https://lmt.bcourchesne.com';
+  return HtmlService.createHtmlOutput(
+    '<!DOCTYPE html><html><head><base target="_top"><meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
+    '<title>Lac Manitou — Températures</title></head>' +
+    '<body style="font-family:sans-serif;background:#0a1524;color:#e2eaf4;margin:0;' +
+    'display:flex;align-items:center;justify-content:center;height:100vh;text-align:center">' +
+    '<div><p>Cette page a déménagé.</p>' +
+    '<p><a href="' + url + '" target="_top" style="color:#7dd3fc">' + url + '</a></p></div>' +
+    '<script>window.top.location.replace(' + JSON.stringify(url) + ');<\/script>' +
+    '</body></html>'
+  )
+    .setTitle('Lac Manitou — Températures')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
+
+  /* ── ANCIEN CODE (décommenter pour restaurer la page GAS d'origine) ─────────
   const action = e.parameter && e.parameter.action;
 
-  // ── API REST — appelée depuis Firebase Hosting ────────────────────────────
   if (action === 'getData') {
     const period = e.parameter.period || '24h';
     const data = getDataJson(period);
@@ -143,12 +161,12 @@ function doGet(e) {
       .setMimeType(ContentService.MimeType.JSON);
   }
 
-  // ── HTML legacy (GAS hosting) ─────────────────────────────────────────────
   return HtmlService.createHtmlOutputFromFile('index')
     .setTitle('Lac Manitou — Températures')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1.0')
     .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+  ── FIN ANCIEN CODE ──────────────────────────────────────────────────────── */
 }
 
 // Appelée via google.script.run depuis le client
