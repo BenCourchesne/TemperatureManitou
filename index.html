@@ -853,7 +853,7 @@
     const r1 = v => (Math.round(v * 10) / 10).toFixed(1);
     let html = '';
     SERIES.forEach(key => {
-      if (!seriesVisible[key]) return;
+      // Stats toujours affichées pour les 3 capteurs, indépendamment des cases
       let mn = Infinity, mx = -Infinity, sum = 0, n = 0;
       for (const d of data) {
         const v = d[key];
