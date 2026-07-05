@@ -131,12 +131,18 @@ function doGet(e) {
   return HtmlService.createHtmlOutput(
     '<!DOCTYPE html><html><head><base target="_top"><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
-    '<title>Lac Manitou — Températures</title></head>' +
+    // Secours : si le sandbox GAS bloque la redirection top, le meta refresh
+    // charge le site automatiquement (après 1s) dans le cadre.
+    '<meta http-equiv="refresh" content="1; url=' + url + '">' +
+    '<title>Lac Manitou — Températures</title>' +
+    // Tente la vraie redirection top (met à jour la barre d\'adresse) ;
+    // s\'exécute immédiatement, avant le meta refresh.
+    '<script>try{window.top.location.href=' + JSON.stringify(url) + ';}catch(e){}<\/script>' +
+    '</head>' +
     '<body style="font-family:sans-serif;background:#0a1524;color:#e2eaf4;margin:0;' +
     'display:flex;align-items:center;justify-content:center;height:100vh;text-align:center">' +
-    '<div><p>Cette page a déménagé.</p>' +
-    '<p><a href="' + url + '" target="_top" style="color:#7dd3fc">' + url + '</a></p></div>' +
-    '<script>window.top.location.replace(' + JSON.stringify(url) + ');<\/script>' +
+    '<div><p>Redirection vers <a href="' + url + '" target="_top" style="color:#7dd3fc">' +
+    url + '</a>…</p></div>' +
     '</body></html>'
   )
     .setTitle('Lac Manitou — Températures')
