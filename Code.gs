@@ -131,19 +131,22 @@ function doGet(e) {
   return HtmlService.createHtmlOutput(
     '<!DOCTYPE html><html><head><base target="_top"><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
-    // Secours : si le sandbox GAS bloque la redirection top, le meta refresh
-    // charge le site automatiquement (après 1s) dans le cadre.
-    '<meta http-equiv="refresh" content="1; url=' + url + '">' +
     '<title>Lac Manitou — Températures</title>' +
-    // Tente la vraie redirection top (met à jour la barre d\'adresse) ;
-    // s\'exécute immédiatement, avant le meta refresh.
+    // Tente la vraie redirection top (change l\'URL) là où le navigateur
+    // l\'autorise ; sinon l\'utilisateur clique le bouton ci-dessous.
     '<script>try{window.top.location.href=' + JSON.stringify(url) + ';}catch(e){}<\/script>' +
     '</head>' +
     '<body style="font-family:sans-serif;background:#0a1524;color:#e2eaf4;margin:0;' +
-    'display:flex;align-items:center;justify-content:center;height:100vh;text-align:center">' +
-    '<div><p>Redirection vers <a href="' + url + '" target="_top" style="color:#7dd3fc">' +
-    url + '</a>…</p></div>' +
-    '</body></html>'
+    'display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center">' +
+    '<div style="padding:2rem;max-width:420px">' +
+    '<h1 style="font-size:1.3rem;font-weight:500;margin:0 0 .5rem">Le site a déménagé</h1>' +
+    '<p style="color:#9fb3c8;margin:0 0 1.5rem">Lac Manitou — Températures est maintenant ' +
+    'à sa nouvelle adresse.</p>' +
+    '<a href="' + url + '" target="_top" style="display:inline-block;background:#38bdf8;' +
+    'color:#0a1524;font-weight:600;padding:.75rem 1.5rem;border-radius:10px;text-decoration:none">' +
+    'Voir les températures →</a>' +
+    '<p style="margin:1.5rem 0 0;font-size:.8rem;color:#5f7891">' + url + '</p>' +
+    '</div></body></html>'
   )
     .setTitle('Lac Manitou — Températures')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
