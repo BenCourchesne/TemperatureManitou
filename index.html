@@ -718,17 +718,34 @@
   // ── Fetch data via Firebase Realtime Database (REST, lecture publique) ────────
   const RTDB = 'https://lac-manitou-temperatures-d284a-default-rtdb.firebaseio.com';
   // ms = fenêtre ; bucket = granularité d'agrégation (0 = brut)
-  //   24h → brut | 7d/30d → moyenne horaire | saison/année → moyenne journalière
+  //   24h → brut | 7d/30d → moyenne horaire (depuis /readings)
+  //   saison/année → moyennes journalières pré-calculées (depuis /daily)
   const PERIOD_CFG = {
     '24h':    { ms: 864e5,     bucket: 0    },
     '7d':     { ms: 7 * 864e5, bucket: 36e5 },
     '30d':    { ms: 30 * 864e5, bucket: 36e5 },
-    'season': { ms: 180 * 864e5, bucket: 864e5 },
-    'year':   { ms: 365 * 864e5, bucket: 864e5 },
+    'season': { ms: 180 * 864e5, daily: true },
+    'year':   { ms: 365 * 864e5, daily: true },
   };
 
   function fetchData(period) {
     const cfg = PERIOD_CFG[period] || PERIOD_CFG['24h'];
+
+    // Saison/Année : buckets journaliers déjà agrégés (léger, ≤365 clés)
+    if (cfg.daily) {
+      const cutoff = Date.now() - cfg.ms;
+      return fetch(RTDB + '/daily.json')
+        .then(r => r.json())
+        .then(obj => {
+          if (!obj) return [];
+          return Object.keys(obj)
+            .map(k => ({ t: Number(k), air: obj[k].air, surface: obj[k].surface, depth: obj[k].depth }))
+            .filter(d => d.t >= cutoff)
+            .sort((a, b) => a.t - b.t);
+        })
+        .catch(err => { console.error(err); return []; });
+    }
+
     const limit = Math.ceil(cfg.ms / 3e5 * 1.2); // ~1 lecture / 5 min + marge
     const url = RTDB + '/readings.json?orderBy=' + encodeURIComponent('"$key"') +
                 '&limitToLast=' + limit;
