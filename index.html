@@ -289,10 +289,36 @@
     .chart-subtitle { font-size: .75rem; color: var(--muted); margin-top: .15rem; }
 
     .legend { display: flex; gap: 1rem; flex-wrap: wrap; }
-    .legend-item { display: flex; align-items: center; gap: .35rem; font-size: .75rem; color: var(--muted); }
+    .legend-item { display: flex; align-items: center; gap: .35rem; font-size: .75rem; color: var(--muted); cursor: pointer; user-select: none; }
+    .legend-item input { width: 14px; height: 14px; margin: 0; cursor: pointer; accent-color: var(--surface); }
     .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
 
     .chart-canvas-wrap { position: relative; height: 300px; }
+
+    /* ── Stats Min/Moy/Max ── */
+    .chart-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: .5rem;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+    }
+    .stat-sensor {
+      display: flex;
+      flex-direction: column;
+      gap: .3rem;
+      background: rgba(255,255,255,.02);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: .6rem .75rem;
+    }
+    .stat-name { font-size: .78rem; font-weight: 600; margin-bottom: .1rem; }
+    .stat-row { display: flex; justify-content: space-between; font-size: .72rem; color: var(--muted); }
+    .stat-row b { color: var(--text); font-weight: 600; }
+    @media (max-width: 560px) {
+      .chart-stats { grid-template-columns: 1fr; }
+    }
 
     /* ── Footer ── */
     footer {
@@ -470,13 +496,14 @@
       </div>
       <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
         <div class="legend">
-          <span class="legend-item"><span class="legend-dot" style="background:var(--air)"></span><span data-i18n="legendAir">Air</span></span>
-          <span class="legend-item"><span class="legend-dot" style="background:var(--surface)"></span><span data-i18n="legendSurface">Surface</span></span>
-          <span class="legend-item"><span class="legend-dot" style="background:var(--depth)"></span><span data-i18n="legendDepth">4 pieds</span></span>
+          <label class="legend-item"><input type="checkbox" class="series-toggle" data-series="air" checked><span class="legend-dot" style="background:var(--air)"></span><span data-i18n="legendAir">Air</span></label>
+          <label class="legend-item"><input type="checkbox" class="series-toggle" data-series="surface" checked><span class="legend-dot" style="background:var(--surface)"></span><span data-i18n="legendSurface">Surface</span></label>
+          <label class="legend-item"><input type="checkbox" class="series-toggle" data-series="depth" checked><span class="legend-dot" style="background:var(--depth)"></span><span data-i18n="legendDepth">4 pieds</span></label>
         </div>
       </div>
     </div>
     <div class="chart-canvas-wrap"><canvas id="chart"></canvas></div>
+    <div class="chart-stats" id="chart-stats"></div>
   </div>
 
   <footer>
@@ -529,6 +556,9 @@
       legendAir:     'Air',
       legendSurface: 'Surface',
       legendDepth:   '4 pieds',
+      statMin:       'Min',
+      statAvg:       'Moy',
+      statMax:       'Max',
       footer:        'Mise à jour toutes les 5 minutes',
       lastUpdate:    'Dernière mise à jour : ',
       loading:       'Chargement…',
@@ -555,6 +585,9 @@
       legendAir:     'Air',
       legendSurface: 'Surface',
       legendDepth:   '4 feet',
+      statMin:       'Min',
+      statAvg:       'Avg',
+      statMax:       'Max',
       footer:        'Updated every 5 minutes',
       lastUpdate:    'Last update: ',
       loading:       'Loading…',
@@ -580,6 +613,8 @@
   }
   let chart = null;
   let allData = [];
+  const SERIES = ['air', 'surface', 'depth'];   // ordre des datasets 0/1/2
+  let seriesVisible = { air: true, surface: true, depth: true };
 
   const toF = c => c != null ? c * 9/5 + 32 : null;
 
@@ -779,14 +814,18 @@
 
     // Chart — données toujours en °C ; l'axe droit affiche l'équivalent °F
     const mkPoints = key => data.map(d => ({ x: new Date(d.t), y: d[key] }));
-    chart.data.datasets[0].data = mkPoints('air');
-    chart.data.datasets[1].data = mkPoints('surface');
-    chart.data.datasets[2].data = mkPoints('depth');
+    SERIES.forEach((key, i) => {
+      chart.data.datasets[i].data = mkPoints(key);
+      chart.data.datasets[i].hidden = !seriesVisible[key];
+    });
 
-    // Aligner l'axe °F (droite) sur la plage °C (gauche)
+    // Stats Min/Moy/Max + plage °F calculées sur les séries VISIBLES seulement
+    renderStats(data);
     let lo = Infinity, hi = -Infinity;
     for (const d of data) {
-      [d.air, d.surface, d.depth].forEach(v => {
+      SERIES.forEach(key => {
+        if (!seriesVisible[key]) return;
+        const v = d[key];
         if (v == null) return;
         if (v < lo) lo = v;
         if (v > hi) hi = v;
@@ -804,6 +843,48 @@
     chart.options.scales.x.time.unit = timeUnit;
     chart.update(animate ? undefined : 'none');
   }
+
+  // ── Stats Min/Moy/Max par capteur (séries cochées, période courante) ──────────
+  function renderStats(data) {
+    const el = document.getElementById('chart-stats');
+    if (!el) return;
+    const t = i18n[currentLang];
+    const names = { air: t.legendAir, surface: t.legendSurface, depth: t.legendDepth };
+    const r1 = v => (Math.round(v * 10) / 10).toFixed(1);
+    let html = '';
+    SERIES.forEach(key => {
+      if (!seriesVisible[key]) return;
+      let mn = Infinity, mx = -Infinity, sum = 0, n = 0;
+      for (const d of data) {
+        const v = d[key];
+        if (v == null) continue;
+        if (v < mn) mn = v;
+        if (v > mx) mx = v;
+        sum += v; n++;
+      }
+      if (!n) return;
+      html +=
+        '<div class="stat-sensor">' +
+          '<span class="stat-name" style="color:var(--' + key + ')">' + names[key] + '</span>' +
+          '<span class="stat-row"><span>' + t.statMin + '</span><b>' + r1(mn) + '°C</b></span>' +
+          '<span class="stat-row"><span>' + t.statAvg + '</span><b>' + r1(sum / n) + '°C</b></span>' +
+          '<span class="stat-row"><span>' + t.statMax + '</span><b>' + r1(mx) + '°C</b></span>' +
+        '</div>';
+    });
+    el.innerHTML = html;
+  }
+
+  // ── Cases à cocher : afficher/masquer les courbes ─────────────────────────────
+  document.querySelectorAll('.series-toggle').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const key = cb.dataset.series;
+      // Empêcher de tout décocher : garde au moins une série visible
+      const checkedCount = document.querySelectorAll('.series-toggle:checked').length;
+      if (!cb.checked && checkedCount === 0) { cb.checked = true; return; }
+      seriesVisible[key] = cb.checked;
+      if (allData.length) updateUI(allData);
+    });
+  });
 
   // ── Period subtitles ─────────────────────────────────────────────────────────
   // ── Load ─────────────────────────────────────────────────────────────────────
