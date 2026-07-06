@@ -626,6 +626,11 @@
           <label class="legend-item"><input type="checkbox" class="series-toggle" data-series="surface" checked><span class="legend-dot" style="background:var(--surface)"></span><span data-i18n="legendSurface">Surface</span></label>
           <label class="legend-item"><input type="checkbox" class="series-toggle" data-series="depth" checked><span class="legend-dot" style="background:var(--depth)"></span><span data-i18n="legendDepth">4 pieds</span></label>
           <label class="legend-item"><input type="checkbox" class="series-toggle" data-series="humidity"><span class="legend-dot" style="background:var(--humidity)"></span><span data-i18n="humidity">Humidité</span></label>
+          <label class="legend-item" style="display:none"><input type="checkbox" class="series-toggle" data-series="pressure"><span class="legend-dot" style="background:var(--pressure)"></span><span data-i18n="pressure">Pression</span></label>
+          <label class="legend-item" style="display:none"><input type="checkbox" class="series-toggle" data-series="wind"><span class="legend-dot" style="background:var(--wind)"></span><span data-i18n="wind">Vent</span></label>
+          <label class="legend-item" style="display:none"><input type="checkbox" class="series-toggle" data-series="rain"><span class="legend-dot" style="background:var(--rain)"></span><span data-i18n="rain">Pluie</span></label>
+          <label class="legend-item" style="display:none"><input type="checkbox" class="series-toggle" data-series="uv"><span class="legend-dot" style="background:var(--uv)"></span><span data-i18n="uv">UV</span></label>
+          <label class="legend-item" style="display:none"><input type="checkbox" class="series-toggle" data-series="solar"><span class="legend-dot" style="background:var(--solar)"></span><span data-i18n="solar">Luminosité</span></label>
         </div>
       </div>
     </div>
@@ -780,7 +785,7 @@
   let allData = [];
   const SERIES = ['air', 'surface', 'depth'];   // datasets 0/1/2 (températures)
   // dataset 3 = humidité (exclusive vs le groupe températures)
-  let seriesVisible = { air: true, surface: true, depth: true, humidity: false };
+  let seriesVisible = { air: true, surface: true, depth: true, humidity: false, pressure: false, wind: false, rain: false, uv: false, solar: false };
 
   // Valeur d'une série pour un point de données.
   // "air" = température véranda (airv) avec repli sur la sonde du quai (air).
@@ -798,6 +803,16 @@
   // Métriques météo (hors températures/eau) : unité + décimales par mesure
   const METRIC_UNIT = { humidity:'%', pressure:' hPa', wind:' km/h', rain:' mm', uv:'', solar:' W/m²' };
   const METRIC_DEC  = { humidity:0, pressure:0, wind:0, rain:1, uv:0, solar:0 };
+  // Séries « solo » (axe unique, exclusives vs le groupe températures) — datasets 3..8
+  const SOLO = [
+    { key:'humidity', color:'#22d3ee' },
+    { key:'pressure', color:'#94a3b8' },
+    { key:'wind',     color:'#2dd4bf' },
+    { key:'rain',     color:'#38bdf8' },
+    { key:'uv',       color:'#a78bfa' },
+    { key:'solar',    color:'#fb923c' },
+  ];
+  const SOLO_KEYS = SOLO.map(m => m.key);
 
   const toF = c => c != null ? c * 9/5 + 32 : null;
 
@@ -811,6 +826,15 @@
       g.addColorStop(1,   color.replace(')', `,${alpha2})`).replace('rgb', 'rgba'));
       return g;
     };
+
+    // Datasets « solo » (humidité, pression, vent, pluie, UV, luminosité)
+    const soloDatasets = SOLO.map(m => ({
+      label: i18n[currentLang][m.key], soloKey: m.key,
+      borderColor: m.color, backgroundColor: m.color + '22',
+      borderWidth: 2, pointRadius: 0, pointHoverRadius: 5,
+      pointHoverBackgroundColor: m.color, tension: 0.4, fill: true,
+      hidden: true, data: []
+    }));
 
     chart = new Chart(ctx, {
       type: 'line',
@@ -852,20 +876,7 @@
             fill: true,
             data: []
           },
-          {
-            label: 'Humidité',
-            humidity: true,
-            borderColor: '#22d3ee',
-            backgroundColor: 'rgba(34,211,238,.12)',
-            borderWidth: 2,
-            pointRadius: 0,
-            pointHoverRadius: 5,
-            pointHoverBackgroundColor: '#22d3ee',
-            tension: 0.4,
-            fill: true,
-            hidden: true,
-            data: []
-          }
+          ...soloDatasets
         ]
       },
       options: {
@@ -885,7 +896,8 @@
             callbacks: {
               label: ctx => {
                 const v = ctx.parsed.y;
-                if (ctx.dataset.humidity) return ` ${ctx.dataset.label}: ${v.toFixed(0)}%`;
+                const sk = ctx.dataset.soloKey;
+                if (sk) return ` ${ctx.dataset.label}: ${v.toFixed(METRIC_DEC[sk])}${METRIC_UNIT[sk] || ''}`;
                 return ` ${ctx.dataset.label}: ${v.toFixed(1)}°C  /  ${(v * 9/5 + 32).toFixed(1)}°F`;
               }
             }
@@ -1128,26 +1140,34 @@
     document.getElementById('last-update').textContent =
       i18n[currentLang].lastUpdate + ts.toLocaleString(locale, { hour:'2-digit', minute:'2-digit', day:'numeric', month:'short' });
 
-    // Chart — mode humidité (axe %) exclusif vs mode températures (°C/°F)
-    const humMode = seriesVisible.humidity;
+    // Chart — une mesure « solo » (axe unique) exclusive vs le groupe températures (°C/°F)
+    updateChartControls(data);
+    const soloKey = SOLO_KEYS.find(k => seriesVisible[k]) || null;
     const mkPoints = key => data.map(d => ({ x: new Date(d.t), y: val(d, key) }));
     SERIES.forEach((key, i) => {
       chart.data.datasets[i].data = mkPoints(key);
-      chart.data.datasets[i].hidden = humMode || !seriesVisible[key];
+      chart.data.datasets[i].hidden = !!soloKey || !seriesVisible[key];
     });
-    chart.data.datasets[3].data = mkPoints('humidity');
-    chart.data.datasets[3].hidden = !humMode;
+    SOLO.forEach((m, j) => {
+      const ds = chart.data.datasets[3 + j];
+      ds.data = mkPoints(m.key);
+      ds.hidden = (soloKey !== m.key);
+    });
 
     renderStats(data);
 
-    if (humMode) {
+    if (soloKey) {
+      const unit = METRIC_UNIT[soloKey] || '';
       let lo = Infinity, hi = -Infinity;
-      for (const d of data) { const v = val(d, 'humidity'); if (v == null) continue; if (v < lo) lo = v; if (v > hi) hi = v; }
-      if (lo === Infinity) { lo = 0; hi = 100; }
-      const pad = Math.max(2, (hi - lo) * 0.1);
-      chart.options.scales.y.min = Math.max(0, Math.floor(lo - pad));
-      chart.options.scales.y.max = Math.min(100, Math.ceil(hi + pad));
-      chart.options.scales.y.ticks.callback = v => v + '%';
+      for (const d of data) { const v = val(d, soloKey); if (v == null) continue; if (v < lo) lo = v; if (v > hi) hi = v; }
+      if (lo === Infinity) { lo = 0; hi = 1; }
+      let pad = (hi - lo) * 0.1; if (pad === 0) pad = Math.abs(hi) * 0.1 || 1;
+      let yMin = lo - pad, yMax = hi + pad;
+      if (soloKey === 'humidity') { yMin = Math.max(0, Math.floor(yMin)); yMax = Math.min(100, Math.ceil(yMax)); }
+      else if (['wind', 'rain', 'uv', 'solar'].includes(soloKey)) yMin = Math.max(0, yMin);
+      chart.options.scales.y.min = yMin;
+      chart.options.scales.y.max = yMax;
+      chart.options.scales.y.ticks.callback = v => v + unit;
       chart.options.scales.yF.display = false;
     } else {
       let lo = Infinity, hi = -Infinity;
@@ -1218,11 +1238,14 @@
     cb.addEventListener('change', () => {
       const key = cb.dataset.series;
       if (cb.checked) {
-        if (key === 'humidity') {
-          ['air', 'surface', 'depth'].forEach(k => setToggle(k, false));  // exclusif
-          seriesVisible.humidity = true;
+        if (SOLO_KEYS.includes(key)) {
+          // mesure solo exclusive : coupe les températures ET les autres mesures solo
+          ['air', 'surface', 'depth'].forEach(k => setToggle(k, false));
+          SOLO_KEYS.forEach(k => { if (k !== key) setToggle(k, false); });
+          seriesVisible[key] = true;
         } else {
-          setToggle('humidity', false);   // une température → coupe l'humidité
+          // une température : coupe toutes les mesures solo
+          SOLO_KEYS.forEach(k => setToggle(k, false));
           seriesVisible[key] = true;
         }
       } else {
@@ -1236,6 +1259,18 @@
       if (allData.length) updateUI(allData);
     });
   });
+
+  // Affiche une case seulement si la mesure a des données ; désactive si vide
+  function updateChartControls(data) {
+    SOLO.forEach(m => {
+      const has = data.some(d => val(d, m.key) != null);
+      const el = document.querySelector('.series-toggle[data-series="' + m.key + '"]');
+      if (!el) return;
+      const item = el.closest('.legend-item');
+      if (item) item.style.display = has ? '' : 'none';
+      if (!has && seriesVisible[m.key]) setToggle(m.key, false);  // données disparues → repli
+    });
+  }
 
   // ── Period subtitles ─────────────────────────────────────────────────────────
   // ── Load ─────────────────────────────────────────────────────────────────────
