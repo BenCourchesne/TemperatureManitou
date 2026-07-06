@@ -1,0 +1,8 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": "auth.uid === '51jJyJAiWGTnUJZAaK9FgbzH6sA2'",
+    "readings": { ".read": true },
+    "daily":    { ".read": true }
+  }
+}
