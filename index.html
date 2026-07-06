@@ -6,7 +6,9 @@
   <title>Lac Manitou — Températures</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.11.0/dist/tabler-icons.min.css" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/suncalc@1.9.0/suncalc.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 
   <style>
@@ -24,6 +26,12 @@
       --surface:     #bae6fd;
       --depth:       #1e40af;
       --humidity:    #22d3ee;
+      --pressure:    #94a3b8;
+      --wind:        #2dd4bf;
+      --rain:        #38bdf8;
+      --uv:          #a78bfa;
+      --solar:       #fb923c;
+      --moon:        #cbd5e1;
       --live:        #34d399;
       --radius:      18px;
     }
@@ -120,7 +128,16 @@
     }
 
     /* ── Cards ── */
-    .cards { display: grid; grid-template-columns: repeat(4,1fr); gap: 1rem; margin-bottom: 1.5rem; }
+    .section-label {
+      font-size: .68rem; letter-spacing: .12em; text-transform: uppercase;
+      color: #5f7891; display: flex; align-items: center; gap: 7px;
+      margin: 1.4rem 0 .55rem;
+    }
+    .section-label:first-of-type { margin-top: 0; }
+    .cards { display: grid; gap: .75rem; margin-bottom: .25rem; }
+    .cards-3 { grid-template-columns: repeat(3,1fr); }
+    .cards-2 { grid-template-columns: repeat(2,1fr); }
+    .cards-5 { grid-template-columns: repeat(5,1fr); }
 
     /* ══ TABLET (≤ 768px) ══════════════════════════════════════════════════ */
     @media (max-width: 768px) {
@@ -133,7 +150,7 @@
       /* En-tête reste combiné sur tablette (se replie si trop serré) */
       .hero { padding: 1rem; gap: 1rem; }
       .lake-logo { width: 72px; height: 72px; }
-      .cards { grid-template-columns: repeat(2,1fr); }
+      .cards-3, .cards-5 { grid-template-columns: repeat(3,1fr); }
       .card { padding: 1.1rem 1rem 1rem; }
       .card-temp { font-size: 2.2rem; }
       .chart-header { flex-direction: column; gap: .75rem; }
@@ -146,7 +163,8 @@
       .page { padding: 1rem .75rem 2.5rem; }
 
       /* Cards : 1 colonne */
-      .cards { grid-template-columns: 1fr; gap: .75rem; }
+      .cards-3, .cards-5 { grid-template-columns: repeat(2,1fr); gap: .6rem; }
+      .cards-2 { grid-template-columns: repeat(2,1fr); gap: .6rem; }
 
       /* Card layout horizontal sur mobile */
       .card {
@@ -216,6 +234,12 @@
     .card-surface::before  { background: linear-gradient(90deg, var(--surface), transparent); }
     .card-depth::before    { background: linear-gradient(90deg, var(--depth), transparent); }
     .card-humidity::before { background: linear-gradient(90deg, var(--humidity), transparent); }
+    .card-pressure::before { background: linear-gradient(90deg, var(--pressure), transparent); }
+    .card-wind::before     { background: linear-gradient(90deg, var(--wind), transparent); }
+    .card-rain::before     { background: linear-gradient(90deg, var(--rain), transparent); }
+    .card-uv::before       { background: linear-gradient(90deg, var(--uv), transparent); }
+    .card-solar::before    { background: linear-gradient(90deg, var(--solar), transparent); }
+    .card-moon::before     { background: linear-gradient(90deg, var(--moon), transparent); }
 
     .card-label {
       font-size: .72rem;
@@ -231,6 +255,40 @@
     .card-surface  .card-label { color: var(--surface); }
     .card-depth    .card-label { color: var(--depth); }
     .card-humidity .card-label { color: var(--humidity); }
+    .card-pressure .card-label { color: #b6c2d1; }
+    .card-wind     .card-label { color: var(--wind); }
+    .card-rain     .card-label { color: var(--rain); }
+    .card-uv       .card-label { color: var(--uv); }
+    .card-solar    .card-label { color: var(--solar); }
+    .card-moon     .card-label { color: #cbd5e1; }
+
+    /* Tuiles météo compactes (valeur plus petite que les températures) */
+    .cards-5 .card-temp, .card-pressure .card-temp, .card-humidity .card-temp { font-size: 1.55rem; }
+    .cards-5 .card-unit, .card-pressure .card-unit, .card-humidity .card-unit { font-size: .8rem; }
+    .cards-5 .card-label, .card-pressure .card-label, .card-humidity .card-label { font-size: .64rem; }
+
+    /* Panneau solunaire */
+    .solunar-panel {
+      background: var(--glass); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1rem 1.1rem; margin-bottom: .5rem;
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
+    .solunar-head { display: flex; align-items: center; gap: .7rem; margin-bottom: .85rem; }
+    .solunar-ic {
+      width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0;
+      background: rgba(203,213,225,.1); border: 1px solid rgba(203,213,225,.25);
+      display: flex; align-items: center; justify-content: center; color: #cbd5e1; font-size: 21px;
+    }
+    .solunar-bar {
+      position: relative; height: 30px; background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.07); border-radius: 8px; overflow: hidden; margin-bottom: .35rem;
+    }
+    .solunar-seg { position: absolute; top: 0; bottom: 0; }
+    .solunar-scale { display: flex; justify-content: space-between; font-size: 10px; color: #5f7891; margin-bottom: .9rem; }
+    .solunar-periods { display: grid; grid-template-columns: 1fr 1fr; gap: .55rem; }
+    .solunar-per { border-radius: 10px; padding: .55rem .7rem; }
+    .solunar-rise { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: .8rem; font-size: 11px; color: #8aa0b8; }
+    .solunar-rise i { margin-right: 4px; }
 
     .card-temp {
       font-size: 2.8rem;
@@ -464,10 +522,11 @@
   </div>
   </header>
 
-  <!-- Cards -->
-  <div class="cards">
+  <!-- Cartes par catégorie -->
+  <div class="section-label"><i class="ti ti-temperature"></i><span data-i18n="secAir">Air &amp; atmosphère</span></div>
+  <div class="cards cards-3">
     <div class="card card-air">
-      <div class="card-label">🌡 <span data-i18n="air">Air ambiant</span></div>
+      <div class="card-label"><i class="ti ti-temperature"></i> <span data-i18n="air">Air ambiant</span></div>
       <div class="card-temp" id="val-air">—<span class="card-unit">°C</span></div>
       <div class="card-alt" id="val-air-f">— °F</div>
       <div class="card-unit-toggle">
@@ -476,8 +535,22 @@
       </div>
       <div class="card-trend" id="trend-air"></div>
     </div>
+    <div class="card card-humidity">
+      <div class="card-label"><i class="ti ti-droplet"></i> <span data-i18n="humidity">Humidité</span></div>
+      <div class="card-temp" id="val-hum">—<span class="card-unit">%</span></div>
+      <div class="card-trend" id="trend-hum"></div>
+    </div>
+    <div class="card card-pressure">
+      <div class="card-label"><i class="ti ti-gauge"></i> <span data-i18n="pressure">Pression</span></div>
+      <div class="card-temp" id="val-press">—<span class="card-unit">hPa</span></div>
+      <div class="card-trend" id="trend-press"></div>
+    </div>
+  </div>
+
+  <div class="section-label"><i class="ti ti-ripple"></i><span data-i18n="secWater">Eau du lac</span></div>
+  <div class="cards cards-2">
     <div class="card card-surface">
-      <div class="card-label">🌊 <span data-i18n="surface">Eau surface</span></div>
+      <div class="card-label"><i class="ti ti-ripple"></i> <span data-i18n="surface">Eau surface</span></div>
       <div class="card-temp" id="val-surface">—<span class="card-unit">°C</span></div>
       <div class="card-alt" id="val-surface-f">— °F</div>
       <div class="card-unit-toggle">
@@ -487,7 +560,7 @@
       <div class="card-trend" id="trend-surface"></div>
     </div>
     <div class="card card-depth">
-      <div class="card-label">🔵 <span data-i18n="depth">Eau 4 pieds</span></div>
+      <div class="card-label"><i class="ti ti-wave-sine"></i> <span data-i18n="depth">Eau 4 pieds</span></div>
       <div class="card-temp" id="val-depth">—<span class="card-unit">°C</span></div>
       <div class="card-alt" id="val-depth-f">— °F</div>
       <div class="card-unit-toggle">
@@ -496,12 +569,40 @@
       </div>
       <div class="card-trend" id="trend-depth"></div>
     </div>
-    <div class="card card-humidity">
-      <div class="card-label">💧 <span data-i18n="humidity">Humidité</span></div>
-      <div class="card-temp" id="val-hum">—<span class="card-unit">%</span></div>
-      <div class="card-trend" id="trend-hum"></div>
+  </div>
+
+  <div class="section-label"><i class="ti ti-sun"></i><span data-i18n="secSky">Ciel &amp; conditions</span></div>
+  <div class="cards cards-5">
+    <div class="card card-wind">
+      <div class="card-label"><i class="ti ti-wind"></i> <span data-i18n="wind">Vent</span></div>
+      <div class="card-temp" id="val-wind">—<span class="card-unit">km/h</span></div>
+      <div class="card-trend" id="trend-wind"></div>
+    </div>
+    <div class="card card-rain">
+      <div class="card-label"><i class="ti ti-cloud-rain"></i> <span data-i18n="rain">Pluie</span></div>
+      <div class="card-temp" id="val-rain">—<span class="card-unit">mm</span></div>
+      <div class="card-trend" id="trend-rain"></div>
+    </div>
+    <div class="card card-uv">
+      <div class="card-label"><i class="ti ti-sun"></i> <span data-i18n="uv">UV</span></div>
+      <div class="card-temp" id="val-uv">—</div>
+      <div class="card-trend" id="trend-uv"></div>
+    </div>
+    <div class="card card-solar">
+      <div class="card-label"><i class="ti ti-brightness-up"></i> <span data-i18n="solar">Luminosité</span></div>
+      <div class="card-temp" id="val-solar">—<span class="card-unit">W/m²</span></div>
+      <div class="card-trend" id="trend-solar"></div>
+    </div>
+    <div class="card card-moon">
+      <div class="card-label"><i class="ti ti-moon"></i> <span data-i18n="moon">Lune</span></div>
+      <div class="card-temp" id="val-moon">—<span class="card-unit">%</span></div>
+      <div class="card-trend" id="trend-moon"></div>
     </div>
   </div>
+
+  <!-- Panneau solunaire -->
+  <div class="section-label"><i class="ti ti-moon-stars"></i><span data-i18n="secMoon">Activité lunaire</span></div>
+  <div id="solunar" class="solunar-panel"></div>
 
   <!-- Period selector -->
   <div class="period-tabs">
@@ -583,6 +684,24 @@
       legendSurface: 'Surface',
       legendDepth:   '4 pieds',
       humidity:      'Humidité',
+      pressure:      'Pression',
+      wind:          'Vent',
+      rain:          'Pluie',
+      uv:            'UV',
+      solar:         'Luminosité',
+      moon:          'Lune',
+      secAir:        'Air & atmosphère',
+      secWater:      'Eau du lac',
+      secSky:        'Ciel & conditions',
+      secMoon:       'Activité lunaire',
+      moonMajor:     'Périodes majeures',
+      moonMinor:     'Périodes mineures',
+      sunrise:       'Lever soleil',
+      sunset:        'Coucher soleil',
+      moonrise:      'Lever lune',
+      moonset:       'Coucher lune',
+      dayRating:     'journée',
+      phases:        ['Nouvelle lune','Premier croissant','Premier quartier','Gibbeuse croissante','Pleine lune','Gibbeuse décroissante','Dernier quartier','Dernier croissant'],
       statMin:       'Min',
       statAvg:       'Moy',
       statMax:       'Max',
@@ -613,6 +732,24 @@
       legendSurface: 'Surface',
       legendDepth:   '4 feet',
       humidity:      'Humidity',
+      pressure:      'Pressure',
+      wind:          'Wind',
+      rain:          'Rain',
+      uv:            'UV',
+      solar:         'Solar',
+      moon:          'Moon',
+      secAir:        'Air & atmosphere',
+      secWater:      'Lake water',
+      secSky:        'Sky & conditions',
+      secMoon:       'Lunar activity',
+      moonMajor:     'Major periods',
+      moonMinor:     'Minor periods',
+      sunrise:       'Sunrise',
+      sunset:        'Sunset',
+      moonrise:      'Moonrise',
+      moonset:       'Moonset',
+      dayRating:     'day',
+      phases:        ['New moon','Waxing crescent','First quarter','Waxing gibbous','Full moon','Waning gibbous','Last quarter','Waning crescent'],
       statMin:       'Min',
       statAvg:       'Avg',
       statMax:       'Max',
@@ -648,10 +785,19 @@
   // Valeur d'une série pour un point de données.
   // "air" = température véranda (airv) avec repli sur la sonde du quai (air).
   function val(d, key) {
-    if (key === 'air')      return d.airv != null ? d.airv : d.air;
-    if (key === 'humidity') return d.hum;
+    if (key === 'air')      return d.airb != null ? d.airb : (d.airv != null ? d.airv : d.air);
+    if (key === 'humidity') return d.humb != null ? d.humb : d.hum;
+    if (key === 'pressure') return d.press;
+    if (key === 'wind')     return d.wind;
+    if (key === 'rain')     return d.rday;
+    if (key === 'uv')       return d.uv;
+    if (key === 'solar')    return d.solar;
     return d[key];
   }
+
+  // Métriques météo (hors températures/eau) : unité + décimales par mesure
+  const METRIC_UNIT = { humidity:'%', pressure:' hPa', wind:' km/h', rain:' mm', uv:'', solar:' W/m²' };
+  const METRIC_DEC  = { humidity:0, pressure:0, wind:0, rain:1, uv:0, solar:0 };
 
   const toF = c => c != null ? c * 9/5 + 32 : null;
 
@@ -791,7 +937,7 @@
         .then(obj => {
           if (!obj) return [];
           return Object.keys(obj)
-            .map(k => ({ t: Number(k), air: obj[k].air, surface: obj[k].surface, depth: obj[k].depth, airv: obj[k].airv, hum: obj[k].hum }))
+            .map(k => ({ t: Number(k), ...obj[k] }))
             .filter(d => d.t >= cutoff)
             .sort((a, b) => a.t - b.t);
         })
@@ -807,7 +953,7 @@
         if (!obj) return [];
         const cutoff = Date.now() - cfg.ms;
         const rows = Object.keys(obj)
-          .map(k => ({ t: Number(k), air: obj[k].air, surface: obj[k].surface, depth: obj[k].depth, airv: obj[k].airv, hum: obj[k].hum }))
+          .map(k => ({ t: Number(k), ...obj[k] }))
           .filter(d => d.t >= cutoff)
           .sort((a, b) => a.t - b.t);
 
@@ -840,9 +986,11 @@
   // ── Trend helper ─────────────────────────────────────────────────────────────
   function trendLabel(data, key) {
     if (data.length < 2) return '';
-    const unit = key === 'humidity' ? '%' : '°C';
+    const isTemp = (key === 'air' || key === 'surface' || key === 'depth');
+    const unit = isTemp ? '°C' : (METRIC_UNIT[key] || '').trim();
+    const dec  = isTemp ? 1 : (METRIC_DEC[key] != null ? METRIC_DEC[key] : 0);
     const last = val(data[data.length - 1], key);
-    // find point ~1h ago
+    // point ~1h avant
     const now = new Date(data[data.length - 1].t).getTime();
     let ref = val(data[0], key);
     for (const d of data) {
@@ -851,10 +999,91 @@
     if (last == null || ref == null) return '';
     const diff = last - ref;
     const t = i18n[currentLang];
-    if (Math.abs(diff) < 0.1) return `<span class="trend-flat">${t.stable}</span>`;
-    const cls  = diff > 0 ? 'trend-up' : 'trend-down';
-    const arr  = diff > 0 ? '↑' : '↓';
-    return `<span class="${cls}">${arr} ${Math.abs(diff).toFixed(1)}${unit} ${t.vsHour}</span>`;
+    const thr = key === 'humidity' ? 1 : (key === 'pressure' ? 0.3 : 0.1);
+    if (Math.abs(diff) < thr) return `<span class="trend-flat">${t.stable}</span>`;
+    const up = diff > 0;
+    const arr = up ? '↑' : '↓';
+    const txt = `${arr} ${Math.abs(diff).toFixed(dec)}${unit ? ' ' + unit : ''} ${t.vsHour}`;
+    // Températures : rouge (↑) / vert (↓). Pression en baisse : orange (prédictif).
+    // Autres mesures météo : neutre gris.
+    if (isTemp) return `<span class="${up ? 'trend-up' : 'trend-down'}">${txt}</span>`;
+    if (key === 'pressure' && !up) return `<span class="trend-flat" style="color:#fb923c">${arr} ${Math.abs(diff).toFixed(0)} hPa</span>`;
+    return `<span class="trend-flat">${txt}</span>`;
+  }
+
+  // ── Lune + solunaire (calcul client via SunCalc) ─────────────────────────────
+  const LAKE = { lat: 46.0471, lon: -74.3739 };
+  function fmtT(d) {
+    return (d && !isNaN(d)) ? d.toLocaleTimeString(currentLang === 'fr' ? 'fr-CA' : 'en-CA',
+      { hour: '2-digit', minute: '2-digit' }) : '—';
+  }
+  function segHTML(start, end, dayStart, strong) {
+    if (!start || !end || isNaN(start) || isNaN(end)) return '';
+    const L = Math.max(0, (start - dayStart) / 864e5 * 100);
+    const W = Math.min(100 - L, (end - start) / 864e5 * 100);
+    return `<div class="solunar-seg" style="left:${L}%;width:${W}%;background:rgba(45,212,191,${strong ? '.8' : '.35'})"></div>`;
+  }
+  function updateMoon() {
+    if (typeof SunCalc === 'undefined') return;
+    const t = i18n[currentLang], now = new Date();
+    const ill = SunCalc.getMoonIllumination(now);
+    const pct = Math.round(ill.fraction * 100);
+    const phase = t.phases[Math.round(ill.phase * 8) % 8];
+    document.getElementById('val-moon').innerHTML = pct + '<span class="card-unit">%</span>';
+    document.getElementById('trend-moon').innerHTML = `<span class="trend-flat">${phase}</span>`;
+
+    const dayStart = new Date(now); dayStart.setHours(0, 0, 0, 0);
+    let maxA = -Infinity, minA = Infinity, tMax = now, tMin = now;
+    for (let m = 0; m <= 1440; m += 10) {
+      const d = new Date(dayStart.getTime() + m * 60000);
+      const a = SunCalc.getMoonPosition(d, LAKE.lat, LAKE.lon).altitude;
+      if (a > maxA) { maxA = a; tMax = d; }
+      if (a < minA) { minA = a; tMin = d; }
+    }
+    const mt = SunCalc.getMoonTimes(now, LAKE.lat, LAKE.lon);
+    const st = SunCalc.getTimes(now, LAKE.lat, LAKE.lon);
+    const HR = 3600000;
+    const majors = [[new Date(+tMax - HR), new Date(+tMax + HR)], [new Date(+tMin - HR), new Date(+tMin + HR)]];
+    const minors = [];
+    if (mt.rise) minors.push([new Date(+mt.rise - HR / 2), new Date(+mt.rise + HR / 2)]);
+    if (mt.set)  minors.push([new Date(+mt.set - HR / 2), new Date(+mt.set + HR / 2)]);
+    const pd = Math.min(ill.phase, Math.abs(ill.phase - 0.5), Math.abs(ill.phase - 1));
+    const stars = pd < 0.06 ? 4 : pd < 0.13 ? 3 : pd < 0.19 ? 2 : 1;
+    const starStr = '★★★★'.slice(0, stars) + '<span style="color:#3a4a5f">' + '★★★★'.slice(stars) + '</span>';
+    let segs = '';
+    majors.forEach(p => segs += segHTML(p[0], p[1], dayStart, true));
+    minors.forEach(p => segs += segHTML(p[0], p[1], dayStart, false));
+    const per = (times) => `<div style="font-size:13.5px;font-weight:500${times[1] ? '' : ';color:#5f7891'}">${times[0] ? fmtT(times[0][0]) + ' – ' + fmtT(times[0][1]) : '—'}</div>` +
+      `<div style="font-size:13.5px;font-weight:500">${times[1] ? fmtT(times[1][0]) + ' – ' + fmtT(times[1][1]) : '—'}</div>`;
+
+    const el = document.getElementById('solunar');
+    if (!el) return;
+    el.innerHTML =
+      `<div class="solunar-head">
+        <div class="solunar-ic"><i class="ti ti-moon"></i></div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:600">${phase}</div>
+          <div style="font-size:12px;color:#8aa0b8">${pct} % ${currentLang === 'fr' ? 'éclairée' : 'lit'}</div>
+        </div>
+        <div style="font-size:15px;letter-spacing:1px;color:#fbbf24">${starStr}</div>
+      </div>
+      <div class="solunar-bar">${segs}</div>
+      <div class="solunar-scale"><span>0 h</span><span>6 h</span><span>12 h</span><span>18 h</span><span>24 h</span></div>
+      <div class="solunar-periods">
+        <div class="solunar-per" style="background:rgba(45,212,191,.08);border:1px solid rgba(45,212,191,.25)">
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#2dd4bf">${t.moonMajor}</div>
+          <div style="margin-top:.3rem">${per(majors)}</div>
+        </div>
+        <div class="solunar-per" style="background:rgba(45,212,191,.04);border:1px solid rgba(45,212,191,.15)">
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#5dcaa5">${t.moonMinor}</div>
+          <div style="margin-top:.3rem">${per(minors)}</div>
+        </div>
+      </div>
+      <div class="solunar-rise">
+        <span><i class="ti ti-sunrise" style="color:#fbbf24"></i>${t.sunrise} ${fmtT(st.sunrise)}</span>
+        <span><i class="ti ti-sunset" style="color:#fb923c"></i>${t.sunset} ${fmtT(st.sunset)}</span>
+        <span><i class="ti ti-moon" style="color:#cbd5e1"></i>${t.moonrise} ${fmtT(mt.rise)}</span>
+      </div>`;
   }
 
   // ── Update UI ────────────────────────────────────────────────────────────────
@@ -880,13 +1109,18 @@
     cardDisplay('air',     val(last, 'air'));   // véranda (repli quai)
     cardDisplay('surface', last.surface);
     cardDisplay('depth',   last.depth);
-    document.getElementById('val-hum').innerHTML =
-      (last.hum != null ? Math.round(last.hum) : '—') + '<span class="card-unit">%</span>';
+    // Tuiles météo génériques + tendances (humidité, pression, vent, pluie, UV, luminosité)
+    const metricEl = { humidity:'hum', pressure:'press', wind:'wind', rain:'rain', uv:'uv', solar:'solar' };
+    for (const key in metricEl) {
+      const id = metricEl[key], v = val(last, key), u = METRIC_UNIT[key];
+      document.getElementById('val-' + id).innerHTML =
+        (v != null ? v.toFixed(METRIC_DEC[key]) : '—') + (u ? '<span class="card-unit">' + u + '</span>' : '');
+      document.getElementById('trend-' + id).innerHTML = trendLabel(data, key);
+    }
 
     document.getElementById('trend-air').innerHTML     = trendLabel(data, 'air');
     document.getElementById('trend-surface').innerHTML = trendLabel(data, 'surface');
     document.getElementById('trend-depth').innerHTML   = trendLabel(data, 'depth');
-    document.getElementById('trend-hum').innerHTML     = trendLabel(data, 'humidity');
 
     // Last update
     const ts = new Date(last.t);
@@ -1036,6 +1270,7 @@
       currentLang = btn.dataset.lang;
       LS.set('lm_lang', currentLang);
       applyLang();
+      updateMoon();
       if (allData.length) updateUI(allData);
     });
   });
@@ -1071,8 +1306,10 @@
   initChart();
   applyLang();
   applyPrefsToButtons();
+  updateMoon();
   load('24h');
   setInterval(() => load(currentPeriod, false), 5 * 60 * 1000);
+  setInterval(updateMoon, 30 * 60 * 1000);
 </script>
 </body>
 </html>
