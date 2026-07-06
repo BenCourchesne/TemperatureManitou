@@ -166,20 +166,8 @@
       .cards-3, .cards-5 { grid-template-columns: repeat(2,1fr); gap: .6rem; }
       .cards-2 { grid-template-columns: repeat(2,1fr); gap: .6rem; }
 
-      /* Card layout horizontal sur mobile */
-      .card {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        grid-template-rows: auto auto auto;
-        align-items: start;
-        column-gap: .75rem;
-        padding: .9rem 1rem;
-      }
-      .card-label    { grid-column: 1; grid-row: 1; margin-bottom: .3rem; }
-      .card-temp     { grid-column: 1; grid-row: 2; font-size: 2rem; }
-      .card-alt      { grid-column: 1; grid-row: 3; margin-top: .1rem; }
-      .card-unit-toggle { grid-column: 2; grid-row: 1 / 3; align-self: center; flex-direction: column; }
-      .card-trend    { grid-column: 1 / 3; grid-row: 4; margin-top: .4rem; }
+      .card { padding: .9rem 1rem; }
+      .card-temp { font-size: 2rem; }
 
       /* Tabs periode : pleine largeur */
       .period-tabs { gap: .3rem; }
@@ -263,8 +251,8 @@
     .card-moon     .card-label { color: #cbd5e1; }
 
     /* Tuiles météo compactes (valeur plus petite que les températures) */
-    .cards-5 .card-temp, .card-pressure .card-temp, .card-humidity .card-temp { font-size: 1.55rem; }
-    .cards-5 .card-unit, .card-pressure .card-unit, .card-humidity .card-unit { font-size: .8rem; }
+    .cards-5 .card-temp, .card-pressure .card-temp, .card-humidity .card-temp, .card-air .card-temp { font-size: 1.7rem; }
+    .cards-5 .card-unit, .card-pressure .card-unit, .card-humidity .card-unit, .card-air .card-unit { font-size: .85rem; }
     .cards-5 .card-label, .card-pressure .card-label, .card-humidity .card-label { font-size: .64rem; }
 
     /* Panneau solunaire */
@@ -406,10 +394,17 @@
     }
 
     /* ── Mini toggle par carte ── */
+    .card-mainrow {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: .5rem;
+    }
     .card-unit-toggle {
       display: flex;
+      flex-direction: column;
       gap: .2rem;
-      margin-top: .5rem;
+      flex-shrink: 0;
     }
     .cutab {
       background: rgba(255,255,255,.04);
@@ -527,11 +522,15 @@
   <div class="cards cards-3">
     <div class="card card-air">
       <div class="card-label"><i class="ti ti-temperature"></i> <span data-i18n="air">Air ambiant</span></div>
-      <div class="card-temp" id="val-air">—<span class="card-unit">°C</span></div>
-      <div class="card-alt" id="val-air-f">— °F</div>
-      <div class="card-unit-toggle">
-        <button class="cutab active" data-sensor="air" data-unit="c">°C</button>
-        <button class="cutab"        data-sensor="air" data-unit="f">°F</button>
+      <div class="card-mainrow">
+        <div>
+          <div class="card-temp" id="val-air">—<span class="card-unit">°C</span></div>
+          <div class="card-alt" id="val-air-f">— °F</div>
+        </div>
+        <div class="card-unit-toggle">
+          <button class="cutab active" data-sensor="air" data-unit="c">°C</button>
+          <button class="cutab"        data-sensor="air" data-unit="f">°F</button>
+        </div>
       </div>
       <div class="card-trend" id="trend-air"></div>
     </div>
@@ -551,21 +550,29 @@
   <div class="cards cards-2">
     <div class="card card-surface">
       <div class="card-label"><i class="ti ti-ripple"></i> <span data-i18n="surface">Eau surface</span></div>
-      <div class="card-temp" id="val-surface">—<span class="card-unit">°C</span></div>
-      <div class="card-alt" id="val-surface-f">— °F</div>
-      <div class="card-unit-toggle">
-        <button class="cutab active" data-sensor="surface" data-unit="c">°C</button>
-        <button class="cutab"        data-sensor="surface" data-unit="f">°F</button>
+      <div class="card-mainrow">
+        <div>
+          <div class="card-temp" id="val-surface">—<span class="card-unit">°C</span></div>
+          <div class="card-alt" id="val-surface-f">— °F</div>
+        </div>
+        <div class="card-unit-toggle">
+          <button class="cutab active" data-sensor="surface" data-unit="c">°C</button>
+          <button class="cutab"        data-sensor="surface" data-unit="f">°F</button>
+        </div>
       </div>
       <div class="card-trend" id="trend-surface"></div>
     </div>
     <div class="card card-depth">
       <div class="card-label"><i class="ti ti-wave-sine"></i> <span data-i18n="depth">Eau 4 pieds</span></div>
-      <div class="card-temp" id="val-depth">—<span class="card-unit">°C</span></div>
-      <div class="card-alt" id="val-depth-f">— °F</div>
-      <div class="card-unit-toggle">
-        <button class="cutab active" data-sensor="depth" data-unit="c">°C</button>
-        <button class="cutab"        data-sensor="depth" data-unit="f">°F</button>
+      <div class="card-mainrow">
+        <div>
+          <div class="card-temp" id="val-depth">—<span class="card-unit">°C</span></div>
+          <div class="card-alt" id="val-depth-f">— °F</div>
+        </div>
+        <div class="card-unit-toggle">
+          <button class="cutab active" data-sensor="depth" data-unit="c">°C</button>
+          <button class="cutab"        data-sensor="depth" data-unit="f">°F</button>
+        </div>
       </div>
       <div class="card-trend" id="trend-depth"></div>
     </div>
