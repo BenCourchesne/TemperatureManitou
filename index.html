@@ -239,6 +239,7 @@
       align-items: center;
       gap: .4rem;
     }
+    .moon-icon { display: inline-flex; align-items: center; }
     .card-air      .card-label { color: var(--air); }
     .card-surface  .card-label { color: var(--surface); }
     .card-depth    .card-label { color: var(--depth); }
@@ -617,7 +618,7 @@
       <div class="card-sunrow" id="solar-sunrow"></div>
     </div>
     <div class="card card-moon">
-      <div class="card-label"><i class="ti ti-moon"></i> <span data-i18n="moon">Lune</span></div>
+      <div class="card-label"><span id="moon-tile-icon" class="moon-icon"><i class="ti ti-moon"></i></span> <span data-i18n="moon">Lune</span></div>
       <div class="card-temp" id="val-moon">—<span class="card-unit">%</span></div>
       <div class="card-trend" id="trend-moon"></div>
     </div>
@@ -1058,6 +1059,21 @@
     const W = Math.min(100 - L, (end - start) / 864e5 * 100);
     return `<div class="solunar-seg" style="left:${L}%;width:${W}%;background:rgba(45,212,191,${strong ? '.8' : '.35'})"></div>`;
   }
+  // Icône de phase lunaire générée en SVG à partir de la fraction éclairée
+  // (formule à base d'arcs elliptiques — précise à tout moment, pas juste 30 paliers).
+  function moonPhaseSVG(phase, size) {
+    const R = 8, C = 10;
+    const theta = phase * 2 * Math.PI;
+    const k = Math.cos(theta);
+    const rx = Math.abs(R * k);
+    const outerSweep = phase < 0.5 ? 1 : 0;
+    const innerSweep = k >= 0 ? outerSweep : 1 - outerSweep;
+    const d = `M${C},${C - R} A${R},${R} 0 0,${outerSweep} ${C},${C + R} A${rx},${R} 0 0,${innerSweep} ${C},${C - R} Z`;
+    return `<svg width="${size}" height="${size}" viewBox="0 0 20 20" aria-hidden="true">` +
+      `<circle cx="${C}" cy="${C}" r="${R}" fill="none" stroke="currentColor" stroke-width="1" opacity=".35"/>` +
+      `<path d="${d}" fill="currentColor"/></svg>`;
+  }
+
   function updateMoon() {
     if (typeof SunCalc === 'undefined') return;
     const t = i18n[currentLang], now = new Date();
@@ -1066,6 +1082,8 @@
     const phase = t.phases[Math.round(ill.phase * 8) % 8];
     document.getElementById('val-moon').innerHTML = pct + '<span class="card-unit">%</span>';
     document.getElementById('trend-moon').innerHTML = `<span class="trend-flat">${phase}</span>`;
+    const tileIcon = document.getElementById('moon-tile-icon');
+    if (tileIcon) tileIcon.innerHTML = moonPhaseSVG(ill.phase, 14);
 
     const dayStart = new Date(now); dayStart.setHours(0, 0, 0, 0);
     let maxA = -Infinity, minA = Infinity, tMax = now, tMin = now;
@@ -1095,7 +1113,7 @@
     if (!el) return;
     el.innerHTML =
       `<div class="solunar-head">
-        <div class="solunar-ic"><i class="ti ti-moon"></i></div>
+        <div class="solunar-ic">${moonPhaseSVG(ill.phase, 22)}</div>
         <div style="flex:1">
           <div style="font-size:14px;font-weight:600">${phase}</div>
           <div style="font-size:12px;color:#8aa0b8">${pct} % ${currentLang === 'fr' ? 'éclairée' : 'lit'}</div>
