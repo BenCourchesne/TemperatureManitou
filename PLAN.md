@@ -190,6 +190,26 @@ s'allument, et que graphique + `/daily` marchent pour chaque mesure.
 
 ---
 
+## Bugs connus
+
+- [ ] **Radar : le scroll de la souris déclenche le zoom de la carte au lieu du
+      scroll de la page.** Quand on ouvre l'accordéon Radar, l'utilisateur
+      scrolle pour voir la carte, mais la souris finit au-dessus de l'iframe
+      Windy → c'est le zoom interne de la carte (Leaflet) qui s'active au lieu
+      du scroll de la page. **Pas gros à régler** :
+      - Fix rapide : au moment d'ouvrir l'accordéon, appeler
+        `panel.scrollIntoView({behavior:'smooth', block:'center'})` (API
+        native, pas de librairie) pour centrer automatiquement le viewport sur
+        la carte à l'ouverture — plus besoin de scroller manuellement dessus.
+      - Fix plus robuste (optionnel) : calque transparent par-dessus l'iframe
+        qui bloque le scroll tant qu'on n'a pas cliqué une première fois
+        (« cliquez pour interagir », comme Google Maps embed) — protège même
+        si l'utilisateur re-scrolle après l'ouverture. Plus de travail car
+        Windy est cross-origin (on ne peut qu'intercepter les événements
+        avant l'iframe, pas son scroll interne directement).
+
+---
+
 ## Tâches — Idées futures (non implémentées, à planifier)
 
 Backlog capturé le 2026-07-07, rien de ceci n'est implémenté — à détailler et
