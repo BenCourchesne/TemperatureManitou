@@ -260,6 +260,16 @@
     }
     .water-icon-arrow-top { bottom: auto; top: -4px; }
 
+    /* Tuile Lune — cliquable (accordéon vers le panneau solunaire) */
+    .card-moon { cursor: pointer; border-color: rgba(45,212,191,.25); }
+    .card-moon:hover { border-color: rgba(45,212,191,.4); }
+    .moon-toggle {
+      display: inline-flex; align-items: center; gap: 3px;
+      font-size: .62rem; color: #2dd4bf; background: rgba(45,212,191,.1);
+      border-radius: 5px; padding: 1px 6px; margin-top: .45rem;
+    }
+    .moon-toggle i { font-size: .85em; }
+
     /* Tuiles météo compactes (valeur plus petite que les températures) */
     .cards-5 .card-temp, .card-pressure .card-temp, .card-humidity .card-temp, .card-air .card-temp { font-size: 1.7rem; }
     .cards-5 .card-unit, .card-pressure .card-unit, .card-humidity .card-unit, .card-air .card-unit { font-size: .85rem; }
@@ -285,8 +295,6 @@
     .solunar-scale { display: flex; justify-content: space-between; font-size: 10px; color: #5f7891; margin-bottom: .9rem; }
     .solunar-periods { display: grid; grid-template-columns: 1fr 1fr; gap: .55rem; }
     .solunar-per { border-radius: 10px; padding: .55rem .7rem; }
-    .solunar-rise { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: .8rem; font-size: 11px; color: #8aa0b8; }
-    .solunar-rise i { margin-right: 4px; }
 
     .card-temp {
       font-size: 2.8rem;
@@ -617,16 +625,18 @@
       <div class="card-trend" id="trend-solar"></div>
       <div class="card-sunrow" id="solar-sunrow"></div>
     </div>
-    <div class="card card-moon">
+    <div class="card card-moon" id="moon-tile" role="button" tabindex="0" aria-expanded="false">
       <div class="card-label"><span id="moon-tile-icon" class="moon-icon"><i class="ti ti-moon"></i></span> <span data-i18n="moon">Lune</span></div>
       <div class="card-temp" id="val-moon">—<span class="card-unit">%</span></div>
       <div class="card-trend" id="trend-moon"></div>
+      <div class="card-alt" id="moon-rise-tile">—</div>
+      <div class="moon-toggle" id="moon-toggle"><i class="ti ti-chevron-down"></i><span data-i18n="moonDetails">Détails</span></div>
     </div>
   </div>
 
-  <!-- Panneau solunaire -->
-  <div class="section-label"><i class="ti ti-moon-stars"></i><span data-i18n="secMoon">Activité lunaire</span></div>
-  <div id="solunar" class="solunar-panel"></div>
+  <!-- Panneau solunaire (accordéon — replié par défaut, clic sur la tuile Lune) -->
+  <div class="section-label" id="solunar-label" style="display:none"><i class="ti ti-moon-stars"></i><span data-i18n="secMoon">Activité lunaire</span></div>
+  <div id="solunar" class="solunar-panel" style="display:none"></div>
 
   <!-- Period selector -->
   <div class="period-tabs">
@@ -729,6 +739,8 @@
       sunset:        'Coucher soleil',
       moonrise:      'Lever lune',
       moonset:       'Coucher lune',
+      moonDetails:   'Détails',
+      moonHide:      'Masquer',
       dayRating:     'journée',
       phases:        ['Nouvelle lune','Premier croissant','Premier quartier','Gibbeuse croissante','Pleine lune','Gibbeuse décroissante','Dernier quartier','Dernier croissant'],
       statMin:       'Min',
@@ -777,6 +789,8 @@
       sunset:        'Sunset',
       moonrise:      'Moonrise',
       moonset:       'Moonset',
+      moonDetails:   'Details',
+      moonHide:      'Hide',
       dayRating:     'day',
       phases:        ['New moon','Waxing crescent','First quarter','Waxing gibbous','Full moon','Waning gibbous','Last quarter','Waning crescent'],
       statMin:       'Min',
@@ -1131,10 +1145,17 @@
           <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#5dcaa5">${t.moonMinor}</div>
           <div style="margin-top:.3rem">${per(minors)}</div>
         </div>
-      </div>
-      <div class="solunar-rise">
-        <span><i class="ti ti-moon" style="color:#cbd5e1"></i>${t.moonrise} ${fmtT(mt.rise)}</span>
       </div>`;
+
+    const riseTile = document.getElementById('moon-rise-tile');
+    if (riseTile) riseTile.textContent = t.moonrise + ' ' + fmtT(mt.rise);
+
+    const toggle = document.getElementById('moon-toggle');
+    if (toggle) {
+      const tile = document.getElementById('moon-tile');
+      const isOpen = tile && tile.getAttribute('aria-expanded') === 'true';
+      toggle.innerHTML = `<i class="ti ti-chevron-${isOpen ? 'up' : 'down'}"></i><span>${isOpen ? t.moonHide : t.moonDetails}</span>`;
+    }
 
     const solarEl = document.getElementById('solar-sunrow');
     if (solarEl) solarEl.innerHTML =
@@ -1378,6 +1399,25 @@
       b.classList.toggle('active', b.dataset.unit === sensorUnits[b.dataset.sensor]);
     });
   }
+
+  // ── Accordéon lunaire : clic sur la tuile Lune ⇄ panneau solunaire ────────────
+  (function() {
+    const tile = document.getElementById('moon-tile');
+    const label = document.getElementById('solunar-label');
+    const panel = document.getElementById('solunar');
+    if (!tile || !panel) return;
+    function toggleOpen() {
+      const open = tile.getAttribute('aria-expanded') !== 'true';
+      panel.style.display = open ? '' : 'none';
+      label.style.display = open ? '' : 'none';
+      tile.setAttribute('aria-expanded', String(open));
+      updateMoon();  // rafraîchit le libellé du badge (Détails/Masquer)
+    }
+    tile.addEventListener('click', toggleOpen);
+    tile.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleOpen(); }
+    });
+  })();
 
   // GA4 : le tag client (gtag) dans le <head> envoie page_view automatiquement
   // sur Firebase Hosting (l'iframe sandbox de GAS bloquait ces requêtes).
