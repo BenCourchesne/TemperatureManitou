@@ -77,58 +77,58 @@ sonde quai**. Le helper `val(d,'air')` implémente la priorité.
 
 ## Tâches — UX / Design
 
-- [ ] Confirmer les **coordonnées GPS du lac** (lat/lon) pour lune/solunaire —
-      lisibles depuis la config HA (`latitude`/`longitude`) ou à coder en dur.
-- [ ] Valider l'ordre final des tuiles dans « Ciel & conditions ».
-- [ ] Décider du comportement des stats sous le graphique quand une seule mesure
-      est affichée (garder les 4 principales vs stats de la mesure choisie).
+- [x] Confirmer les **coordonnées GPS du lac** — ✅ fait : 46.0471, -74.3739
+      (lues depuis la config HA), en dur dans la constante `LAKE`.
+- [x] Valider l'ordre final des tuiles dans « Ciel & conditions » — ✅ Vent,
+      Pluie, UV, Luminosité, Lune (phase).
+- [ ] **Décider du comportement des stats sous le graphique** — pas encore
+      tranché : `renderStats` affiche toujours codé en dur seulement
+      `['air','surface','depth','humidity']`, ne couvre pas encore
+      pression/vent/pluie/UV/luminosité même si ces mesures ont des données.
 
 ## Tâches — Front End (`index.html`)
 
-Réutiliser l'existant : helper `val(d,key)`, cartes `.card-*`, `renderStats`,
-`trendLabel`, i18n `i18n.fr/.en`, logique `humMode` de `updateUI`.
+- [x] **Variables CSS couleur** — ✅ `--wind --rain --uv --solar --pressure
+      --moon` (+ `--radar` ajouté depuis pour la section Prévisions).
+- [x] **Sections catégorisées** — ✅ Air & atmosphère / Eau du lac / Ciel &
+      conditions, chacune avec en-tête de section.
+- [x] **Nouvelles tuiles** — ✅ Pression, Vent, Pluie, UV, Luminosité, Lune
+      toutes présentes, affichent `—` tant que Phase B n'a pas de données.
+- [x] **Tendances généralisées** — ✅ `trendLabel` gère les unités par mesure,
+      couleurs neutres pour la météo, mise en évidence pression en baisse.
+      ⚠️ **Sauf la pluie** : pas encore le traitement spécial « sec / X mm/h »
+      prévu — passe actuellement par la flèche générique ↑/↓ (peu pertinent
+      pour un cumul quotidien qui ne fait que monter). À corriger.
+- [x] **Sélecteur de mesure du graphique** — ✅ fait, mais avec des **cases à
+      cocher exclusives** (pas des pilules comme prévu à l'origine) : logique
+      généralisée `SOLO`/`seriesVisible` qui bascule axe Y + unité. Fonctionne,
+      juste un choix visuel différent de l'esquisse initiale.
+- [x] **`fetchData`** — ✅ **partiel** : le brut (24h) et `/daily` transportent
+      tous les champs (spread `...obj[k]`). ⚠️ **Le bucket horaire (7j/30j)
+      n'agrège PAS encore vent/pluie/UV/luminosité/pression** — seuls
+      air/surface/depth/airv/hum sont moyennés ; ces mesures disparaîtraient
+      sur les vues 7 jours/30 jours une fois les données Ecowitt branchées.
+      **Vrai bloquant pour la Phase B, à corriger avant de brancher Ecowitt.**
+- [x] **Tuile phase de lune** — ✅ icône SVG dynamique (voir section Lune).
+- [x] **Panneau solunaire** — ✅ accordéon (voir section Lune).
+- [x] **i18n FR/EN** — ✅ tous les libellés mesures/phases/majeures-mineures/
+      lever-coucher présents dans les deux langues.
+- [ ] **Responsive** : pas testé systématiquement ≤480px depuis les derniers
+      ajouts (accordéons Lune/Radar, section Prévisions). À valider.
 
-- [ ] **Variables CSS couleur** : ajouter `--wind --rain --uv --solar
-      --pressure --moon` (comme `--humidity`).
-- [ ] **Sections catégorisées** : remplacer la grille `.cards` unique par
-      3 blocs avec en-têtes de section (Air & atmosphère / Eau du lac / Ciel &
-      conditions).
-- [ ] **Nouvelles tuiles** : Pression, Vent, Pluie, UV, Luminosité, Lune(phase)
-      — icône + libellé + valeur + tendance. Champs Ecowitt = `null` → `—` en
-      Phase A.
-- [ ] **Tendances généralisées** : étendre `trendLabel(data,key)` aux unités
-      km/h, mm, index, W/m², hPa ; couleurs neutres pour météo ; cas spécial
-      pluie ; mise en évidence pression en baisse.
-- [ ] **Sélecteur de mesure du graphique** : remplacer les cases exclusives par
-      des **pilules** (`Températures` = groupe air/surface/4pieds ; puis une
-      pilule par mesure mono-axe : Humidité, Vent, Pluie, UV, Luminosité,
-      Pression). Généraliser `humMode` → `chartMetric` (bascule axe Y + unité,
-      masque l'axe °F hors températures).
-- [ ] **`fetchData`** : transporter `wind/gust/rain/uv/solar/press` dans les
-      3 branches (raw / bucket horaire / `/daily`), avec garde `!= null` comme
-      `airv/hum`.
-- [ ] **Tuile phase de lune** (SunCalc, voir section Lune).
-- [ ] **Panneau solunaire** (SunCalc + calcul majeures/mineures).
-- [ ] **i18n FR/EN** : nouveaux libellés (mesures, phases, majeures/mineures,
-      lever/coucher).
-- [ ] **Responsive** : grilles auto-fit ; mobile conserve le comportement
-      actuel (vertical). Tester ≤480 px.
+## Tâches — Lune + Solunaire (calcul 100 % client) — ✅ TOUT FAIT
 
-## Tâches — Lune + Solunaire (calcul 100 % client)
-
-- [ ] Charger **SunCalc** depuis cdnjs (`.../suncalc/1.9.0/suncalc.min.js` —
-      CDN autorisé).
-- [ ] Constante `LAKE = { lat, lon }`.
-- [ ] **Tuile phase** : `getMoonIllumination` → fraction + phase → icône +
-      « 78 % · gibbeuse ».
-- [ ] **Solunaire** :
-  - [ ] Majeures = ±1 h autour du transit (altitude lune max) et de
-        l'anti-transit (min) — balayage journalier via `getMoonPosition`.
-  - [ ] Mineures = ±0.5 h autour de `getMoonTimes` (lever/coucher lune).
-  - [ ] Cote du jour (★) selon proximité nouvelle/pleine lune.
-  - [ ] Barre 24 h positionnant majeures/mineures + marqueurs soleil
-        (`getTimes`) et lune.
-- [ ] Vérifier les heures contre une table solunaire en ligne pour la date.
+- [x] SunCalc chargé depuis cdnjs.
+- [x] Constante `LAKE = { lat: 46.0471, lon: -74.3739 }`.
+- [x] Tuile phase : icône SVG (croissant/gibbeuse) générée depuis la fraction
+      exacte + %.
+- [x] Solunaire complet : majeures (transit/anti-transit ±1h), mineures
+      (lever/coucher lune ±0.5h), cote ★, barre 24h, lever/coucher soleil
+      (déplacés dans la tuile Solaire) et lune (dans la tuile Lune).
+      Affiché en **accordéon** au clic sur la tuile Lune (badge Détails/
+      Masquer, clavier-accessible), pas dans le flux par défaut.
+- [ ] Vérifier une fois les heures contre une table solunaire en ligne pour
+      confirmer la précision (jamais fait formellement).
 
 ## Tâches — Firebase
 
@@ -223,13 +223,20 @@ prioriser avant de commencer.
       « remonter dans le temps ». Implique une UI de sélection de date +
       requêtes RTDB par plage arbitraire (déjà possible via `orderBy`+
       `startAt`/`endAt` sur la clé timestamp).
-- [ ] **Lien vers une vue radar** : ajouter un lien (ou embed) vers un radar
-      météo externe (ex. Environnement Canada, Windy, RainViewer) centré sur le
-      lac, pour visualiser la pluie/les orages qui approchent.
-- [ ] **Prévisions météo (forecast)** : afficher des prévisions à court terme.
-      Implique de choisir une source (API météo tierce — Environnement Canada,
-      OpenWeather, etc. — car Ecowitt ne fournit pas de prévisions) et de
-      décider où/comment les afficher sur le site.
+- [x] **Radar météo embarqué** : ✅ fait (2026-07-07) — nouvelle section
+      « Prévisions » (entre Ciel & conditions et les onglets de période),
+      positionnée délibérément comme catégorie « ce qui s'en vient » (externe/
+      prédictif) distincte des mesures propres au site. Tuile Radar en
+      accordéon (même pattern que la Lune), carte Windy centrée sur le lac,
+      **iframe chargée seulement à la première ouverture** (économie de bande
+      passante). `.forecast-row` (flex, pas grille) déjà dimensionné pour
+      accueillir les tuiles de prévisions 7 jours à côté, sans réorganisation.
+- [ ] **Prévisions météo 7 jours (forecast)** : la section « Prévisions » n'a
+      pour l'instant que le radar — reste à ajouter les tuiles de prévisions
+      elles-mêmes. Implique de choisir une source (API météo tierce —
+      Environnement Canada, OpenWeather, etc. — Ecowitt ne fournit pas de
+      prévisions) et de construire les tuiles jour (icône + min/max) dans
+      `.forecast-row`, à côté de la tuile Radar existante.
 
 ---
 
