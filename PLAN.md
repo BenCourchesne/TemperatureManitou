@@ -204,10 +204,8 @@ prioriser avant de commencer.
       page, le panneau solunaire complet s'ouvre en **popup/modal** au clic sur
       la tuile Lune (dans la section Ciel & conditions). Réduit la hauteur de
       la page principale ; garder la tuile Lune (phase+%) comme point d'entrée.
-- [ ] **Renommer la section graphique** : le titre actuel « Historique des
-      températures » ne couvre plus toutes les mesures (météo incluse).
-      Chercher un nom plus général — pistes à évaluer : « Données historiques »,
-      « Tendances », « Évolution », « Historique ». Décider avec Ben.
+- [x] **Renommer la section graphique** : ✅ fait (2026-07-07) — renommé en
+      « Historique des données » / « Historical data ».
 - [ ] **Photo horaire (webcam)** : capturer une photo à chaque heure (caméra à
       définir — ESP32-CAM ? webcam IP ? téléphone dédié ?) et l'afficher sur le
       site (dernière photo, ou petite galerie/timelapse). Implique : choix du
