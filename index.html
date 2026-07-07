@@ -1464,6 +1464,7 @@
       label.style.display = open ? '' : 'none';
       tile.setAttribute('aria-expanded', String(open));
       updateMoon();  // rafraîchit le libellé du badge (Détails/Masquer)
+      if (open) panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
     tile.addEventListener('click', toggleOpen);
     tile.addEventListener('keydown', e => {
@@ -1489,6 +1490,10 @@
       tile.setAttribute('aria-expanded', String(open));
       const t = i18n[currentLang];
       toggle.innerHTML = `<i class="ti ti-chevron-${open ? 'up' : 'down'}"></i><span>${open ? t.radarClose : t.radarOpen}</span>`;
+      // Centre le viewport sur la carte à l'ouverture — évite que l'utilisateur
+      // scrolle manuellement et finisse avec la souris sur l'iframe (le zoom
+      // interne de la carte capte alors la molette au lieu du scroll de page).
+      if (open) panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
     tile.addEventListener('click', toggleOpen);
     tile.addEventListener('keydown', e => {
