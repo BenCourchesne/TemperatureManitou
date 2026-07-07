@@ -323,9 +323,10 @@
     .trend-up   { color: #f87171; }
     .trend-down { color: #34d399; }
 
-    /* Tuile Lune : % et nom de phase sur la même ligne (aligne le séparateur avec Solaire) */
-    .card-moon-value { display: flex; align-items: baseline; gap: .5rem; }
-    .card-moon-value .card-trend { margin-top: 0; }
+    /* Valeur + tendance sur la même ligne (Solaire, Lune) — structure identique
+       pour garantir la même hauteur avant le séparateur lever/coucher */
+    .card-value-row { display: flex; align-items: baseline; gap: .5rem; }
+    .card-value-row .card-trend { margin-top: 0; }
     .trend-flat { color: var(--muted); }
 
     .card-sunrow {
@@ -627,13 +628,15 @@
     </div>
     <div class="card card-solar">
       <div class="card-label"><i class="ti ti-brightness-up"></i> <span data-i18n="solar">Luminosité</span></div>
-      <div class="card-temp" id="val-solar">—<span class="card-unit">W/m²</span></div>
-      <div class="card-trend" id="trend-solar"></div>
+      <div class="card-value-row">
+        <div class="card-temp" id="val-solar">—<span class="card-unit">W/m²</span></div>
+        <div class="card-trend" id="trend-solar"></div>
+      </div>
       <div class="card-sunrow" id="solar-sunrow"></div>
     </div>
     <div class="card card-moon" id="moon-tile" role="button" tabindex="0" aria-expanded="false">
       <div class="card-label"><span id="moon-tile-icon" class="moon-icon"><i class="ti ti-moon"></i></span> <span data-i18n="moon">Lune</span></div>
-      <div class="card-moon-value">
+      <div class="card-value-row">
         <div class="card-temp" id="val-moon">—<span class="card-unit">%</span></div>
         <div class="card-trend" id="trend-moon"></div>
       </div>
