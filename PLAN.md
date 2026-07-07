@@ -190,6 +190,46 @@ s'allument, et que graphique + `/daily` marchent pour chaque mesure.
 
 ---
 
+## Tâches — Idées futures (non implémentées, à planifier)
+
+Backlog capturé le 2026-07-07, rien de ceci n'est implémenté — à détailler et
+prioriser avant de commencer.
+
+- [ ] **Tuile Lune → icône de phase + %** : remplacer/compléter l'affichage
+      actuel par une icône représentant visuellement la phase (croissant,
+      gibbeuse, pleine…) à côté du pourcentage — voir photo de référence
+      fournie par Ben. Trouver ou construire un set d'icônes de phase lunaire
+      (SVG) cohérent avec le style Tabler du reste du site.
+- [ ] **Panneau solunaire en modal** : au lieu d'une section dans le flux de la
+      page, le panneau solunaire complet s'ouvre en **popup/modal** au clic sur
+      la tuile Lune (dans la section Ciel & conditions). Réduit la hauteur de
+      la page principale ; garder la tuile Lune (phase+%) comme point d'entrée.
+- [ ] **Renommer la section graphique** : le titre actuel « Historique des
+      températures » ne couvre plus toutes les mesures (météo incluse).
+      Chercher un nom plus général — pistes à évaluer : « Données historiques »,
+      « Tendances », « Évolution », « Historique ». Décider avec Ben.
+- [ ] **Photo horaire (webcam)** : capturer une photo à chaque heure (caméra à
+      définir — ESP32-CAM ? webcam IP ? téléphone dédié ?) et l'afficher sur le
+      site (dernière photo, ou petite galerie/timelapse). Implique : choix du
+      matériel, stockage des images (Firebase Storage plutôt que RTDB), un
+      pipeline de capture + upload, gestion de la rétention (combien de photos
+      garder).
+- [ ] **Navigation temporelle sur le graphique** : pouvoir choisir un jour, un
+      mois ou une année précis dans le passé (pas seulement des fenêtres
+      glissantes 24h/7j/30j/Saison/Année) — un vrai sélecteur de date pour
+      « remonter dans le temps ». Implique une UI de sélection de date +
+      requêtes RTDB par plage arbitraire (déjà possible via `orderBy`+
+      `startAt`/`endAt` sur la clé timestamp).
+- [ ] **Lien vers une vue radar** : ajouter un lien (ou embed) vers un radar
+      météo externe (ex. Environnement Canada, Windy, RainViewer) centré sur le
+      lac, pour visualiser la pluie/les orages qui approchent.
+- [ ] **Prévisions météo (forecast)** : afficher des prévisions à court terme.
+      Implique de choisir une source (API météo tierce — Environnement Canada,
+      OpenWeather, etc. — car Ecowitt ne fournit pas de prévisions) et de
+      décider où/comment les afficher sur le site.
+
+---
+
 ## Questions ouvertes / à confirmer
 
 - Coordonnées GPS exactes du lac (solunaire).
