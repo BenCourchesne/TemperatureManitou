@@ -32,6 +32,7 @@
       --uv:          #a78bfa;
       --solar:       #fb923c;
       --moon:        #cbd5e1;
+      --radar:       #60a5fa;
       --live:        #34d399;
       --radius:      18px;
     }
@@ -228,6 +229,7 @@
     .card-uv::before       { background: linear-gradient(90deg, var(--uv), transparent); }
     .card-solar::before    { background: linear-gradient(90deg, var(--solar), transparent); }
     .card-moon::before     { background: linear-gradient(90deg, var(--moon), transparent); }
+    .card-radar::before    { background: linear-gradient(90deg, var(--radar), transparent); }
 
     .card-label {
       font-size: .72rem;
@@ -250,6 +252,7 @@
     .card-uv       .card-label { color: var(--uv); }
     .card-solar    .card-label { color: var(--solar); }
     .card-moon     .card-label { color: #cbd5e1; }
+    .card-radar    .card-label { color: var(--radar); }
 
     /* Icône eau (vague) + flèche directionnelle superposée (surface ↑ / 4 pieds ↓) */
     .water-icon { position: relative; display: inline-flex; }
@@ -263,13 +266,29 @@
     /* Tuile Lune — cliquable (accordéon vers le panneau solunaire) */
     .card-moon { cursor: pointer; border-color: rgba(45,212,191,.25); }
     .card-moon:hover { border-color: rgba(45,212,191,.4); }
-    .moon-toggle {
+    .card-radar { cursor: pointer; border-color: rgba(45,212,191,.25); }
+    .card-radar:hover { border-color: rgba(45,212,191,.4); }
+    /* Rangée Prévisions : tuile radar compacte, prête à accueillir les tuiles
+       de prévisions 7 jours plus tard sans réorganisation */
+    .forecast-row { display: flex; flex-wrap: wrap; gap: .75rem; margin-bottom: .25rem; }
+    .forecast-row .card-radar { flex: 0 1 220px; }
+
+    /* Panneau radar (accordéon — iframe chargée seulement à l'ouverture) */
+    .radar-panel {
+      background: var(--glass); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: .6rem; margin-bottom: .5rem;
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
+    .radar-frame-wrap { position: relative; width: 100%; padding-bottom: 65%; border-radius: 10px; overflow: hidden; }
+    .radar-frame-wrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+    /* Badge « Détails/Ouvrir » — signale une tuile-accordéon cliquable (Lune, Radar…) */
+    .accordion-badge {
       display: flex; align-items: center; gap: 3px;
       width: fit-content; margin-left: auto; margin-top: .45rem;
       font-size: .62rem; color: #2dd4bf; background: rgba(45,212,191,.1);
       border-radius: 5px; padding: 1px 6px;
     }
-    .moon-toggle i { font-size: .85em; }
+    .accordion-badge i { font-size: .85em; }
 
     /* Tuiles météo compactes (valeur plus petite que les températures) */
     .cards-5 .card-temp, .card-pressure .card-temp, .card-humidity .card-temp, .card-air .card-temp { font-size: 1.7rem; }
@@ -641,13 +660,24 @@
         <div class="card-trend" id="trend-moon"></div>
       </div>
       <div class="card-sunrow" id="moon-rise-tile"></div>
-      <div class="moon-toggle" id="moon-toggle"><i class="ti ti-chevron-down"></i><span data-i18n="moonDetails">Détails</span></div>
+      <div class="accordion-badge" id="moon-toggle"><i class="ti ti-chevron-down"></i><span data-i18n="moonDetails">Détails</span></div>
     </div>
   </div>
 
   <!-- Panneau solunaire (accordéon — replié par défaut, clic sur la tuile Lune) -->
   <div class="section-label" id="solunar-label" style="display:none"><i class="ti ti-moon-stars"></i><span data-i18n="secMoon">Activité lunaire</span></div>
   <div id="solunar" class="solunar-panel" style="display:none"></div>
+
+  <!-- Prévisions (radar externe — pas mesuré ici) -->
+  <div class="section-label"><i class="ti ti-cloud-storm"></i><span data-i18n="secForecast">Prévisions</span></div>
+  <div class="forecast-row">
+    <div class="card card-radar" id="radar-tile" role="button" tabindex="0" aria-expanded="false">
+      <div class="card-label"><i class="ti ti-radar-2"></i> <span data-i18n="radar">Radar</span></div>
+      <div class="card-alt" data-i18n="radarHint">Voir la carte en direct</div>
+      <div class="accordion-badge" id="radar-toggle"><i class="ti ti-chevron-down"></i><span data-i18n="radarOpen">Ouvrir</span></div>
+    </div>
+  </div>
+  <div id="radar-panel" class="radar-panel" style="display:none"></div>
 
   <!-- Period selector -->
   <div class="period-tabs">
@@ -744,6 +774,11 @@
       secWater:      'Eau du lac',
       secSky:        'Ciel & conditions',
       secMoon:       'Activité lunaire',
+      secForecast:   'Prévisions',
+      radar:         'Radar',
+      radarHint:     'Voir la carte en direct',
+      radarOpen:     'Ouvrir',
+      radarClose:    'Fermer',
       moonMajor:     'Périodes majeures',
       moonMinor:     'Périodes mineures',
       sunrise:       'Lever soleil',
@@ -794,6 +829,11 @@
       secWater:      'Lake water',
       secSky:        'Sky & conditions',
       secMoon:       'Lunar activity',
+      secForecast:   'Forecast',
+      radar:         'Radar',
+      radarHint:     'View live map',
+      radarOpen:     'Open',
+      radarClose:    'Close',
       moonMajor:     'Major periods',
       moonMinor:     'Minor periods',
       sunrise:       'Sunrise',
@@ -1424,6 +1464,31 @@
       label.style.display = open ? '' : 'none';
       tile.setAttribute('aria-expanded', String(open));
       updateMoon();  // rafraîchit le libellé du badge (Détails/Masquer)
+    }
+    tile.addEventListener('click', toggleOpen);
+    tile.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleOpen(); }
+    });
+  })();
+
+  // ── Accordéon radar : clic sur la tuile Radar ⇄ carte Windy ───────────────────
+  // L'iframe n'est injectée qu'à la première ouverture (économie de bande passante).
+  (function() {
+    const tile = document.getElementById('radar-tile');
+    const panel = document.getElementById('radar-panel');
+    const toggle = document.getElementById('radar-toggle');
+    if (!tile || !panel || !toggle) return;
+    let loaded = false;
+    function toggleOpen() {
+      const open = tile.getAttribute('aria-expanded') !== 'true';
+      if (open && !loaded) {
+        panel.innerHTML = '<div class="radar-frame-wrap"><iframe src="https://embed.windy.com/embed2.html?lat=46.060000&lon=-74.371944&detailLat=46.060000&detailLon=-74.371944&zoom=15&level=surface&overlay=radar" loading="lazy" title="Radar météo — Lac Manitou"></iframe></div>';
+        loaded = true;
+      }
+      panel.style.display = open ? '' : 'none';
+      tile.setAttribute('aria-expanded', String(open));
+      const t = i18n[currentLang];
+      toggle.innerHTML = `<i class="ti ti-chevron-${open ? 'up' : 'down'}"></i><span>${open ? t.radarClose : t.radarOpen}</span>`;
     }
     tile.addEventListener('click', toggleOpen);
     tile.addEventListener('keydown', e => {
