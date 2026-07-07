@@ -103,12 +103,11 @@ sonde quai**. Le helper `val(d,'air')` implémente la priorité.
       cocher exclusives** (pas des pilules comme prévu à l'origine) : logique
       généralisée `SOLO`/`seriesVisible` qui bascule axe Y + unité. Fonctionne,
       juste un choix visuel différent de l'esquisse initiale.
-- [x] **`fetchData`** — ✅ **partiel** : le brut (24h) et `/daily` transportent
-      tous les champs (spread `...obj[k]`). ⚠️ **Le bucket horaire (7j/30j)
-      n'agrège PAS encore vent/pluie/UV/luminosité/pression** — seuls
-      air/surface/depth/airv/hum sont moyennés ; ces mesures disparaîtraient
-      sur les vues 7 jours/30 jours une fois les données Ecowitt branchées.
-      **Vrai bloquant pour la Phase B, à corriger avant de brancher Ecowitt.**
+- [x] **`fetchData`** — ✅ **complet** : le brut (24h) et `/daily` transportent
+      tous les champs (spread `...obj[k]`) ; le bucket horaire (7j/30j) agrège
+      maintenant aussi pression/vent/pluie/UV/luminosité (moyenne, via `val()`
+      généralisé + `RAW_PROP`), plus seulement air/surface/depth/airv/hum.
+      Bloquant Phase B résolu.
 - [x] **Tuile phase de lune** — ✅ icône SVG dynamique (voir section Lune).
 - [x] **Panneau solunaire** — ✅ accordéon (voir section Lune).
 - [x] **i18n FR/EN** — ✅ tous les libellés mesures/phases/majeures-mineures/
