@@ -1060,25 +1060,40 @@
 
         if (cfg.bucket === 0) return rows;
 
-        // Agrégation par bucket (heure ou jour) — airv/hum comptés séparément
-        // car parfois absents (transition avant le backfill/payload véranda)
+        // Agrégation par bucket (heure ou jour) — airv/hum/météo comptés
+        // séparément car parfois absents (données Ecowitt pas encore branchées,
+        // transition avant le backfill véranda, etc.)
+        // Mesures météo agrégées par moyenne ; RAW_PROP = clé UI → propriété
+        // brute écrite dans le bucket, pour que val() les relise correctement.
+        const RAW_PROP = { pressure: 'press', wind: 'wind', rain: 'rday', uv: 'uv', solar: 'solar' };
         const buckets = {};
         for (const d of rows) {
           const key = Math.floor(d.t / cfg.bucket) * cfg.bucket;
-          const b = buckets[key] || (buckets[key] = { air: 0, surface: 0, depth: 0, n: 0, avS: 0, avN: 0, hS: 0, hN: 0 });
+          const b = buckets[key] || (buckets[key] = { air: 0, surface: 0, depth: 0, n: 0, avS: 0, avN: 0, hS: 0, hN: 0, agg: {} });
           b.air += d.air; b.surface += d.surface; b.depth += d.depth; b.n++;
           if (d.airv != null) { b.avS += d.airv; b.avN++; }
           if (d.hum  != null) { b.hS  += d.hum;  b.hN++; }
+          for (const k in RAW_PROP) {
+            const v = val(d, k);
+            if (v == null) continue;
+            const a = b.agg[k] || (b.agg[k] = { sum: 0, n: 0 });
+            a.sum += v; a.n++;
+          }
         }
         const round1 = v => Math.round(v * 10) / 10;
         return Object.keys(buckets).sort((a, b) => a - b).map(key => {
           const b = buckets[key];
-          return {
+          const out = {
             t: Number(key),
             air: round1(b.air / b.n), surface: round1(b.surface / b.n), depth: round1(b.depth / b.n),
             airv: b.avN ? round1(b.avS / b.avN) : null,
             hum:  b.hN  ? round1(b.hS / b.hN)   : null
           };
+          for (const k in RAW_PROP) {
+            const a = b.agg[k];
+            out[RAW_PROP[k]] = a ? round1(a.sum / a.n) : null;
+          }
+          return out;
         });
       })
       .catch(err => { console.error(err); return []; });
