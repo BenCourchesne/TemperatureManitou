@@ -195,15 +195,20 @@ s'allument, et que graphique + `/daily` marchent pour chaque mesure.
 Backlog capturé le 2026-07-07, rien de ceci n'est implémenté — à détailler et
 prioriser avant de commencer.
 
-- [ ] **Tuile Lune → icône de phase + %** : remplacer/compléter l'affichage
-      actuel par une icône représentant visuellement la phase (croissant,
-      gibbeuse, pleine…) à côté du pourcentage — voir photo de référence
-      fournie par Ben. Trouver ou construire un set d'icônes de phase lunaire
-      (SVG) cohérent avec le style Tabler du reste du site.
-- [ ] **Panneau solunaire en modal** : au lieu d'une section dans le flux de la
-      page, le panneau solunaire complet s'ouvre en **popup/modal** au clic sur
-      la tuile Lune (dans la section Ciel & conditions). Réduit la hauteur de
-      la page principale ; garder la tuile Lune (phase+%) comme point d'entrée.
+- [x] **Tuile Lune → icône de phase + %** : ✅ fait (2026-07-07) — icône SVG de
+      croissant/gibbeuse générée dynamiquement depuis la fraction éclairée
+      exacte (formule à arcs elliptiques), pas un set statique de 30 images.
+- [x] **Panneau solunaire caché par défaut** : ✅ fait (2026-07-07) — implémenté
+      en **accordéon** (pas modal) : clic sur la tuile Lune (badge « Détails ▾ »,
+      bordure teal, clavier-accessible) révèle le panneau juste en dessous dans
+      le flux de la page ; reclique pour le masquer. Moonrise déplacé de
+      l'ancien panneau vers la tuile Lune elle-même.
+- [ ] **Aligner les séparateurs Solaire/Lune** : les lignes horizontales avant
+      Sunrise (tuile Solaire) et Moonrise (tuile Lune) ne sont pas exactement à
+      la même hauteur malgré la structure `.card-value-row` partagée entre les
+      deux tuiles (2026-07-07 — tentative faite, pas encore résolu). À reprendre
+      avec un examen plus précis en dev tools (line-height réel du texte de
+      tendance vs du chiffre, padding/marge résiduelle).
 - [x] **Renommer la section graphique** : ✅ fait (2026-07-07) — renommé en
       « Historique des données » / « Historical data ».
 - [ ] **Photo horaire (webcam)** : capturer une photo à chaque heure (caméra à
