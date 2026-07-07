@@ -314,6 +314,12 @@
     .trend-down { color: #34d399; }
     .trend-flat { color: var(--muted); }
 
+    .card-sunrow {
+      margin-top: .5rem; padding-top: .5rem; border-top: 1px solid rgba(255,255,255,.06);
+      font-size: .72rem; color: var(--muted); display: flex; flex-direction: column; gap: .2rem;
+    }
+    .card-sunrow span { display: flex; align-items: center; gap: .3rem; }
+
     /* ── Period tabs ── */
     .period-tabs {
       display: flex;
@@ -608,6 +614,7 @@
       <div class="card-label"><i class="ti ti-brightness-up"></i> <span data-i18n="solar">Luminosité</span></div>
       <div class="card-temp" id="val-solar">—<span class="card-unit">W/m²</span></div>
       <div class="card-trend" id="trend-solar"></div>
+      <div class="card-sunrow" id="solar-sunrow"></div>
     </div>
     <div class="card card-moon">
       <div class="card-label"><i class="ti ti-moon"></i> <span data-i18n="moon">Lune</span></div>
@@ -1108,10 +1115,13 @@
         </div>
       </div>
       <div class="solunar-rise">
-        <span><i class="ti ti-sunrise" style="color:#fbbf24"></i>${t.sunrise} ${fmtT(st.sunrise)}</span>
-        <span><i class="ti ti-sunset" style="color:#fb923c"></i>${t.sunset} ${fmtT(st.sunset)}</span>
         <span><i class="ti ti-moon" style="color:#cbd5e1"></i>${t.moonrise} ${fmtT(mt.rise)}</span>
       </div>`;
+
+    const solarEl = document.getElementById('solar-sunrow');
+    if (solarEl) solarEl.innerHTML =
+      `<span><i class="ti ti-sunrise" style="color:#fbbf24"></i>${t.sunrise} ${fmtT(st.sunrise)}</span>
+       <span><i class="ti ti-sunset" style="color:#fb923c"></i>${t.sunset} ${fmtT(st.sunset)}</span>`;
   }
 
   // ── Update UI ────────────────────────────────────────────────────────────────
