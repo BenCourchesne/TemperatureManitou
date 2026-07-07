@@ -264,9 +264,10 @@
     .card-moon { cursor: pointer; border-color: rgba(45,212,191,.25); }
     .card-moon:hover { border-color: rgba(45,212,191,.4); }
     .moon-toggle {
-      display: inline-flex; align-items: center; gap: 3px;
+      display: flex; align-items: center; gap: 3px;
+      width: fit-content; margin-left: auto; margin-top: .45rem;
       font-size: .62rem; color: #2dd4bf; background: rgba(45,212,191,.1);
-      border-radius: 5px; padding: 1px 6px; margin-top: .45rem;
+      border-radius: 5px; padding: 1px 6px;
     }
     .moon-toggle i { font-size: .85em; }
 
@@ -629,7 +630,7 @@
       <div class="card-label"><span id="moon-tile-icon" class="moon-icon"><i class="ti ti-moon"></i></span> <span data-i18n="moon">Lune</span></div>
       <div class="card-temp" id="val-moon">—<span class="card-unit">%</span></div>
       <div class="card-trend" id="trend-moon"></div>
-      <div class="card-alt" id="moon-rise-tile">—</div>
+      <div class="card-sunrow" id="moon-rise-tile"></div>
       <div class="moon-toggle" id="moon-toggle"><i class="ti ti-chevron-down"></i><span data-i18n="moonDetails">Détails</span></div>
     </div>
   </div>
@@ -1148,7 +1149,8 @@
       </div>`;
 
     const riseTile = document.getElementById('moon-rise-tile');
-    if (riseTile) riseTile.textContent = t.moonrise + ' ' + fmtT(mt.rise);
+    if (riseTile) riseTile.innerHTML =
+      `<span><i class="ti ti-moon" style="color:#cbd5e1"></i>${t.moonrise} ${fmtT(mt.rise)}</span>`;
 
     const toggle = document.getElementById('moon-toggle');
     if (toggle) {
