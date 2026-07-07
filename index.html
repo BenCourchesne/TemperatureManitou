@@ -257,6 +257,7 @@
       font-size: .62em; background: var(--bg);
       border-radius: 50%; box-shadow: 0 0 0 2px var(--bg);
     }
+    .water-icon-arrow-top { bottom: auto; top: -4px; }
 
     /* Tuiles météo compactes (valeur plus petite que les températures) */
     .cards-5 .card-temp, .card-pressure .card-temp, .card-humidity .card-temp, .card-air .card-temp { font-size: 1.7rem; }
@@ -557,7 +558,7 @@
   <div class="section-label"><i class="ti ti-ripple"></i><span data-i18n="secWater">Eau du lac</span></div>
   <div class="cards cards-2">
     <div class="card card-surface">
-      <div class="card-label"><span class="water-icon"><i class="ti ti-ripple"></i><i class="ti ti-arrow-up water-icon-arrow"></i></span> <span data-i18n="surface">Eau surface</span></div>
+      <div class="card-label"><span class="water-icon"><i class="ti ti-ripple"></i><i class="ti ti-arrow-up water-icon-arrow water-icon-arrow-top"></i></span> <span data-i18n="surface">Eau surface</span></div>
       <div class="card-mainrow">
         <div>
           <div class="card-temp" id="val-surface">—<span class="card-unit">°C</span></div>
