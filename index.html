@@ -273,6 +273,24 @@
     .forecast-row { display: flex; flex-wrap: wrap; gap: .75rem; margin-bottom: .25rem; }
     .forecast-row .card-radar { flex: 0 1 220px; }
 
+    /* Carte prévisions 7 jours : à droite du radar (même rangée), passe sous
+       le radar seulement quand la rangée manque de place (petits écrans). */
+    .forecast-row .card-forecast { flex: 1 1 340px; min-width: 0; }
+    .forecast-week { display: flex; gap: .4rem; margin-top: .6rem; overflow-x: auto; padding-bottom: .2rem; }
+    .fc-day {
+      flex: 1 1 0; min-width: 38px; text-align: center;
+      background: rgba(255,255,255,.03); border: 1px solid var(--border); border-radius: 10px;
+      padding: .45rem .25rem; display: flex; flex-direction: column; align-items: center; gap: .25rem;
+    }
+    .fc-name { font-size: .66rem; color: var(--muted); text-transform: capitalize; white-space: nowrap; }
+    .fc-icon { font-size: 1.35rem; line-height: 1; }
+    .fc-temps { font-size: .8rem; display: flex; flex-direction: column; align-items: center; line-height: 1.25; }
+    .fc-temps b { color: #fca5a5; font-weight: 700; }
+    .fc-temps .fc-lo { color: #93c5fd; }
+    .forecast-foot { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-top: .5rem; }
+    .forecast-attrib { font-size: .62rem; color: var(--muted); opacity: .7; }
+    .forecast-foot .accordion-badge { margin-top: 0; }
+
     /* Panneau radar (accordéon — iframe chargée seulement à l'ouverture) */
     .radar-panel {
       background: var(--glass); border: 1px solid var(--border);
@@ -289,6 +307,17 @@
       border-radius: 5px; padding: 1px 6px;
     }
     .accordion-badge i { font-size: .85em; }
+    .accordion-badge[role="button"] { cursor: pointer; }
+    /* Liens de prévisions externes (accordéon « Externe » de la carte prévisions) */
+    .ext-links { display: flex; flex-direction: column; gap: .35rem; margin-top: .5rem; }
+    .ext-links a {
+      display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+      font-size: .74rem; color: inherit; text-decoration: none;
+      background: rgba(255,255,255,.03); border: 1px solid var(--border);
+      border-radius: 8px; padding: .4rem .6rem; transition: background .15s, border-color .15s;
+    }
+    .ext-links a:hover { background: var(--glass-hover); border-color: rgba(45,212,191,.4); }
+    .ext-links a i { font-size: .9em; color: #2dd4bf; }
 
     /* Tuiles météo compactes (valeur plus petite que les températures) */
     .cards-5 .card-temp, .card-pressure .card-temp, .card-humidity .card-temp, .card-air .card-temp { font-size: 1.7rem; }
@@ -689,6 +718,19 @@
       <div class="card-alt" data-i18n="radarHint">Voir la carte en direct</div>
       <div class="accordion-badge" id="radar-toggle"><i class="ti ti-chevron-down"></i><span data-i18n="radarOpen">Ouvrir</span></div>
     </div>
+    <div class="card card-forecast" id="forecast-card" style="display:none">
+      <div class="card-label"><i class="ti ti-calendar-week"></i> <span data-i18n="forecast7">Prévisions 7 jours</span></div>
+      <div id="forecast-week" class="forecast-week"></div>
+      <div class="forecast-foot">
+        <div id="forecast-attrib" class="forecast-attrib"></div>
+        <div class="accordion-badge" id="forecast-ext-toggle" role="button" tabindex="0" aria-expanded="false"><i class="ti ti-external-link"></i><span data-i18n="external">Externe</span></div>
+      </div>
+      <div id="forecast-ext-panel" class="ext-links" style="display:none">
+        <a href="https://www.accuweather.com/fr/ca/ivry-sur-le-lac/j8c/10-day-weather-forecast/2294475" target="_blank" rel="noopener noreferrer"><span>AccuWeather</span><i class="ti ti-external-link"></i></a>
+        <a href="https://meteo.gc.ca/fr/location/index.html?coords=46.075,-74.337" target="_blank" rel="noopener noreferrer"><span>Environnement Canada</span><i class="ti ti-external-link"></i></a>
+        <a href="https://www.meteomedia.com/fr/ville/ca/quebec/ivry-sur-le-lac/7-jours" target="_blank" rel="noopener noreferrer"><span>MétéoMédia</span><i class="ti ti-external-link"></i></a>
+      </div>
+    </div>
   </div>
   <div id="radar-panel" class="radar-panel" style="display:none"></div>
 
@@ -816,6 +858,9 @@
       compass:       ['N','NE','E','SE','S','SO','O','NO'],
       windFrom:      'Vent du secteur',
       calm:          'calme',
+      forecast7:     'Prévisions 7 jours',
+      fcSource:      'Source : Environnement Canada',
+      external:      'Autres sources',
     },
     en: {
       title:         'Lake Manitou',
@@ -877,6 +922,9 @@
       compass:       ['N','NE','E','SE','S','SW','W','NW'],
       windFrom:      'Wind from',
       calm:          'calm',
+      forecast7:     '7-day forecast',
+      fcSource:      'Source: Environment Canada',
+      external:      'Other sources',
     }
   };
 
@@ -1558,6 +1606,7 @@
       LS.set('lm_lang', currentLang);
       applyLang();
       updateMoon();
+      renderForecast();
       if (allData.length) updateUI(allData);
     });
   });
@@ -1636,16 +1685,108 @@
     });
   })();
 
+  // ── Accordéon « Externe » : liens prévisions tierces qui s'ouvrent dans un
+  // NOUVEL onglet (jamais en iframe — leurs CGU/X-Frame-Options l'interdisent). ──
+  (function() {
+    const toggle = document.getElementById('forecast-ext-toggle');
+    const panel = document.getElementById('forecast-ext-panel');
+    if (!toggle || !panel) return;
+    function toggleExt() {
+      const open = toggle.getAttribute('aria-expanded') !== 'true';
+      panel.style.display = open ? '' : 'none';
+      toggle.setAttribute('aria-expanded', String(open));
+    }
+    toggle.addEventListener('click', toggleExt);
+    toggle.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExt(); }
+    });
+  })();
+
   // GA4 : le tag client (gtag) dans le <head> envoie page_view automatiquement
   // sur Firebase Hosting (l'iframe sandbox de GAS bloquait ces requêtes).
+
+  // ── Prévisions 7 jours (Environnement Canada — api.weather.gc.ca) ────────────
+  // Site le plus proche du lac : Sainte-Agathe (qc-33). Payload bilingue {en,fr}.
+  const WX_API  = 'https://api.weather.gc.ca/collections/citypageweather-realtime/items/qc-33?f=json';
+  let forecastData = null;
+
+  // Code d'icône Environnement Canada → icône Tabler + couleur.
+  function wxIcon(code) {
+    const M = {
+      0:['ti-sun','#fbbf24'], 1:['ti-sun','#fbbf24'],
+      2:['ti-cloud','#94a3b8'], 3:['ti-cloud','#94a3b8'], 4:['ti-cloud','#94a3b8'], 5:['ti-cloud','#94a3b8'],
+      6:['ti-cloud-rain','#38bdf8'], 7:['ti-cloud-rain','#38bdf8'], 8:['ti-cloud-snow','#93c5fd'],
+      9:['ti-cloud-rain','#38bdf8'], 10:['ti-cloud','#94a3b8'], 11:['ti-cloud-rain','#38bdf8'],
+      12:['ti-cloud-rain','#38bdf8'], 13:['ti-cloud-rain','#38bdf8'],
+      14:['ti-cloud-snow','#93c5fd'], 15:['ti-cloud-snow','#93c5fd'],
+      16:['ti-cloud-snow','#e0f2fe'], 17:['ti-cloud-snow','#e0f2fe'], 18:['ti-cloud-snow','#e0f2fe'],
+      19:['ti-cloud-storm','#a78bfa'], 23:['ti-cloud-fog','#94a3b8'], 24:['ti-cloud-fog','#94a3b8'],
+      27:['ti-cloud-snow','#93c5fd'], 28:['ti-cloud-rain','#38bdf8'],
+      30:['ti-moon','#cbd5e1'], 31:['ti-moon','#cbd5e1'],
+      32:['ti-cloud','#94a3b8'], 33:['ti-cloud','#94a3b8'], 34:['ti-cloud','#94a3b8'],
+      35:['ti-cloud','#94a3b8'], 36:['ti-cloud-rain','#38bdf8'], 37:['ti-cloud-snow','#93c5fd'],
+      38:['ti-cloud-snow','#e0f2fe'], 39:['ti-cloud-rain','#38bdf8'], 40:['ti-cloud-snow','#e0f2fe'],
+      41:['ti-cloud-storm','#a78bfa'], 43:['ti-wind','#2dd4bf'], 44:['ti-cloud-fog','#94a3b8'],
+      45:['ti-cloud-fog','#94a3b8'], 46:['ti-cloud-storm','#a78bfa'], 47:['ti-cloud-storm','#a78bfa'],
+    };
+    return M[code] || ['ti-cloud', '#94a3b8'];
+  }
+
+  function renderForecast() {
+    const card = document.getElementById('forecast-card');
+    const el = document.getElementById('forecast-week');
+    if (!card || !el || !forecastData) return;
+    const L = currentLang, locale = L === 'fr' ? 'fr-CA' : 'en-CA';
+    const days = [];
+    let cur = null;
+    for (const p of (forecastData.forecasts || [])) {
+      const tt = p.temperatures && p.temperatures.temperature && p.temperatures.temperature[0];
+      if (!tt) continue;
+      const val = Math.round(tt.value[L]);
+      const code = p.abbreviatedForecast ? p.abbreviatedForecast.icon.value : null;
+      const summ = p.abbreviatedForecast ? p.abbreviatedForecast.textSummary[L] : '';
+      if (tt.class.en === 'high') { cur = { high: val, low: null, code, summ }; days.push(cur); }
+      else if (cur && cur.low == null) { cur.low = val; }
+      else { days.push({ high: null, low: val, code, summ }); cur = null; }
+    }
+    const midnight = new Date(); midnight.setHours(0, 0, 0, 0);
+    el.innerHTML = days.slice(0, 7).map((d, i) => {
+      const [ic, col] = wxIcon(d.code);
+      const label = new Date(midnight.getTime() + i * 86400000).toLocaleDateString(locale, { weekday: 'short' }).replace('.', '');
+      const hi = d.high != null ? `<b>${d.high}°</b>` : '';
+      const lo = d.low != null ? `<span class="fc-lo">${d.low}°</span>` : '';
+      return `<div class="fc-day" title="${(d.summ || '').replace(/"/g, '')}">
+        <div class="fc-name">${label}</div>
+        <i class="ti ${ic} fc-icon" style="color:${col}"></i>
+        <div class="fc-temps">${hi}${lo}</div>
+      </div>`;
+    }).join('');
+    document.getElementById('forecast-attrib').textContent = i18n[L].fcSource;
+    card.style.display = '';
+  }
+
+  async function loadForecast() {
+    try {
+      const r = await fetch(WX_API);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const j = await r.json();
+      forecastData = (j.properties && j.properties.forecastGroup) || null;
+      if (forecastData) renderForecast();
+    } catch (e) {
+      const card = document.getElementById('forecast-card');
+      if (card) card.style.display = 'none';   // échec silencieux : masquer la carte
+    }
+  }
 
   initChart();
   applyLang();
   applyPrefsToButtons();
   updateMoon();
   load('24h');
+  loadForecast();
   setInterval(() => load(currentPeriod, false), 5 * 60 * 1000);
   setInterval(updateMoon, 30 * 60 * 1000);
+  setInterval(loadForecast, 60 * 60 * 1000);   // prévisions : rafraîchies chaque heure
 </script>
 </body>
 </html>

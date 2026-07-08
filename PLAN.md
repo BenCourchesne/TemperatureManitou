@@ -287,12 +287,14 @@ prioriser avant de commencer.
       **iframe chargée seulement à la première ouverture** (économie de bande
       passante). `.forecast-row` (flex, pas grille) déjà dimensionné pour
       accueillir les tuiles de prévisions 7 jours à côté, sans réorganisation.
-- [ ] **Prévisions météo 7 jours (forecast)** : la section « Prévisions » n'a
-      pour l'instant que le radar — reste à ajouter les tuiles de prévisions
-      elles-mêmes. Implique de choisir une source (API météo tierce —
-      Environnement Canada, OpenWeather, etc. — Ecowitt ne fournit pas de
-      prévisions) et de construire les tuiles jour (icône + min/max) dans
-      `.forecast-row`, à côté de la tuile Radar existante.
+- [x] **Prévisions météo 7 jours (forecast)** : ✅ fait (2026-07-08). Source =
+      **Environnement Canada** via `api.weather.gc.ca` (collection
+      `citypageweather-realtime`, site le plus proche = Sainte-Agathe `qc-33`,
+      CORS OK, payload bilingue). Carte « Prévisions 7 jours » à droite du radar
+      dans `.forecast-row` (passe sous le radar sur petit écran) : 7 tuiles jour
+      avec icône (mapping code EC → Tabler, vérifié contre le CSV officiel),
+      max (rouge) / min (bleu) empilés, résumé en infobulle, attribution EC.
+      Rafraîchi chaque heure ; échec réseau = carte masquée silencieusement.
 
 ---
 
