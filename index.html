@@ -357,6 +357,15 @@
     }
     .card-sunrow span { display: flex; align-items: center; gap: .3rem; }
 
+    .card-winddir {
+      margin-top: .35rem; font-size: .74rem; color: var(--muted);
+      display: flex; align-items: center; gap: .3rem;
+    }
+    .card-winddir .wind-arrow {
+      color: var(--wind); font-size: .95rem; line-height: 1;
+      display: inline-block; transition: transform .3s ease;
+    }
+
     /* ── Period tabs ── */
     .period-tabs {
       display: flex;
@@ -637,6 +646,7 @@
       <div class="card-label"><i class="ti ti-wind"></i> <span data-i18n="wind">Vent</span></div>
       <div class="card-temp" id="val-wind">—<span class="card-unit">km/h</span></div>
       <div class="card-trend" id="trend-wind"></div>
+      <div class="card-winddir" id="wind-dir"></div>
     </div>
     <div class="card card-rain">
       <div class="card-label"><i class="ti ti-cloud-rain"></i> <span data-i18n="rain">Pluie</span></div>
@@ -803,6 +813,9 @@
       vsHour:        'vs 1h',
       rainDry:       'sec',
       rainToday:     "aujourd'hui",
+      compass:       ['N','NE','E','SE','S','SO','O','NO'],
+      windFrom:      'Vent du secteur',
+      calm:          'calme',
     },
     en: {
       title:         'Lake Manitou',
@@ -861,6 +874,9 @@
       vsHour:        'vs 1h',
       rainDry:       'dry',
       rainToday:     'today',
+      compass:       ['N','NE','E','SE','S','SW','W','NW'],
+      windFrom:      'Wind from',
+      calm:          'calm',
     }
   };
 
@@ -904,6 +920,8 @@
   // Nettoie le bruit flottant des ticks d'axe (ex. 970.5000000000001 → 970.5)
   // sans imposer de décimales fixes (les entiers restent entiers).
   const axisNum = v => Math.round(v * 1000) / 1000;
+  // Rose des vents 8 points depuis un cap en degrés (0 = N, sens horaire).
+  const compassDir = (deg, lang) => i18n[lang].compass[Math.round(deg / 45) % 8];
   // Séries « solo » (axe unique, exclusives vs le groupe températures) — datasets 3..8
   const SOLO = [
     { key:'humidity', color:'#22d3ee' },
@@ -1302,6 +1320,25 @@
       document.getElementById('val-' + id).innerHTML =
         (v != null ? v.toFixed(METRIC_DEC[key]) : '—') + (u ? '<span class="card-unit">' + u + '</span>' : '');
       document.getElementById('trend-' + id).innerHTML = trendLabel(data, key);
+    }
+
+    // Direction du vent (tuile Vent) : flèche orientée vers la provenance +
+    // rose des vents + degrés. « calme » si le vent est ~nul (direction sans
+    // objet), rien si wdir absent (lectures pré-Ecowitt).
+    const wdEl = document.getElementById('wind-dir');
+    if (wdEl) {
+      const tr = i18n[currentLang], dir = last.wdir, spd = val(last, 'wind');
+      if (dir == null) {
+        wdEl.innerHTML = '';
+        wdEl.removeAttribute('title');
+      } else if (spd != null && spd < 1) {
+        wdEl.innerHTML = `<span class="trend-flat">${tr.calm}</span>`;
+        wdEl.removeAttribute('title');
+      } else {
+        const c = compassDir(dir, currentLang);
+        wdEl.innerHTML = `<i class="ti ti-arrow-up wind-arrow" style="transform:rotate(${Math.round(dir)}deg)"></i>${c} · ${Math.round(dir)}°`;
+        wdEl.title = `${tr.windFrom} ${c}`;
+      }
     }
 
     document.getElementById('trend-air').innerHTML     = trendLabel(data, 'air');
