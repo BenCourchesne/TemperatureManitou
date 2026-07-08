@@ -861,6 +861,7 @@
       forecast7:     'Prévisions 7 jours',
       fcSource:      'Source : Environnement Canada',
       external:      'Autres sources',
+      uvLevels:      ['Faible','Modéré','Élevé','Très élevé','Extrême'],
     },
     en: {
       title:         'Lake Manitou',
@@ -925,6 +926,7 @@
       forecast7:     '7-day forecast',
       fcSource:      'Source: Environment Canada',
       external:      'Other sources',
+      uvLevels:      ['Low','Moderate','High','Very high','Extreme'],
     }
   };
 
@@ -970,6 +972,27 @@
   const axisNum = v => Math.round(v * 1000) / 1000;
   // Rose des vents 8 points depuis un cap en degrés (0 = N, sens horaire).
   const compassDir = (deg, lang) => i18n[lang].compass[Math.round(deg / 45) % 8];
+  function uvQualifier(v) {
+    if (v == null) return '';
+    const levels = i18n[currentLang].uvLevels;
+    const bands = [
+      { max: 3,  label: levels[0], color: '#22c55e' },
+      { max: 6,  label: levels[1], color: '#eab308' },
+      { max: 8,  label: levels[2], color: '#f97316' },
+      { max: 11, label: levels[3], color: '#ef4444' },
+      { max: Infinity, label: levels[4], color: '#a855f7' },
+    ];
+    const band = bands.find(b => v < b.max);
+    return `<span class="trend-flat" style="color:${band.color}">${band.label}</span>`;
+  }
+  function uvTrendLabel(data) {
+    const last = val(data[data.length - 1], 'uv');
+    const qualifier = uvQualifier(last);
+    const trend = trendLabel(data, 'uv');
+    if (!qualifier) return trend;
+    if (!trend) return qualifier;
+    return `${qualifier}<span class="trend-flat">&nbsp;·&nbsp;</span>${trend}`;
+  }
   // Séries « solo » (axe unique, exclusives vs le groupe températures) — datasets 3..8
   const SOLO = [
     { key:'humidity', color:'#22d3ee' },
@@ -1367,7 +1390,7 @@
       const id = metricEl[key], v = val(last, key), u = METRIC_UNIT[key];
       document.getElementById('val-' + id).innerHTML =
         (v != null ? v.toFixed(METRIC_DEC[key]) : '—') + (u ? '<span class="card-unit">' + u + '</span>' : '');
-      document.getElementById('trend-' + id).innerHTML = trendLabel(data, key);
+      document.getElementById('trend-' + id).innerHTML = key === 'uv' ? uvTrendLabel(data) : trendLabel(data, key);
     }
 
     // Direction du vent (tuile Vent) : flèche orientée vers la provenance +
