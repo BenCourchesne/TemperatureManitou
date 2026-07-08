@@ -1,6 +1,6 @@
 patch_*.py
 update_header.py
-backfill_veranda.py
+backfill_*.py
 __pycache__/
 *.pyc
 home_assistant.yaml

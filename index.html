@@ -346,6 +346,9 @@
        pour garantir la même hauteur avant le séparateur lever/coucher */
     .card-value-row { display: flex; align-items: baseline; gap: .5rem; }
     .card-value-row .card-trend { margin-top: 0; }
+    /* Solar (unité W/m² sur 2 lignes) et Lune : même hauteur de bloc valeur pour
+       que les rangées Lever soleil / Lever lune s'alignent horizontalement. */
+    .card-solar .card-value-row, .card-moon .card-value-row { min-height: 3.4rem; }
     .trend-flat { color: var(--muted); }
 
     .card-sunrow {
@@ -792,11 +795,14 @@
       statMin:       'Min',
       statAvg:       'Moy',
       statMax:       'Max',
+      statTotal:     'Total',
       footer:        'Mise à jour toutes les 5 minutes',
       lastUpdate:    'Dernière mise à jour : ',
       loading:       'Chargement…',
       stable:        '→ stable',
       vsHour:        'vs 1h',
+      rainDry:       'sec',
+      rainToday:     "aujourd'hui",
     },
     en: {
       title:         'Lake Manitou',
@@ -847,11 +853,14 @@
       statMin:       'Min',
       statAvg:       'Avg',
       statMax:       'Max',
+      statTotal:     'Total',
       footer:        'Updated every 5 minutes',
       lastUpdate:    'Last update: ',
       loading:       'Loading…',
       stable:        '→ stable',
       vsHour:        'vs 1h',
+      rainDry:       'dry',
+      rainToday:     'today',
     }
   };
 
@@ -1102,6 +1111,21 @@
   // ── Trend helper ─────────────────────────────────────────────────────────────
   function trendLabel(data, key) {
     if (data.length < 2) return '';
+    // Pluie : rday est un cumul quotidien croissant (reset à minuit) → une
+    // flèche ↑/↓ « vs 1h » n'a pas de sens. On affiche « sec » si rien n'est
+    // tombé aujourd'hui ; sinon le taux instantané rrate s'il pleut (dispo en
+    // vue 24h, données brutes) ; sinon le cumul du jour.
+    if (key === 'rain') {
+      const lastD = data[data.length - 1];
+      const rday  = val(lastD, 'rain');
+      if (rday == null) return '';
+      const tr = i18n[currentLang];
+      if (rday < 0.1) return `<span class="trend-flat">${tr.rainDry}</span>`;
+      const rrate = lastD.rrate;
+      if (rrate != null && rrate > 0)
+        return `<span class="trend-flat" style="color:var(--rain)">${rrate.toFixed(1)} mm/h</span>`;
+      return `<span class="trend-flat">${rday.toFixed(1)} mm ${tr.rainToday}</span>`;
+    }
     const isTemp = (key === 'air' || key === 'surface' || key === 'depth');
     const unit = isTemp ? '°C' : (METRIC_UNIT[key] || '').trim();
     const dec  = isTemp ? 1 : (METRIC_DEC[key] != null ? METRIC_DEC[key] : 0);
@@ -1286,7 +1310,7 @@
       ds.hidden = (soloKey !== m.key);
     });
 
-    renderStats(data);
+    renderStats(data, soloKey);
 
     if (soloKey) {
       const unit = METRIC_UNIT[soloKey] || '';
@@ -1329,16 +1353,60 @@
   }
 
   // ── Stats Min/Moy/Max par capteur (séries cochées, période courante) ──────────
-  function renderStats(data) {
+  function renderStats(data, soloKey) {
     const el = document.getElementById('chart-stats');
     if (!el) return;
     const t = i18n[currentLang];
-    const names = { air: t.legendAir, surface: t.legendSurface, depth: t.legendDepth, humidity: t.humidity };
-    // Stats toujours affichées pour les 4 mesures, indépendamment des cases
+    const names = {
+      air: t.legendAir, surface: t.legendSurface, depth: t.legendDepth,
+      humidity: t.humidity, pressure: t.pressure, wind: t.wind,
+      rain: t.rain, uv: t.uv, solar: t.solar,
+    };
+    // Cœur toujours affiché (temp/eau/humidité) + la mesure météo « solo »
+    // sélectionnée si elle est en dehors du cœur (pression/vent/pluie/uv/solar).
+    const CORE = ['air', 'surface', 'depth', 'humidity'];
+    const keys = CORE.slice();
+    if (soloKey && !CORE.includes(soloKey)) keys.push(soloKey);
+
+    const block = (key, rows) =>
+      '<div class="stat-sensor">' +
+        '<span class="stat-name" style="color:var(--' + key + ')">' + names[key] + '</span>' +
+        rows +
+      '</div>';
+
     let html = '';
-    ['air', 'surface', 'depth', 'humidity'].forEach(key => {
-      const unit = key === 'humidity' ? '%' : '°C';
-      const dec  = key === 'humidity' ? 0 : 1;
+    keys.forEach(key => {
+      const isTemp = (key === 'air' || key === 'surface' || key === 'depth');
+      const unit = isTemp ? '°C' : (METRIC_UNIT[key] || '');
+      const dec  = isTemp ? 1 : (METRIC_DEC[key] != null ? METRIC_DEC[key] : 0);
+      const f = x => x.toFixed(dec);
+
+      // Pluie : Min/Moy/Max n'a pas de sens → un seul « Total » sur la période.
+      // Deux sémantiques selon la vue :
+      //  • saison/année : /daily contient déjà le cumul du jour (max) par point
+      //    → Total = simple somme des points.
+      //  • 24h/7j/30j : rday est un cumul croissant qui se remet à ~0 au reset
+      //    de la station (pas forcément minuit local) → on somme le pic de
+      //    chaque cycle (segment délimité par une baisse = reset). Compte la
+      //    pluie visible une seule fois, additionne les événements distincts.
+      if (key === 'rain') {
+        const daily = (currentPeriod === 'season' || currentPeriod === 'year');
+        let total = 0, seg = 0, prev = null, any = false;
+        for (const d of data) {
+          const v = val(d, 'rain');
+          if (v == null) continue;
+          any = true;
+          if (daily) { total += v; continue; }
+          if (prev != null && v < prev) { total += seg; seg = 0; } // reset
+          if (v > seg) seg = v;
+          prev = v;
+        }
+        if (!any) return;
+        if (!daily) total += seg; // dernier segment
+        html += block(key, '<span class="stat-row"><span>' + t.statTotal + '</span><b>' + f(total) + unit + '</b></span>');
+        return;
+      }
+
       let mn = Infinity, mx = -Infinity, sum = 0, n = 0;
       for (const d of data) {
         const v = val(d, key);
@@ -1348,14 +1416,11 @@
         sum += v; n++;
       }
       if (!n) return;
-      const f = x => x.toFixed(dec);
-      html +=
-        '<div class="stat-sensor">' +
-          '<span class="stat-name" style="color:var(--' + key + ')">' + names[key] + '</span>' +
-          '<span class="stat-row"><span>' + t.statMin + '</span><b>' + f(mn) + unit + '</b></span>' +
-          '<span class="stat-row"><span>' + t.statAvg + '</span><b>' + f(sum / n) + unit + '</b></span>' +
-          '<span class="stat-row"><span>' + t.statMax + '</span><b>' + f(mx) + unit + '</b></span>' +
-        '</div>';
+      html += block(key,
+        '<span class="stat-row"><span>' + t.statMin + '</span><b>' + f(mn) + unit + '</b></span>' +
+        '<span class="stat-row"><span>' + t.statAvg + '</span><b>' + f(sum / n) + unit + '</b></span>' +
+        '<span class="stat-row"><span>' + t.statMax + '</span><b>' + f(mx) + unit + '</b></span>'
+      );
     });
     el.innerHTML = html;
   }
