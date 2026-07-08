@@ -1186,7 +1186,22 @@
     const t = i18n[currentLang], now = new Date();
     const ill = SunCalc.getMoonIllumination(now);
     const pct = Math.round(ill.fraction * 100);
-    const phase = t.phases[Math.round(ill.phase * 8) % 8];
+    // Nom de phase : les 4 phases principales (nouvelle / 1er quartier / pleine
+    // / dernier quartier) ne sont nommées que dans une fenêtre étroite (~±0.6 j)
+    // autour de l'instant exact ; le reste du temps = croissant / gibbeuse.
+    // (Le simple round(phase*8) donnait à chaque nom une tranche de 1/8 ≈ ±1.85 j,
+    //  d'où « dernier quartier » affiché ~1,5 j après le vrai quartier.)
+    const p = ill.phase, TH = 0.02;
+    let pi;
+    if      (p < TH || p > 1 - TH)     pi = 0;  // nouvelle lune
+    else if (Math.abs(p - 0.25) < TH)  pi = 2;  // premier quartier
+    else if (Math.abs(p - 0.5)  < TH)  pi = 4;  // pleine lune
+    else if (Math.abs(p - 0.75) < TH)  pi = 6;  // dernier quartier
+    else if (p < 0.25)                 pi = 1;  // premier croissant
+    else if (p < 0.5)                  pi = 3;  // gibbeuse croissante
+    else if (p < 0.75)                 pi = 5;  // gibbeuse décroissante
+    else                               pi = 7;  // dernier croissant
+    const phase = t.phases[pi];
     document.getElementById('val-moon').innerHTML = pct + '<span class="card-unit">%</span>';
     document.getElementById('trend-moon').innerHTML = `<span class="trend-flat">${phase}</span>`;
     const tileIcon = document.getElementById('moon-tile-icon');

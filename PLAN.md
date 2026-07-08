@@ -28,8 +28,32 @@ tuile phase de lune et un panneau solunaire (activité pêche/faune).
   de lune + panneau solunaire (calcul 100 % client). Les tuiles des métriques
   Ecowitt pas encore branchées affichent `—` et s'allumeront en Phase B.
 - **Phase B — quand les entités Ecowitt sont dans HA.** Brancher
-  vent/pluie/UV/luminosité/pression de bout en bout. **Bloqué** sur les noms
-  d'entités HA (à fournir après config de l'intégration Ecowitt).
+  vent/pluie/UV/luminosité/pression de bout en bout. ✅ **Fait et déployé**
+  (voir statut ci-dessous) — seuls `airb`/`humb` (WN32) restent en attente.
+
+---
+
+## Statut au 2026-07-08 — Phases A + B déployées en prod
+
+Phase A **et** Phase B sont **en production** (`firebase deploy --only
+hosting` ; dernier commit `b83f8f5` sur la branche `weather-station`).
+
+- Station Ecowitt configurée dans HA sous le nom de device **`gw3000b`**
+  (unités déjà en métrique). Elle pousse **vent, rafale, direction, taux de
+  pluie, cumul jour, UV, luminosité, pression** toutes les 5 min via
+  `manitou_firebase`. Les tuiles s'allument, le graphique et `/daily`
+  fonctionnent pour chaque mesure.
+- **Backfill** de 132 lectures depuis 21 h la veille effectué à partir de
+  l'historique recorder de HA (`backfill_ecowitt.py`).
+- Polish frontend livré : tendance pluie « sec / taux », stats généralisées,
+  alignement Solaire/Lune, nettoyage des étiquettes d'axe Y.
+
+**Seul point bloqué** : `airb`/`humb` (température/humidité abritées du
+boathouse, capteur **WN32 pas encore reçu par HA**). Placeholders prêts à
+décommenter dans `home_assistant.yaml`.
+
+**Reste faisable maintenant (sans matériel)** : audit responsive ≤ 480 px.
+(Vérif solunaire ✅ faite — voir tâches Lune.)
 
 ---
 
@@ -81,10 +105,11 @@ sonde quai**. Le helper `val(d,'air')` implémente la priorité.
       (lues depuis la config HA), en dur dans la constante `LAKE`.
 - [x] Valider l'ordre final des tuiles dans « Ciel & conditions » — ✅ Vent,
       Pluie, UV, Luminosité, Lune (phase).
-- [ ] **Décider du comportement des stats sous le graphique** — pas encore
-      tranché : `renderStats` affiche toujours codé en dur seulement
-      `['air','surface','depth','humidity']`, ne couvre pas encore
-      pression/vent/pluie/UV/luminosité même si ces mesures ont des données.
+- [x] **Comportement des stats sous le graphique** — ✅ tranché et implémenté
+      (2026-07-08) : **cœur fixe** (`air/surface/depth/humidity`) **+ la mesure
+      météo sélectionnée** ajoutée quand elle est en mode solo. La **pluie**
+      affiche un **« Total »** (somme reset-aware : pic par cycle en 24h/7j/30j,
+      somme des totaux quotidiens en saison/année) au lieu de Min/Moy/Max.
 
 ## Tâches — Front End (`index.html`)
 
@@ -96,9 +121,9 @@ sonde quai**. Le helper `val(d,'air')` implémente la priorité.
       toutes présentes, affichent `—` tant que Phase B n'a pas de données.
 - [x] **Tendances généralisées** — ✅ `trendLabel` gère les unités par mesure,
       couleurs neutres pour la météo, mise en évidence pression en baisse.
-      ⚠️ **Sauf la pluie** : pas encore le traitement spécial « sec / X mm/h »
-      prévu — passe actuellement par la flèche générique ↑/↓ (peu pertinent
-      pour un cumul quotidien qui ne fait que monter). À corriger.
+- [x] **Tendance pluie — cas spécial** — ✅ fait (2026-07-08) : la tuile Pluie
+      affiche **« sec »** si `rday ≈ 0`, sinon le taux/cumul, au lieu de la
+      flèche générique ↑/↓ inadaptée à un cumul croissant.
 - [x] **Sélecteur de mesure du graphique** — ✅ fait, mais avec des **cases à
       cocher exclusives** (pas des pilules comme prévu à l'origine) : logique
       généralisée `SOLO`/`seriesVisible` qui bascule axe Y + unité. Fonctionne,
@@ -108,6 +133,9 @@ sonde quai**. Le helper `val(d,'air')` implémente la priorité.
       maintenant aussi pression/vent/pluie/UV/luminosité (moyenne, via `val()`
       généralisé + `RAW_PROP`), plus seulement air/surface/depth/airv/hum.
       Bloquant Phase B résolu.
+- [x] **Étiquettes d'axe Y propres** — ✅ fait (2026-07-08) : helper `axisNum`
+      qui supprime le bruit flottant des ticks (ex. `970.4000000000001 hPa` →
+      `970.4`) sans imposer de décimales fixes.
 - [x] **Tuile phase de lune** — ✅ icône SVG dynamique (voir section Lune).
 - [x] **Panneau solunaire** — ✅ accordéon (voir section Lune).
 - [x] **i18n FR/EN** — ✅ tous les libellés mesures/phases/majeures-mineures/
@@ -126,36 +154,48 @@ sonde quai**. Le helper `val(d,'air')` implémente la priorité.
       (déplacés dans la tuile Solaire) et lune (dans la tuile Lune).
       Affiché en **accordéon** au clic sur la tuile Lune (badge Détails/
       Masquer, clavier-accessible), pas dans le flux par défaut.
-- [ ] Vérifier une fois les heures contre une table solunaire en ligne pour
-      confirmer la précision (jamais fait formellement).
+- [x] Vérifier les heures contre une source en ligne — ✅ fait (2026-07-08),
+      comparé à **USNO** (aa.usno.navy.mil, coordonnées exactes) et
+      sunrise-sunset.org pour le soleil :
+  - **Soleil** (lever/coucher/transit) : ~1 min d'écart → excellent.
+  - **Lever de lune** + période mineure associée : ~2 min → excellent.
+  - **Transit lune** (→ majeures) et **coucher de lune** (→ 2ᵉ mineure) :
+    ~12–17 min de retard vs USNO. C'est le plafond du modèle lunaire de SunCalc
+    (une recherche de transit à la minute donne toujours ~12 min d'écart, donc
+    ce n'est pas la résolution ni un bug de code). **Acceptable** pour un
+    tableau solunaire (fenêtres ±1 h = heuristique). Aucun bug de fuseau.
+- [x] **Nom de phase lunaire** — ✅ corrigé (2026-07-08) : `round(phase*8)`
+      donnait à « dernier quartier » une tranche de ±1.85 j (affiché ~1,5 j après
+      le vrai quartier). Remplacé par un nommage à fenêtre étroite (~±0.6 j) pour
+      les 4 phases principales, croissant/gibbeuse le reste du temps. Ex.
+      40 % décroissant = « Dernier croissant » (et non « Dernier quartier »).
 
 ## Tâches — Firebase
 
-- [ ] **Modèle de données** `readings/{ms}` : nouveaux champs optionnels
-      `airb, humb, wind, gust, wdir, rrate, rday, uv, solar, press`
-      (rétro-compat : absents gérés côté frontend).
-- [ ] **`/daily/{ms}`** : ajouter les agrégats avec **règles par métrique** :
-  - moyenne : temp, pression, UV, luminosité, humidité
-  - **somme** : pluie cumul (`rday`)
-  - **moyenne + max** : vent (`wind` moy, `gustmax`)
-- [ ] Étendre `firebase_put_daily` + le calcul du script (selectattr-guarded,
-      comme `airv/hum`) — dépend de la Phase B (données présentes).
-- [ ] Supprimer + reconstruire `/daily` une fois l'agrégation étendue (comme
-      fait pour véranda/humidité).
-- [ ] Règles RTDB : inchangées (lecture publique `readings`+`daily`, écriture
-      `ha-writer`) — rien à faire.
+- [x] **Modèle de données** `readings/{ms}` — ✅ champs `wind, gust, wdir,
+      rrate, rday, uv, solar, press` écrits en prod. ⏳ `airb, humb` en attente
+      du WN32 (placeholders prêts). Rétro-compat OK (absents gérés côté front).
+- [x] **`/daily/{ms}`** — ✅ agrégats avec **règles par métrique** implémentés :
+  - moyenne : temp, pression, UV, luminosité, humidité (+ `airb`/`humb` à venir)
+  - **max** : pluie cumul (`rday`) — le max du jour = total du jour
+  - **moyenne + max** : vent (`wind` moy, `gustmax` = rafale max du jour)
+- [x] Étendre `firebase_put_daily` + le script (selectattr-guarded, comme
+      `airv/hum`, avec `rejectattr('none')` pour les `null` du macro `num()`) — ✅.
+- [x] Reconstruire `/daily` — ✅ automatique : le script auto-réparant recalcule
+      les 10 derniers jours manquants à chaque run.
+- [x] Règles RTDB : inchangées — ✅ rien à faire (confirmé).
 
 ## Tâches — Home Assistant (`home_assistant.yaml`) — Phase B
 
-- [ ] Configurer l'**intégration Ecowitt** (Settings → Devices → Ecowitt ;
-      pointer WSView Plus « Customized » vers l'IP de HA). Passerelle GW3002
-      dans le boathouse (WiFi + 120 V) — **même réseau que HA** requis.
-- [ ] **Fournir les noms d'entités** `sensor.<ecowitt>_*` (débloque le reste).
-- [ ] `manitou_firebase` payload : ajouter
-      `airb/humb/wind/gust/wdir/rrate/rday/uv/solar/press`. `airb`/`humb` (WN32)
-      deviennent la source primaire d'air/humidité.
-- [ ] Adapter le helper `val('air')` frontend à la nouvelle priorité
-      WN32 → véranda → quai.
+- [x] Configurer l'**intégration Ecowitt** — ✅ déjà en place (device HA
+      `gw3000b`), unités métriques confirmées.
+- [x] **Noms d'entités** — ✅ capturés : `sensor.gw3000b_wind_speed`,
+      `_wind_gust`, `_wind_direction`, `_rain_rate`, `_daily_rain`, `_uv_index`,
+      `_solar_radiation`, `_relative_pressure`. (WN32 : à capturer à sa réception.)
+- [x] `manitou_firebase` payload — ✅ 8 champs ajoutés via macro `num()`
+      null-safe. ⏳ `airb`/`humb` (WN32) restent en placeholders commentés.
+- [x] Helper `val('air')` priorité WN32 → véranda → quai — ✅ déjà codé
+      (`airb ?? airv ?? air`) ; s'activera dès que `airb` sera écrit.
 - [ ] **NE PAS** intégrer `sensor.chalet_*` (Honeywell) pour l'instant —
       l'analyse a montré qu'à l'emplacement #1 la sonde est amortie par la masse
       du mur (biais opposé à la véranda, pas meilleure). À réévaluer après
@@ -164,8 +204,12 @@ sonde quai**. Le helper `val(d,'air')` implémente la priorité.
 ## Tâches — Backfill des données
 
 - [x] **Véranda/humidité** : déjà fait (`backfill_veranda.py`).
-- [ ] **Ecowitt** : PAS de backfill possible (données inexistantes avant
-      l'installation). L'historique météo démarre à l'installation.
+- [x] **Ecowitt** : ✅ fait (2026-07-08) — contrairement à la note initiale, un
+      backfill EST possible via l'**historique recorder de HA** (~10 j de
+      rétention). `backfill_ecowitt.py` (réutilise les helpers/secrets de
+      `backfill_veranda.py`, idempotent, mode dry-run par défaut) a rempli 132
+      lectures depuis 21 h la veille. Extensible : baisser `START_LOCAL` pour
+      remonter plus loin dans la rétention.
 - [ ] **Optionnel — sonde chalet** : si un jour on l'intègre après déplacement,
       backfill via le même pattern (`/api/history` HA → PATCH `readings`), en
       respectant la rétention recorder (~10 j).
@@ -214,12 +258,13 @@ prioriser avant de commencer.
       bordure teal, clavier-accessible) révèle le panneau juste en dessous dans
       le flux de la page ; reclique pour le masquer. Moonrise déplacé de
       l'ancien panneau vers la tuile Lune elle-même.
-- [ ] **Aligner les séparateurs Solaire/Lune** : les lignes horizontales avant
-      Sunrise (tuile Solaire) et Moonrise (tuile Lune) ne sont pas exactement à
-      la même hauteur malgré la structure `.card-value-row` partagée entre les
-      deux tuiles (2026-07-07 — tentative faite, pas encore résolu). À reprendre
-      avec un examen plus précis en dev tools (line-height réel du texte de
-      tendance vs du chiffre, padding/marge résiduelle).
+- [x] **Aligner les séparateurs Solaire/Lune** : ✅ fait (2026-07-08). Cause
+      identifiée en preview : le bloc-valeur Solaire fait 2 lignes (l'unité
+      `W/m²` passe sous le chiffre) contre 1 ligne pour la Lune, décalant la
+      rangée Lever soleil de ~25 px sous Lever lune. Fix : `min-height: 3.4rem`
+      sur `.card-solar .card-value-row, .card-moon .card-value-row` → rangées
+      alignées (vérifié à 2 px près, desktop ; en mobile les tuiles s'empilent,
+      pas d'adjacence).
 - [x] **Renommer la section graphique** : ✅ fait (2026-07-07) — renommé en
       « Historique des données » / « Historical data ».
 - [ ] **Photo horaire (webcam)** : capturer une photo à chaque heure (caméra à
@@ -253,8 +298,14 @@ prioriser avant de commencer.
 
 ## Questions ouvertes / à confirmer
 
-- Coordonnées GPS exactes du lac (solunaire).
-- Noms d'entités Ecowitt (Phase B).
-- Stats du graphique en mode mono-mesure : 4 cartes fixes vs mesure affichée.
-- Sonde chalet : à réévaluer après déplacement au #2.
-- WiFi boathouse = même sous-réseau que HA ? (requis pour le push local Ecowitt).
+- ✅ ~~Coordonnées GPS exactes du lac~~ — résolu : 46.0471, -74.3739.
+- ✅ ~~Noms d'entités Ecowitt~~ — résolu : device `gw3000b` (WN32 à capturer à
+  sa réception pour `airb`/`humb`).
+- ✅ ~~Stats du graphique mono-mesure~~ — résolu : cœur fixe + mesure sélectionnée.
+- ✅ ~~WiFi boathouse = même sous-réseau que HA ?~~ — résolu : la station pousse
+  bien les données, le push local fonctionne.
+- ⏳ **WN32** : à recevoir dans HA pour brancher `airb`/`humb`.
+- ⏳ **Sonde chalet** : à réévaluer après déplacement au #2.
+- ⏳ **Responsive ≤ 480 px** : audit dédié pas encore fait.
+- ✅ ~~Vérif solunaire~~ — faite (USNO) : soleil/lever-lune ~1–2 min, transit/
+  coucher-lune ~12–17 min (plafond SunCalc, acceptable). Nom de phase corrigé.
