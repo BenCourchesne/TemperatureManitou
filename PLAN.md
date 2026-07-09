@@ -52,8 +52,8 @@ hosting` ; dernier commit `b83f8f5` sur la branche `weather-station`).
 boathouse, capteur **WN32 pas encore reçu par HA**). Placeholders prêts à
 décommenter dans `home_assistant.yaml`.
 
-**Reste faisable maintenant (sans matériel)** : audit responsive ≤ 480 px.
-(Vérif solunaire ✅ faite — voir tâches Lune.)
+**Reste faisable maintenant (sans matériel)** : — (audit responsive ≤ 480 px ✅
+fait ; vérif solunaire ✅ faite). Il ne reste que `airb`/`humb` (matériel WN32).
 
 ---
 
@@ -140,8 +140,13 @@ sonde quai**. Le helper `val(d,'air')` implémente la priorité.
 - [x] **Panneau solunaire** — ✅ accordéon (voir section Lune).
 - [x] **i18n FR/EN** — ✅ tous les libellés mesures/phases/majeures-mineures/
       lever-coucher présents dans les deux langues.
-- [ ] **Responsive** : pas testé systématiquement ≤480px depuis les derniers
-      ajouts (accordéons Lune/Radar, section Prévisions). À valider.
+- [x] **Responsive ≤480px** : ✅ audité (2026-07-08) sur 320/360/375/414/480px,
+      accordéons ouverts. Aucun débordement horizontal de page. Corrigés :
+      onglets de période (`min-width:0` pour que `flex:1` rétrécisse), toggle
+      °C/°F qui débordait des tuiles Eau (`.cards-2 .card-temp` 1.7rem + gap
+      réduit — spécificité requise car le bloc media est AVANT les règles de
+      base dans le CSS), et largeur des tuiles prévisions (min-width 38→34 pour
+      tenir 7 jours à 360px).
 
 ## Tâches — Lune + Solunaire (calcul 100 % client) — ✅ TOUT FAIT
 
@@ -308,6 +313,6 @@ prioriser avant de commencer.
   bien les données, le push local fonctionne.
 - ⏳ **WN32** : à recevoir dans HA pour brancher `airb`/`humb`.
 - ⏳ **Sonde chalet** : à réévaluer après déplacement au #2.
-- ⏳ **Responsive ≤ 480 px** : audit dédié pas encore fait.
+- ✅ ~~Responsive ≤ 480 px~~ — audité 320–480px, débordements corrigés.
 - ✅ ~~Vérif solunaire~~ — faite (USNO) : soleil/lever-lune ~1–2 min, transit/
   coucher-lune ~12–17 min (plafond SunCalc, acceptable). Nom de phase corrigé.

@@ -169,11 +169,18 @@
       .cards-2 { grid-template-columns: repeat(2,1fr); gap: .6rem; }
 
       .card { padding: .9rem 1rem; }
-      .card-temp { font-size: 2rem; }
+      /* Tuiles Eau (cards-2) : temp plus petite + gap réduit pour que le toggle
+         °C/°F tienne dans la carte en grille 2 colonnes (~131px de contenu).
+         Sélecteur `.cards-2` requis : les règles de base `.card-temp` (2.8rem)
+         et `.card-mainrow` (1.4rem) apparaissent PLUS BAS dans le CSS et, à
+         spécificité égale, l'emporteraient sur une simple règle media. */
+      .cards-2 .card-temp { font-size: 1.7rem; }
+      .cards-2 .card-mainrow { gap: .6rem; }
 
-      /* Tabs periode : pleine largeur */
+      /* Tabs periode : pleine largeur. min-width:0 laisse flex:1 rétrécir les
+         onglets pour tenir la rangée (sinon min-content déborde de ~9px). */
       .period-tabs { gap: .3rem; }
-      .tab { flex: 1; text-align: center; padding: .5rem .3rem; font-size: .75rem; }
+      .tab { flex: 1; min-width: 0; text-align: center; padding: .5rem .3rem; font-size: .75rem; }
 
       /* Toggles C/F et FR/EN : plus grands pour le touch */
       .utab, .ltab { padding: .4rem .8rem; font-size: .8rem; }
@@ -279,7 +286,7 @@
     .forecast-row .card-forecast { flex: 1 1 340px; min-width: 0; }
     .forecast-week { display: flex; gap: .4rem; margin-top: .6rem; overflow-x: auto; padding-bottom: .2rem; }
     .fc-day {
-      flex: 1 1 0; min-width: 38px; text-align: center;
+      flex: 1 1 0; min-width: 34px; text-align: center;
       background: rgba(255,255,255,.03); border: 1px solid var(--border); border-radius: 10px;
       padding: .45rem .25rem; display: flex; flex-direction: column; align-items: center; gap: .25rem;
     }
