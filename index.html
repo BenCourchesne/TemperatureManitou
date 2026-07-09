@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Lac Manitou — Températures</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/favico.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.11.0/dist/tabler-icons.min.css" rel="stylesheet" />
@@ -1245,6 +1246,12 @@
 
   // ── Lune + solunaire (calcul client via SunCalc) ─────────────────────────────
   const LAKE = { lat: 46.0471, lon: -74.3739 };
+  function isDaylight(ts) {
+    if (typeof SunCalc === 'undefined') return true;
+    const d = new Date(ts);
+    const s = SunCalc.getTimes(d, LAKE.lat, LAKE.lon);
+    return s.sunrise && s.sunset && d >= s.sunrise && d <= s.sunset;
+  }
   function fmtT(d) {
     return (d && !isNaN(d)) ? d.toLocaleTimeString(currentLang === 'fr' ? 'fr-CA' : 'en-CA',
       { hour: '2-digit', minute: '2-digit' }) : '—';
@@ -1535,6 +1542,7 @@
 
       let mn = Infinity, mx = -Infinity, sum = 0, n = 0;
       for (const d of data) {
+        if (key === 'uv' && !isDaylight(d.t)) continue;
         const v = val(d, key);
         if (v == null) continue;
         if (v < mn) mn = v;
