@@ -975,6 +975,10 @@
   // Métriques météo (hors températures/eau) : unité + décimales par mesure
   const METRIC_UNIT = { humidity:'%', pressure:' hPa', wind:' km/h', rain:' mm', uv:'', solar:' W/m²' };
   const METRIC_DEC  = { humidity:0, pressure:0, wind:0, rain:1, uv:0, solar:0 };
+  // Seuil « calme » : le WS69 mesure par pas de 0.1 m/s (~0.36 km/h) et la tuile
+  // arrondit à l'entier, donc tout souffle imperceptible (0.2–0.4 m/s) s'affichait
+  // « 1 km/h ». Sous ce seuil → 0, cohérent avec l'étiquette « calme » de la direction.
+  const CALM_KMH = 1.5;
   // Nettoie le bruit flottant des ticks d'axe (ex. 970.5000000000001 → 970.5)
   // sans imposer de décimales fixes (les entiers restent entiers).
   const axisNum = v => Math.round(v * 1000) / 1000;
@@ -1402,8 +1406,12 @@
     const metricEl = { humidity:'hum', pressure:'press', wind:'wind', rain:'rain', uv:'uv', solar:'solar' };
     for (const key in metricEl) {
       const id = metricEl[key], v = val(last, key), u = METRIC_UNIT[key];
+      let disp;
+      if (v == null) disp = '—';
+      else if (key === 'wind' && v < CALM_KMH) disp = '0';   // dead-band : pas de « 1 » trompeur
+      else disp = v.toFixed(METRIC_DEC[key]);
       document.getElementById('val-' + id).innerHTML =
-        (v != null ? v.toFixed(METRIC_DEC[key]) : '—') + (u ? '<span class="card-unit">' + u + '</span>' : '');
+        disp + (u ? '<span class="card-unit">' + u + '</span>' : '');
       document.getElementById('trend-' + id).innerHTML = key === 'uv' ? uvTrendLabel(data) : trendLabel(data, key);
     }
 
@@ -1416,7 +1424,7 @@
       if (dir == null) {
         wdEl.innerHTML = '';
         wdEl.removeAttribute('title');
-      } else if (spd != null && spd < 1) {
+      } else if (spd != null && spd < CALM_KMH) {
         wdEl.innerHTML = `<span class="trend-flat">${tr.calm}</span>`;
         wdEl.removeAttribute('title');
       } else {

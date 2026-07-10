@@ -272,12 +272,52 @@ prioriser avant de commencer.
       pas d'adjacence).
 - [x] **Renommer la section graphique** : ✅ fait (2026-07-07) — renommé en
       « Historique des données » / « Historical data ».
-- [ ] **Photo horaire (webcam)** : capturer une photo à chaque heure (caméra à
-      définir — ESP32-CAM ? webcam IP ? téléphone dédié ?) et l'afficher sur le
-      site (dernière photo, ou petite galerie/timelapse). Implique : choix du
-      matériel, stockage des images (Firebase Storage plutôt que RTDB), un
-      pipeline de capture + upload, gestion de la rétention (combien de photos
-      garder).
+- [ ] **Photo horaire (webcam)** : capturer une photo à chaque heure et l'afficher
+      sur le site (dernière photo, ou petite galerie/timelapse).
+
+  **Matériel choisi (2026-07-10)** : **Reolink RLC-510A**, objectif **4 mm**
+  (PAS le 2.8 mm fisheye — le 4 mm est plus serré/plat, plus facile à cadrer pour
+  **exclure les bateaux** du champ), PoE, IP66 (extérieur, hiver). ~**85 $ CAD +
+  tx** (~98 $ tout inclus). ONVIF/RTSP natif → s'intègre directement à HA.
+  Monter **haut, légèrement vers le haut** (eau + horizon + ciel) pour la valeur
+  météo/ambiance sans montrer le quai ni les bateaux (vie privée/sécurité).
+  - Rejeté : **ESP32-CAM** (OV2640 2 MP, mauvaise plage dynamique → massacre les
+    levers de soleil dans la brume ; pas étanche ; WiFi). Bon pour le thème DIY,
+    mauvais outil pour la photo « hero ».
+
+  **Alimentation — ⚠️ plus de port PoE libre.** Le switch **TP-Link 8 ports
+  (4 PoE)** du boathouse est saturé côté PoE : 2 caméras sécurité + PTP Ubiquiti
+  + AP WiFi Ubiquiti + ESP32-POE (+ base Arlo, non-PoE, sur port data). Certains
+  Ubiquiti sont déjà sur leur propre injecteur.
+  - **Solution** : **injecteur PoE actif autonome** — TP-Link **TL-PoE160S**
+    (802.3af/at, gigabit, ~25 $). Il se branche sur un **port data ordinaire**
+    (pas un port PoE) + une prise murale → **n'utilise aucun port PoE ni le
+    budget PoE du switch**.
+  - ⚠️ **NE PAS réutiliser un injecteur Ubiquiti passif 24 V/48 V** : mauvais
+    standard, **endommagerait** la Reolink (802.3af). Injecteur **actif**
+    obligatoire.
+  - ⏳ **À VÉRIFIER physiquement au boathouse** : reste-t-il un **port data
+    libre** sur le switch 8 ports ? (analyse : ~6/8 ports utilisés → 1–2 libres
+    probables, mais à confirmer sur place — switch non-managé, invérifiable à
+    distance). Si tout est plein : ajouter un petit switch 5 ports (~20 $) pour
+    gagner des ports, puis brancher l'injecteur dessus.
+  - Coût total estimé : cam ~98 $ + injecteur ~28 $ ≈ **126 $ CAD**.
+
+  **Pipeline (option A, sans Cloud Functions, cohérent avec l'archi actuelle)** :
+  1. HA récupère la cam via l'intégration **ONVIF / Generic Camera** (URL RTSP).
+  2. Automation horaire → service **`camera.snapshot`** (JPEG).
+  3. HA **upload le JPEG vers Firebase Storage** (auth compte `ha-writer`, même
+     token que `manitou_firebase`). Storage, PAS RTDB (image trop grosse).
+  4. Le front affiche la **dernière photo** dans une tuile « conditions
+     actuelles » (à côté des tuiles capteurs).
+  - À définir : activer Firebase Storage (Spark = 5 Go gratuits), règles de
+    sécurité Storage (lecture publique de la dernière photo), **rétention**
+    (combien de photos garder — écraser une seule « latest.jpg » vs
+    galerie/timelapse horodatée).
+
+  **Prérequis avant de commencer** : (1) commander la cam **variante 4 mm** +
+  injecteur actif ; (2) confirmer un port data libre sur le switch ; (3) capturer
+  l'URL RTSP + l'ajouter à HA.
 - [ ] **Navigation temporelle sur le graphique** : pouvoir choisir un jour, un
       mois ou une année précis dans le passé (pas seulement des fenêtres
       glissantes 24h/7j/30j/Saison/Année) — un vrai sélecteur de date pour
