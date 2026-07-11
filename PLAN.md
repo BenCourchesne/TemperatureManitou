@@ -178,10 +178,19 @@ sonde quai**. Le helper `val(d,'air')` implémente la priorité.
 ## Tâches — Firebase
 
 - [x] **Modèle de données** `readings/{ms}` — ✅ champs `wind, gust, wdir,
-      rrate, rday, uv, solar, press` écrits en prod. ⏳ `airb, humb` en attente
-      du WN32 (placeholders prêts). Rétro-compat OK (absents gérés côté front).
+      rrate, rday, uv, solar, press` écrits en prod. ✅ **`airb, humb` branchés
+      ET VÉRIFIÉS EN PROD (2026-07-10)** — WN32 reçu et enregistré sur `gw3000b`
+      (id `0x9E`, a pris le rôle « outdoor » principal, devant le T/H intégré au
+      WS69). Entités confirmées : `sensor.gw3000b_outdoor_temperature` /
+      `sensor.gw3000b_humidity`. Piège rencontré : le placeholder `<WN32>` du
+      commentaire d'origine avait été laissé tel quel après le décommenter (donc
+      `sensor.<WN32>_temperature` — entité inexistante, `num()` renvoyait `null`
+      silencieusement, pas d'erreur visible) — corrigé en remplaçant par les
+      vrais noms d'entité. Confirmé dans `/readings` : `airb: 26.6, humb: 51`,
+      cohérent avec la lecture native du gateway (~26.8 °C / 53 %). Rétro-compat
+      OK (absents gérés côté front pour l'historique pré-WN32).
 - [x] **`/daily/{ms}`** — ✅ agrégats avec **règles par métrique** implémentés :
-  - moyenne : temp, pression, UV, luminosité, humidité (+ `airb`/`humb` à venir)
+  - moyenne : temp, pression, UV, luminosité, humidité (+ `airb`/`humb` ✅ branchés)
   - **max** : pluie cumul (`rday`) — le max du jour = total du jour
   - **moyenne + max** : vent (`wind` moy, `gustmax` = rafale max du jour)
 - [x] Étendre `firebase_put_daily` + le script (selectattr-guarded, comme
@@ -196,9 +205,14 @@ sonde quai**. Le helper `val(d,'air')` implémente la priorité.
       `gw3000b`), unités métriques confirmées.
 - [x] **Noms d'entités** — ✅ capturés : `sensor.gw3000b_wind_speed`,
       `_wind_gust`, `_wind_direction`, `_rain_rate`, `_daily_rain`, `_uv_index`,
-      `_solar_radiation`, `_relative_pressure`. (WN32 : à capturer à sa réception.)
-- [x] `manitou_firebase` payload — ✅ 8 champs ajoutés via macro `num()`
-      null-safe. ⏳ `airb`/`humb` (WN32) restent en placeholders commentés.
+      `_solar_radiation`, `_relative_pressure`. WN32 (2026-07-10) : id `0x9E`,
+      remplace le T/H intégré du WS69 comme capteur « outdoor » principal du
+      gateway → `sensor.gw3000b_outdoor_temperature` / `_humidity` (⏳ à
+      confirmer dans Réglages → Appareils → `gw3000b` avant le premier déploiement
+      — le macro `num()` étant null-safe, un mauvais nom d'entité échouerait
+      silencieusement en `null` plutôt qu'en erreur).
+- [x] `manitou_firebase` payload — ✅ **10 champs** ajoutés via macro `num()`
+      null-safe, `airb`/`humb` (WN32) branchés (2026-07-10).
 - [x] Helper `val('air')` priorité WN32 → véranda → quai — ✅ déjà codé
       (`airb ?? airv ?? air`) ; s'activera dès que `airb` sera écrit.
 - [ ] **NE PAS** intégrer `sensor.chalet_*` (Honeywell) pour l'instant —
