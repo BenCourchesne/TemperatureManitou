@@ -48,17 +48,17 @@ sensor systems.
   │                                                                        │
   │  • Every 5 min automation:                                             │
   │      1. sign in to Firebase Auth  → fresh idToken (1 h)                │
-  │      2. PUT /readings/{epoch_ms}  (authenticated)   ← primary          │
-  │      3. POST to Google Apps Script → Sheets         ← legacy dual-write│
+  │      2. PUT /readings/{epoch_ms}  (authenticated)                     │
   │  • Hourly script: aggregate completed days → /daily (self-healing)     │
+  │  • (Sheets dual-write retired 2026-07-11 — Firebase is now sole target)│
   └───────────────┬──────────────────────────────────────┬────────────────┘
-                  │ REST (PUT, auth token)                │ REST (POST, token)
-                  ▼                                        ▼
+                  │ REST (PUT, auth token)
+                  ▼
   ┌───────────────────────────────────┐      ┌──────────────────────────────┐
   │  FIREBASE Realtime Database        │      │  GOOGLE APPS SCRIPT + SHEETS │
-  │  project: lac-manitou-temperatures │      │  (LEGACY, still dual-written)│
-  │  /readings/{ms}  raw 5-min samples │      │  • Temperatures sheet        │
-  │  /daily/{utcMidnightMs} daily means│      │  • Visiteurs sheet           │
+  │  project: lac-manitou-temperatures │      │  (LEGACY — not written to)   │
+  │  /readings/{ms}  raw 5-min samples │      │  • Temperatures sheet (frozen)│
+  │  /daily/{utcMidnightMs} daily means│      │  • Visiteurs sheet (frozen)  │
   │  rules: read=public, write=ha-only │      │  • doGet → redirect to app   │
   └───────────────┬───────────────────┘      └──────────────────────────────┘
                   │ public REST (GET, no auth)
@@ -147,13 +147,13 @@ Trigger: `time_pattern` every 5 min. Skips if the ESP32 water/air probes are
    payload (all sensor fields). **Key = timestamp in ms** → free chronological
    ordering + idempotency. A `num()` Jinja macro writes `null` (not `0`) when a sensor
    is `unavailable`, so missing data doesn't pollute averages.
-3. **`manitou_temperatures`** → POST to the legacy Google Apps Script (Sheets). Runs
-   with `continue_on_error` — it is slow and its 10 s timeout is a harmless false
-   positive (the Sheets write still succeeds server-side).
 
-**Ordering matters:** Firebase is called **first**; the slow GAS call is last so its
-timeout can't halt the Firebase write. A persistent notification fires on Firebase
-auth or write failure.
+A persistent notification fires on Firebase auth or write failure.
+
+> **Retired (2026-07-11):** the automation used to also POST to the legacy Google
+> Apps Script endpoint (`manitou_temperatures`) as a dual-write to Sheets. That step
+> has been removed — Firebase is the sole write target. See §8 for what this means
+> for the GAS backend.
 
 ### 4.2 Hourly `/daily` aggregation (Option A)
 Script `script.manitou_aggregate_daily`, triggered hourly and at HA start.
@@ -264,7 +264,7 @@ unreachable.
 
 ---
 
-## 8. Legacy Google stack (still partially live)
+## 8. Legacy Google stack (mostly dormant)
 
 Code: [`Code.gs`](Code.gs) · manifest [`appsscript.json`](appsscript.json) ·
 Spreadsheet `1-bCZDpK7PwrMPeG7KcUEcpXs1LcsND7C4tnJMInwnoo`.
@@ -273,9 +273,11 @@ The app **originated** as a Google Apps Script web app reading from Google Sheet
 was migrated to Firebase (see the migration history in the project notes). Current
 state:
 
-- **`doPost`** — still receives the HA dual-write and appends to the `Temperatures`
-  sheet (token-guarded, range-validated). This is the surviving half of the dual-write
-  and can be turned off once fully confident in Firebase.
+- **`doPost`** — the HA dual-write that used to call this was **removed on
+  2026-07-11** (Firebase is now the sole write target). `doPost` itself is still
+  present in `Code.gs` (token-guarded, range-validated) but is no longer invoked by
+  anything — it's dead code kept for now, not an active pipeline step. Safe to delete
+  outright in a follow-up if the Sheets copy is no longer needed.
 - **`doGet`** — no longer serves the app; returns a **"site moved" redirect** page to
   `lmt.bcourchesne.com` (the original data-serving `doGet` is preserved in a commented
   `ANCIEN CODE` block for rollback).
@@ -311,7 +313,7 @@ state:
 | Hosting          | **Firebase Hosting** (static, custom domain) |
 | Frontend         | Vanilla **HTML/CSS/JS**, **Chart.js**, SunCalc, Tabler Icons, Inter |
 | Analytics        | **Google Analytics 4** (gtag) |
-| Legacy backend   | **Google Apps Script** + **Google Sheets** (dual-write + redirect) |
+| Legacy backend   | **Google Apps Script** + **Google Sheets** (redirect only — dual-write retired) |
 | Deploy tooling   | Firebase CLI (hosting/db) · **clasp** (GAS) |
 
 ---
@@ -327,11 +329,12 @@ state:
   were corrected by adding the gateway's observed offset (+45 hPa) via
   [`fix_pressure_offset.py`](fix_pressure_offset.py) (value-thresholded → idempotent,
   won't double-apply).
-- **Secrets** (Firebase writer password, ESPHome API/OTA keys, GAS `POST_TOKEN`,
-  `GA4_API_SECRET`) live in gitignored HA YAML, ESPHome config, and GAS Script
-  Properties — not in the deployed app.
-- **Web API key** `AIzaSyCVdddKi_EHvJHG3j3Ope5CI0jNX4dM-sk` is used by HA for Firebase
-  sign-in; corrupting it breaks both the 5-min write and aggregation.
+- **Secrets** (Firebase writer password, Firebase Web API key, ESPHome API/OTA keys,
+  GAS `POST_TOKEN`, `GA4_API_SECRET`) live in gitignored HA YAML, ESPHome config, and
+  GAS Script Properties — not in the deployed app, and not committed here. The web API
+  key is restricted to Identity Toolkit API only (rotated 2026-07-11); corrupting or
+  losing it breaks both the 5-min write and aggregation, since HA re-authenticates with
+  it every cycle.
 - **Firebase Hosting caching:** verify frontend changes in an incognito window; a hard
   refresh alone can serve a stale build.
 - **Maintenance scripts** (Python, gitignored secrets via `backfill_veranda.py`):
@@ -348,7 +351,7 @@ ESPHome/
 ├─ sondes.yaml              ESPHome config for the ESP32-POE water/air probes
 └─ manitou/
    ├─ index.html            the web app (deployed)
-   ├─ Code.gs               legacy GAS backend (Sheets dual-write + redirect)
+   ├─ Code.gs               legacy GAS backend (dormant doPost + redirect)
    ├─ home_assistant.yaml   HA rest_commands / automations / aggregation (reference)
    ├─ database.rules.json   Firebase RTDB security rules
    ├─ firebase.json         Firebase Hosting + DB config
