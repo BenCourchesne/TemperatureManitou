@@ -177,10 +177,9 @@
       .cards-2 .card-temp { font-size: 1.7rem; }
       .cards-2 .card-mainrow { gap: .6rem; }
 
-      /* Tabs periode : pleine largeur. min-width:0 laisse flex:1 rétrécir les
-         onglets pour tenir la rangée (sinon min-content déborde de ~9px). */
-      .period-tabs { gap: .3rem; }
-      .tab { flex: 1; min-width: 0; text-align: center; padding: .5rem .3rem; font-size: .75rem; }
+      /* Tabs période : voir le bloc @media plus bas (rangée scrollable) — les
+         règles doivent venir APRÈS .tab/.period-tabs de base pour s'appliquer
+         (même piège d'ordre source que le stepper, voir plus bas). */
 
       /* Toggles C/F et FR/EN : plus grands pour le touch */
       .utab, .ltab { padding: .4rem .8rem; font-size: .8rem; }
@@ -428,6 +427,233 @@
       background: rgba(56,189,248,.15);
       border-color: rgba(56,189,248,.4);
       color: #7dd3fc;
+    }
+
+    /* ── Time-travel : stepper ── */
+    .period-nav {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.2rem;
+    }
+    .period-stepper {
+      position: relative; /* ancre le popover du sélecteur de période */
+      display: flex;
+      align-items: center;
+      gap: .35rem;
+      background: var(--glass);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: .3rem .4rem;
+    }
+    .step-btn {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1rem;
+      font-family: inherit;
+      transition: all .15s;
+    }
+    .step-btn:hover:not(:disabled) { color: var(--text); background: var(--glass-hover); }
+    .step-btn:disabled { opacity: .3; cursor: not-allowed; }
+    .period-label {
+      background: transparent;
+      border: none;
+      font-family: inherit;
+      cursor: pointer;
+      font-size: .85rem;
+      font-weight: 500;
+      color: var(--text);
+      padding: 0 .5rem;
+      min-width: 9rem;
+      text-align: center;
+      transition: color .15s;
+    }
+    .period-label:hover { color: #7dd3fc; }
+    .period-label::after {
+      content: '';
+      display: inline-block;
+      width: .35em;
+      height: .35em;
+      margin-left: .4em;
+      border-right: 1.5px solid currentColor;
+      border-bottom: 1.5px solid currentColor;
+      opacity: .55;
+      transform: translateY(-2px) rotate(45deg);
+    }
+    .period-label[aria-expanded="true"]::after { transform: translateY(1px) rotate(-135deg); }
+    .today-btn {
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      background: var(--glass);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: .45rem .9rem;
+      font-size: .8rem;
+      font-weight: 500;
+      color: var(--muted);
+      cursor: pointer;
+      font-family: inherit;
+      transition: all .2s;
+    }
+    .today-btn:hover:not(:disabled) { color: var(--text); border-color: rgba(255,255,255,.2); }
+    .today-btn:disabled { opacity: .35; cursor: not-allowed; }
+
+    .chart-status {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .85rem;
+      color: var(--muted);
+      background: rgba(7,17,30,.55);
+      border-radius: 12px;
+      text-align: center;
+      padding: 1rem;
+    }
+    .chart-status-error { color: #f87171; }
+
+    /* ── Sélecteur de période (popover, section 4 du plan) ── */
+    .picker-popover {
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      margin-top: .5rem;
+      z-index: 50;
+      width: max-content;
+      min-width: 250px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: .75rem;
+      box-shadow: 0 12px 32px rgba(0,0,0,.45);
+    }
+    .picker-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: .5rem; }
+    .picker-head-label { font-size: .8rem; font-weight: 600; color: var(--text); }
+    .picker-nav {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .picker-nav:hover:not(:disabled) { color: var(--text); background: var(--glass-hover); }
+    .picker-nav:disabled { opacity: .25; cursor: not-allowed; }
+
+    .picker-grid { display: grid; gap: .2rem; }
+    .picker-grid-days { grid-template-columns: repeat(7, 1fr); }
+    .picker-grid-months { grid-template-columns: repeat(3, 1fr); }
+    .picker-grid-seasons { grid-template-columns: repeat(2, 1fr); }
+    .picker-grid-years { grid-template-columns: repeat(3, 1fr); max-height: 220px; overflow-y: auto; }
+
+    .picker-weekday { font-size: .65rem; color: var(--muted); text-align: center; padding: .2rem 0; }
+    .picker-day, .picker-month, .picker-season, .picker-year {
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      color: var(--text);
+      font-size: .78rem;
+      font-family: inherit;
+      padding: .4rem 0;
+      cursor: pointer;
+      text-align: center;
+      transition: all .15s;
+    }
+    .picker-day:hover:not(:disabled), .picker-month:hover:not(:disabled),
+    .picker-season:hover:not(:disabled), .picker-year:hover:not(:disabled) {
+      background: var(--glass-hover);
+      border-color: rgba(255,255,255,.15);
+    }
+    .picker-day-today { border-color: rgba(56,189,248,.4); }
+    .picker-day-selected { background: rgba(56,189,248,.15); border-color: rgba(56,189,248,.4); color: #7dd3fc; }
+    .picker-day-disabled { opacity: .25; cursor: not-allowed; }
+    .picker-day-empty { visibility: hidden; }
+
+    .picker-foot { margin-top: .6rem; padding-top: .6rem; border-top: 1px solid var(--border); display: flex; justify-content: center; }
+    .picker-today-btn {
+      display: flex;
+      align-items: center;
+      gap: .35rem;
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-size: .75rem;
+      font-family: inherit;
+      cursor: pointer;
+      padding: .3rem .6rem;
+      border-radius: 8px;
+    }
+    .picker-today-btn:hover { color: var(--text); background: var(--glass-hover); }
+
+    /* Stepper mobile : pleine largeur, cibles tactiles ≥44px (section 6 du
+       plan). Doit venir APRÈS les règles .step-btn/.today-btn de base ci-
+       dessus : à spécificité égale, l'ordre source tranche, et un bloc
+       media placé plus tôt dans la feuille (ex. le @media 480px du haut)
+       serait écrasé par elles malgré la condition qui s'applique. */
+    @media (max-width: 480px) {
+      /* Rangée de granularité : scroll horizontal plutôt que rétrécir les
+         onglets (section 6 du plan) — le pastille active se scrolle en vue
+         via JS (scrollActiveTabIntoView). Scrollbar masquée façon "chips". */
+      .period-tabs {
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+        overflow-x: auto;
+        scroll-behavior: smooth;
+        -webkit-overflow-scrolling: touch;
+        gap: .4rem;
+        padding: 0 .1rem .35rem;
+        scrollbar-width: none;
+      }
+      .period-tabs::-webkit-scrollbar { display: none; }
+      .tab {
+        flex: 0 0 auto;
+        white-space: nowrap;
+        min-height: 44px;
+        padding: 0 1rem;
+        font-size: .8rem;
+        display: flex;
+        align-items: center;
+      }
+
+      .period-nav { flex-direction: column; gap: .5rem; }
+      .period-stepper { width: 100%; justify-content: space-between; }
+      .step-btn { width: 44px; height: 44px; }
+      .period-label { flex: 1; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+      .today-btn { width: 100%; justify-content: center; padding: .65rem; }
+
+      /* Picker : feuille ancrée en bas de l'écran plutôt que popover flottant */
+      .picker-popover {
+        position: fixed;
+        top: auto;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        transform: none;
+        margin-top: 0;
+        border-radius: 16px 16px 0 0;
+        max-height: 70vh;
+        overflow-y: auto;
+        padding: 1rem;
+      }
+      .picker-day, .picker-month, .picker-season, .picker-year { padding: .55rem 0; font-size: .85rem; }
     }
 
     /* ── Chart ── */
@@ -744,11 +970,22 @@
 
   <!-- Period selector -->
   <div class="period-tabs">
-    <button class="tab active" data-period="24h"    data-i18n="24h">24 heures</button>
+    <button class="tab active" data-period="24h"    data-i18n="24h">24 h</button>
     <button class="tab" data-period="7d"     data-i18n="7d">7 jours</button>
-    <button class="tab" data-period="30d"    data-i18n="30d">30 jours</button>
+    <button class="tab" data-period="30d"    data-i18n="30d">Mois</button>
     <button class="tab" data-period="season" data-i18n="season">Saison</button>
     <button class="tab" data-period="year"   data-i18n="year">Année</button>
+  </div>
+
+  <!-- Time-travel : position dans la période active -->
+  <div class="period-nav">
+    <div class="period-stepper">
+      <button class="step-btn" id="step-prev" data-i18n-aria="stepPrev" aria-label="Période précédente"><i class="ti ti-chevron-left"></i></button>
+      <button type="button" class="period-label" id="period-label" aria-haspopup="dialog" aria-expanded="false"></button>
+      <button class="step-btn" id="step-next" data-i18n-aria="stepNext" aria-label="Période suivante"><i class="ti ti-chevron-right"></i></button>
+      <div class="picker-popover" id="picker-popover" role="dialog" style="display:none"></div>
+    </div>
+    <button class="today-btn" id="today-btn"><i class="ti ti-clock-hour-4"></i><span data-i18n="todayBtn">Aujourd'hui</span></button>
   </div>
 
   <!-- Chart -->
@@ -772,7 +1009,10 @@
         </div>
       </div>
     </div>
-    <div class="chart-canvas-wrap"><canvas id="chart"></canvas></div>
+    <div class="chart-canvas-wrap">
+      <canvas id="chart"></canvas>
+      <div class="chart-status" id="chart-status" style="display:none"></div>
+    </div>
     <div class="chart-stats" id="chart-stats"></div>
   </div>
 
@@ -812,17 +1052,20 @@
       air:           'Air ambiant',
       surface:       'Eau surface',
       depth:         'Eau 4 pieds',
-      '24h':         '24 heures',
+      '24h':         '24 h',
       '7d':          '7 jours',
-      '30d':         '30 jours',
+      '30d':         'Mois',
       'season':      'Saison',
       'year':        'Année',
       chartTitle:    'Historique des données',
       sub24h:        'Dernières 24 heures',
-      sub7d:         'Derniers 7 jours',
-      sub30d:        'Derniers 30 jours',
-      subSeason:     'Derniers 6 mois',
-      subYear:       'Dernière année',
+      stepPrev:      'Période précédente',
+      stepNext:      'Période suivante',
+      todayBtn:      "Aujourd'hui",
+      weekOf:        'Semaine du',
+      seasonNames:   ['Hiver','Printemps','Été','Automne'],
+      noData:        'Aucune donnée pour cette période',
+      loadError:     'Erreur de chargement — réessayer',
       legendAir:     'Air',
       legendSurface: 'Surface',
       legendDepth:   '4 pieds',
@@ -877,17 +1120,20 @@
       air:           'Ambient air',
       surface:       'Surface water',
       depth:         'Water 4 feet',
-      '24h':         '24 hours',
+      '24h':         '24h',
       '7d':          '7 days',
-      '30d':         '30 days',
+      '30d':         'Month',
       'season':      'Season',
       'year':        'Year',
       chartTitle:    'Historical data',
       sub24h:        'Last 24 hours',
-      sub7d:         'Last 7 days',
-      sub30d:        'Last 30 days',
-      subSeason:     'Last 6 months',
-      subYear:       'Last year',
+      stepPrev:      'Previous period',
+      stepNext:      'Next period',
+      todayBtn:      'Today',
+      weekOf:        'Week of',
+      seasonNames:   ['Winter','Spring','Summer','Fall'],
+      noData:        'No data for this period',
+      loadError:     'Failed to load — retry',
       legendAir:     'Air',
       legendSurface: 'Surface',
       legendDepth:   '4 feet',
@@ -944,9 +1190,16 @@
       const key = el.dataset.i18n;
       if (t[key]) el.textContent = t[key];
     });
-    // Subtitle du graphique
-    const subKeys = { '24h': 'sub24h', '7d': 'sub7d', '30d': 'sub30d', 'season': 'subSeason', 'year': 'subYear' };
-    document.getElementById('chart-subtitle').textContent = t[subKeys[currentPeriod]];
+    document.querySelectorAll('[data-i18n-aria]').forEach(el => {
+      const key = el.dataset.i18nAria;
+      if (t[key]) { el.setAttribute('aria-label', t[key]); el.title = t[key]; }
+    });
+    // Étiquette de période + sous-titre : dérivés de la fenêtre courante (time-travel)
+    if (currentWindow) {
+      updateNavUI(currentWindow, currentGranularity, currentIsLiveDay);
+    } else {
+      document.getElementById('chart-subtitle').textContent = t.sub24h;
+    }
     // Loading si pas encore de data
     const upd = document.getElementById('last-update');
     if (upd.textContent.startsWith('Chargement') || upd.textContent.startsWith('Loading')) {
@@ -958,6 +1211,170 @@
   const SERIES = ['air', 'surface', 'depth'];   // datasets 0/1/2 (températures)
   // dataset 3 = humidité (exclusive vs le groupe températures)
   let seriesVisible = { air: true, surface: true, depth: true, humidity: false, pressure: false, wind: false, rain: false, uv: false, solar: false };
+
+  // ── Time-travel : fenêtres calendaires alignées sur le fuseau de la station ───
+  // '24h'/'7d'/'30d' restent les identifiants d'onglet historiques ; GRAN les
+  // fait correspondre à une granularité de fenêtre alignée sur le calendrier.
+  const STATION_TZ = 'America/Toronto';
+  const GRAN = { '24h': 'day', '7d': 'week', '30d': 'month', 'season': 'season', 'year': 'year' };
+
+  function tzPartsFromUtc(utcMs) {
+    const dtf = new Intl.DateTimeFormat('en-US', {
+      timeZone: STATION_TZ, hourCycle: 'h23',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit'
+    });
+    const map = {};
+    dtf.formatToParts(new Date(utcMs)).forEach(p => { if (p.type !== 'literal') map[p.type] = p.value; });
+    return { y: +map.year, mo: +map.month, d: +map.day, h: +map.hour, mi: +map.minute, s: +map.second };
+  }
+
+  // Instant UTC (ms) correspondant à minuit local (station) le y-mo-d donné.
+  // Point fixe itératif : robuste aux transitions DST (jours de 23h/25h).
+  function dayStart(y, mo, d) {
+    const target = Date.UTC(y, mo - 1, d, 0, 0, 0);
+    let utc = target;
+    for (let i = 0; i < 3; i++) {
+      const p = tzPartsFromUtc(utc);
+      const gotUtc = Date.UTC(p.y, p.mo - 1, p.d, p.h, p.mi, p.s);
+      const diff = target - gotUtc;
+      if (diff === 0) break;
+      utc += diff;
+    }
+    return utc;
+  }
+
+  // Arithmétique calendaire pure (Date.UTC normalise les débordements de jour/mois).
+  function addDays(y, mo, d, n) {
+    const dt = new Date(Date.UTC(y, mo - 1, d + n));
+    return { y: dt.getUTCFullYear(), mo: dt.getUTCMonth() + 1, d: dt.getUTCDate() };
+  }
+  function addMonths(y, mo, n) {
+    const total = (mo - 1) + n;
+    const y2 = y + Math.floor(total / 12);
+    const mo2 = ((total % 12) + 12) % 12 + 1;
+    return { y: y2, mo: mo2 };
+  }
+  function weekdayISO(y, mo, d) {
+    const dow = new Date(Date.UTC(y, mo - 1, d)).getUTCDay(); // 0=dim..6=sam
+    return dow === 0 ? 7 : dow; // 1=lun..7=dim
+  }
+  // Saison météorologique. `year` = année d'étiquette (pour l'hiver, l'année de
+  // janvier — ex. l'hiver à cheval déc.2025/jan-fév.2026 s'appelle "2026").
+  function seasonOf(y, mo) {
+    if (mo === 12) return { idx: 0, year: y + 1 };
+    if (mo <= 2)   return { idx: 0, year: y };
+    if (mo <= 5)   return { idx: 1, year: y };
+    if (mo <= 8)   return { idx: 2, year: y };
+    return { idx: 3, year: y };
+  }
+
+  function windowForDay(a) {
+    const nd = addDays(a.y, a.mo, a.d, 1);
+    return { start: dayStart(a.y, a.mo, a.d), end: dayStart(nd.y, nd.mo, nd.d) };
+  }
+  function windowForWeek(a) {
+    const back = weekdayISO(a.y, a.mo, a.d) - 1; // lundi = début de semaine
+    const ws = addDays(a.y, a.mo, a.d, -back);
+    const we = addDays(ws.y, ws.mo, ws.d, 7);
+    return { start: dayStart(ws.y, ws.mo, ws.d), end: dayStart(we.y, we.mo, we.d) };
+  }
+  function windowForMonth(a) {
+    const nm = addMonths(a.y, a.mo, 1);
+    return { start: dayStart(a.y, a.mo, 1), end: dayStart(nm.y, nm.mo, 1) };
+  }
+  function windowForSeason(a) {
+    const s = seasonOf(a.y, a.mo);
+    const startMonth = s.idx === 0 ? 12 : [null, 3, 6, 9][s.idx];
+    const startYear = s.idx === 0 ? s.year - 1 : s.year;
+    const nm = addMonths(startYear, startMonth, 3);
+    return { start: dayStart(startYear, startMonth, 1), end: dayStart(nm.y, nm.mo, 1), seasonIdx: s.idx, seasonYear: s.year };
+  }
+  function windowForYear(a) {
+    return { start: dayStart(a.y, 1, 1), end: dayStart(a.y + 1, 1, 1) };
+  }
+  function windowFor(a, granularity) {
+    if (granularity === 'day')    return windowForDay(a);
+    if (granularity === 'week')   return windowForWeek(a);
+    if (granularity === 'month')  return windowForMonth(a);
+    if (granularity === 'season') return windowForSeason(a);
+    return windowForYear(a);
+  }
+
+  function stepAnchor(a, granularity, dir) {
+    if (granularity === 'day')  return addDays(a.y, a.mo, a.d, dir);
+    if (granularity === 'week') return addDays(a.y, a.mo, a.d, dir * 7);
+    if (granularity === 'month') { const r = addMonths(a.y, a.mo, dir); return { y: r.y, mo: r.mo, d: 1 }; }
+    if (granularity === 'season') {
+      const cur = seasonOf(a.y, a.mo);
+      let idx = cur.idx + dir, year = cur.year;
+      if (idx < 0) { idx = 3; year -= 1; }
+      if (idx > 3) { idx = 0; year += 1; }
+      return { y: year, mo: [1, 4, 7, 10][idx], d: 15 };
+    }
+    return { y: a.y + dir, mo: a.mo, d: a.d }; // year
+  }
+
+  function todayAnchor() {
+    const p = tzPartsFromUtc(Date.now());
+    return { y: p.y, mo: p.mo, d: p.d };
+  }
+
+  // Fenêtre courante ("live") : contient l'instant présent.
+  function isLiveWindow(win) {
+    const now = Date.now();
+    return win.start <= now && now < win.end;
+  }
+
+  // ── Étiquettes de période (FR/EN) ───────────────────────────────────────────
+  // Les composantes y/mo/d de l'ancre sont déjà la bonne date calendaire locale ;
+  // on formate via un Date construit en UTC pour ne plus toucher au fuseau.
+  function fmtMonthYear(y, mo, lang) {
+    const dt = new Date(Date.UTC(y, mo - 1, 1));
+    const s = dt.toLocaleDateString(lang === 'fr' ? 'fr-CA' : 'en-CA', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+  function fmtDayLabel(a, lang) {
+    const dt = new Date(Date.UTC(a.y, a.mo - 1, a.d));
+    return dt.toLocaleDateString(lang === 'fr' ? 'fr-CA' : 'en-CA', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+  }
+  function fmtWeekLabel(win, lang) {
+    const locale = lang === 'fr' ? 'fr-CA' : 'en-CA';
+    const t = i18n[lang];
+    const s = tzPartsFromUtc(win.start);
+    const e = tzPartsFromUtc(win.end - 43200000); // midi de la veille de la fin (abri DST)
+    const dS = new Date(Date.UTC(s.y, s.mo - 1, s.d));
+    const dE = new Date(Date.UTC(e.y, e.mo - 1, e.d));
+    if (s.mo === e.mo) {
+      const mAbbr = dE.toLocaleDateString(locale, { month: 'short', timeZone: 'UTC' }).replace('.', '');
+      return `${t.weekOf} ${s.d}–${e.d} ${mAbbr}${lang === 'fr' ? '.' : ''}`;
+    }
+    const m1 = dS.toLocaleDateString(locale, { month: 'short', timeZone: 'UTC' }).replace('.', '');
+    const m2 = dE.toLocaleDateString(locale, { month: 'short', timeZone: 'UTC' }).replace('.', '');
+    return `${t.weekOf} ${s.d} ${m1} – ${e.d} ${m2}`;
+  }
+  function fmtSeasonLabel(win, lang) {
+    const t = i18n[lang];
+    const name = t.seasonNames[win.seasonIdx];
+    if (win.seasonIdx === 0) return `${name} ${win.seasonYear - 1}–${win.seasonYear}`;
+    return `${name} ${win.seasonYear}`;
+  }
+  function periodLabel(win, granularity, anchor, lang) {
+    if (granularity === 'day')    return fmtDayLabel(anchor, lang);
+    if (granularity === 'week')   return fmtWeekLabel(win, lang);
+    if (granularity === 'month')  return fmtMonthYear(anchor.y, anchor.mo, lang);
+    if (granularity === 'season') return fmtSeasonLabel(win, lang);
+    return String(tzPartsFromUtc(win.start).y); // year
+  }
+
+  // ── Time-travel : état ──────────────────────────────────────────────────────
+  let currentAnchor = todayAnchor();
+  let currentWindow = null;
+  let currentGranularity = 'day';
+  let currentIsLiveDay = true;
+  let earliestDataMs = null;
+  let fetchToken = 0;
+  const windowCache = new Map();
 
   // Valeur d'une série pour un point de données.
   // "air" = température véranda (airv) avec repli sur la sonde du quai (air).
@@ -1129,87 +1546,125 @@
 
   // ── Fetch data via Firebase Realtime Database (REST, lecture publique) ────────
   const RTDB = 'https://lac-manitou-temperatures-d284a-default-rtdb.firebaseio.com';
-  // ms = fenêtre ; bucket = granularité d'agrégation (0 = brut)
-  //   24h → brut | 7d/30d → moyenne horaire (depuis /readings)
-  //   saison/année → moyennes journalières pré-calculées (depuis /daily)
-  const PERIOD_CFG = {
-    '24h':    { ms: 864e5,     bucket: 0    },
-    '7d':     { ms: 7 * 864e5, bucket: 36e5 },
-    '30d':    { ms: 30 * 864e5, bucket: 36e5 },
-    'season': { ms: 180 * 864e5, daily: true },
-    'year':   { ms: 365 * 864e5, daily: true },
-  };
+  // Fenêtre { start, end } (ms) + granularité :
+  //   day (vue courante) → brut, rolling 24h | day (passé)/week → /readings brut ou horaire
+  //   month/season/year → moyennes journalières pré-calculées (depuis /daily)
 
-  function fetchData(period) {
-    const cfg = PERIOD_CFG[period] || PERIOD_CFG['24h'];
-
-    // Saison/Année : buckets journaliers déjà agrégés (léger, ≤365 clés)
-    if (cfg.daily) {
-      const cutoff = Date.now() - cfg.ms;
-      return fetch(RTDB + '/daily.json')
-        .then(r => r.json())
-        .then(obj => {
-          if (!obj) return [];
-          return Object.keys(obj)
-            .map(k => ({ t: Number(k), ...obj[k] }))
-            .filter(d => d.t >= cutoff)
-            .sort((a, b) => a.t - b.t);
-        })
-        .catch(err => { console.error(err); return []; });
+  // Agrégation par bucket (heure) — airv/hum/météo comptés séparément car
+  // parfois absents (données Ecowitt pas encore branchées, transition avant
+  // le backfill véranda, etc.). RAW_PROP = clé UI → propriété brute écrite
+  // dans le bucket, pour que val() les relise correctement.
+  function bucketRows(rows, bucketMs) {
+    if (!bucketMs) return rows;
+    const RAW_PROP = { pressure: 'press', wind: 'wind', rain: 'rday', uv: 'uv', solar: 'solar' };
+    const buckets = {};
+    for (const d of rows) {
+      const key = Math.floor(d.t / bucketMs) * bucketMs;
+      const b = buckets[key] || (buckets[key] = { air: 0, surface: 0, depth: 0, n: 0, avS: 0, avN: 0, hS: 0, hN: 0, agg: {} });
+      b.air += d.air; b.surface += d.surface; b.depth += d.depth; b.n++;
+      if (d.airv != null) { b.avS += d.airv; b.avN++; }
+      if (d.hum  != null) { b.hS  += d.hum;  b.hN++; }
+      for (const k in RAW_PROP) {
+        const v = val(d, k);
+        if (v == null) continue;
+        const a = b.agg[k] || (b.agg[k] = { sum: 0, n: 0 });
+        a.sum += v; a.n++;
+      }
     }
+    const round1 = v => Math.round(v * 10) / 10;
+    return Object.keys(buckets).sort((a, b) => a - b).map(key => {
+      const b = buckets[key];
+      const out = {
+        t: Number(key),
+        air: round1(b.air / b.n), surface: round1(b.surface / b.n), depth: round1(b.depth / b.n),
+        airv: b.avN ? round1(b.avS / b.avN) : null,
+        hum:  b.hN  ? round1(b.hS / b.hN)   : null
+      };
+      for (const k in RAW_PROP) {
+        const a = b.agg[k];
+        out[RAW_PROP[k]] = a ? round1(a.sum / a.n) : null;
+      }
+      return out;
+    });
+  }
 
-    const limit = Math.ceil(cfg.ms / 3e5 * 1.2); // ~1 lecture / 5 min + marge
+  // Fenêtre arbitraire (passée) sur /readings — clés = epoch-ms en string,
+  // donc l'ordre lexicographique de $key coïncide avec l'ordre numérique.
+  async function fetchReadingsRange(startMs, endMs) {
     const url = RTDB + '/readings.json?orderBy=' + encodeURIComponent('"$key"') +
-                '&limitToLast=' + limit;
-    return fetch(url)
-      .then(r => r.json())
-      .then(obj => {
-        if (!obj) return [];
-        const cutoff = Date.now() - cfg.ms;
-        const rows = Object.keys(obj)
-          .map(k => ({ t: Number(k), ...obj[k] }))
-          .filter(d => d.t >= cutoff)
-          .sort((a, b) => a.t - b.t);
+                '&startAt=' + encodeURIComponent('"' + startMs + '"') +
+                '&endAt=' + encodeURIComponent('"' + (endMs - 1) + '"');
+    const r = await fetch(url);
+    const obj = await r.json();
+    if (!obj) return [];
+    return Object.keys(obj).map(k => ({ t: Number(k), ...obj[k] })).sort((a, b) => a.t - b.t);
+  }
 
-        if (cfg.bucket === 0) return rows;
+  // Vue "24h" courante : fenêtre roulante se terminant maintenant (toujours
+  // pleine), pas alignée sur minuit — comportement historique préservé pour
+  // ne pas afficher un graphique vide en début de journée (section 7 du plan).
+  async function fetchReadingsRolling24h() {
+    const limit = Math.ceil(864e5 / 3e5 * 1.2); // ~1 lecture / 5 min + marge
+    const url = RTDB + '/readings.json?orderBy=' + encodeURIComponent('"$key"') + '&limitToLast=' + limit;
+    const r = await fetch(url);
+    const obj = await r.json();
+    if (!obj) return [];
+    const cutoff = Date.now() - 864e5;
+    return Object.keys(obj).map(k => ({ t: Number(k), ...obj[k] }))
+      .filter(d => d.t >= cutoff).sort((a, b) => a.t - b.t);
+  }
 
-        // Agrégation par bucket (heure ou jour) — airv/hum/météo comptés
-        // séparément car parfois absents (données Ecowitt pas encore branchées,
-        // transition avant le backfill véranda, etc.)
-        // Mesures météo agrégées par moyenne ; RAW_PROP = clé UI → propriété
-        // brute écrite dans le bucket, pour que val() les relise correctement.
-        const RAW_PROP = { pressure: 'press', wind: 'wind', rain: 'rday', uv: 'uv', solar: 'solar' };
-        const buckets = {};
-        for (const d of rows) {
-          const key = Math.floor(d.t / cfg.bucket) * cfg.bucket;
-          const b = buckets[key] || (buckets[key] = { air: 0, surface: 0, depth: 0, n: 0, avS: 0, avN: 0, hS: 0, hN: 0, agg: {} });
-          b.air += d.air; b.surface += d.surface; b.depth += d.depth; b.n++;
-          if (d.airv != null) { b.avS += d.airv; b.avN++; }
-          if (d.hum  != null) { b.hS  += d.hum;  b.hN++; }
-          for (const k in RAW_PROP) {
-            const v = val(d, k);
-            if (v == null) continue;
-            const a = b.agg[k] || (b.agg[k] = { sum: 0, n: 0 });
-            a.sum += v; a.n++;
-          }
+  // /daily entier mis en cache en mémoire (léger, ≤365 clés) — réutilisé pour
+  // mois/saison/année ; rafraîchi si vieux de plus de 5 min (cadence live).
+  let dailyCache = null, dailyCacheTime = 0;
+  async function fetchDailyRaw() {
+    if (dailyCache && Date.now() - dailyCacheTime < 5 * 60 * 1000) return dailyCache;
+    const r = await fetch(RTDB + '/daily.json');
+    const obj = await r.json();
+    dailyCache = obj || {};
+    dailyCacheTime = Date.now();
+    return dailyCache;
+  }
+  async function fetchDailyRange(startMs, endMs) {
+    const obj = await fetchDailyRaw();
+    return Object.keys(obj).map(k => ({ t: Number(k), ...obj[k] }))
+      .filter(d => d.t >= startMs && d.t < endMs)
+      .sort((a, b) => a.t - b.t);
+  }
+
+  // Point d'entrée unique : source + agrégation selon la granularité, avec
+  // cache en mémoire pour les fenêtres passées (immuables → jamais invalidées).
+  async function fetchWindow(win, granularity, isLiveDay) {
+    const cacheKey = granularity + '|' + win.start + '|' + win.end;
+    const isPast = win.end <= Date.now();
+    if (!isLiveDay && isPast && windowCache.has(cacheKey)) return windowCache.get(cacheKey);
+
+    let rows;
+    if (isLiveDay)                    rows = await fetchReadingsRolling24h();
+    else if (granularity === 'day')   rows = await fetchReadingsRange(win.start, win.end);
+    else if (granularity === 'week')  rows = bucketRows(await fetchReadingsRange(win.start, win.end), 36e5);
+    else                               rows = await fetchDailyRange(win.start, win.end);
+
+    if (!isLiveDay && isPast) windowCache.set(cacheKey, rows);
+    return rows;
+  }
+
+  // Détecte la première clé de /readings pour désactiver « ‹ » avant le début
+  // de l'historique (section 8.3 du plan). Non bloquant : tant que ça n'a pas
+  // résolu, isAtFirstData() renvoie false (le bouton se désactive un peu tard).
+  async function detectEarliestData() {
+    try {
+      const url = RTDB + '/readings.json?orderBy=' + encodeURIComponent('"$key"') + '&limitToFirst=1';
+      const r = await fetch(url);
+      const obj = await r.json();
+      if (obj) {
+        const keys = Object.keys(obj);
+        if (keys.length) {
+          earliestDataMs = Number(keys[0]);
+          if (currentWindow) updateNavUI(currentWindow, currentGranularity, currentIsLiveDay);
         }
-        const round1 = v => Math.round(v * 10) / 10;
-        return Object.keys(buckets).sort((a, b) => a - b).map(key => {
-          const b = buckets[key];
-          const out = {
-            t: Number(key),
-            air: round1(b.air / b.n), surface: round1(b.surface / b.n), depth: round1(b.depth / b.n),
-            airv: b.avN ? round1(b.avS / b.avN) : null,
-            hum:  b.hN  ? round1(b.hS / b.hN)   : null
-          };
-          for (const k in RAW_PROP) {
-            const a = b.agg[k];
-            out[RAW_PROP[k]] = a ? round1(a.sum / a.n) : null;
-          }
-          return out;
-        });
-      })
-      .catch(err => { console.error(err); return []; });
+      }
+    } catch (e) { console.error(e); }
   }
 
   // ── Trend helper ─────────────────────────────────────────────────────────────
@@ -1380,8 +1835,38 @@
   }
 
   // ── Update UI ────────────────────────────────────────────────────────────────
+  // Vide les tuiles/graphique quand une fenêtre naviguée n'a aucune donnée —
+  // évite d'afficher des chiffres périmés à côté du message « aucune donnée ».
+  function clearCardsAndChart() {
+    ['air', 'surface', 'depth'].forEach(key => {
+      const el = document.getElementById(`val-${key}`);
+      if (el) el.innerHTML = '—';
+      const elF = document.getElementById(`val-${key}-f`);
+      if (elF) elF.textContent = '—';
+      const tr = document.getElementById(`trend-${key}`);
+      if (tr) tr.innerHTML = '';
+    });
+    const metricEl = { humidity: 'hum', pressure: 'press', wind: 'wind', rain: 'rain', uv: 'uv', solar: 'solar' };
+    for (const key in metricEl) {
+      const id = metricEl[key];
+      const el = document.getElementById('val-' + id);
+      if (el) el.innerHTML = '—';
+      const tr = document.getElementById('trend-' + id);
+      if (tr) tr.innerHTML = '';
+    }
+    const wdEl = document.getElementById('wind-dir');
+    if (wdEl) { wdEl.innerHTML = ''; wdEl.removeAttribute('title'); }
+    if (chart) {
+      SERIES.forEach((key, i) => { chart.data.datasets[i].data = []; });
+      SOLO.forEach((m, j) => { chart.data.datasets[3 + j].data = []; });
+      chart.update('none');
+    }
+    const stats = document.getElementById('chart-stats');
+    if (stats) stats.innerHTML = '';
+  }
+
   function updateUI(data, animate = false) {
-    if (!data.length) return;
+    if (!data.length) { clearCardsAndChart(); return; }
 
     const last = data[data.length - 1];
 
@@ -1495,8 +1980,23 @@
       chart.options.scales.yF.max = toF(yMax);
     }
 
-    const timeUnit = currentPeriod === '24h' ? 'hour' : 'day';
+    const timeUnit = currentIsLiveDay || currentGranularity === 'day' ? 'hour'
+      : (currentGranularity === 'season' || currentGranularity === 'year') ? 'month'
+      : 'day';
     chart.options.scales.x.time.unit = timeUnit;
+    // Format d'infobulle adapté à la granularité (une vue « année » n'a pas
+    // besoin de l'heure ; le format fixe précédent devenait faux au-delà de 24h).
+    chart.options.scales.x.time.tooltipFormat =
+      timeUnit === 'hour' ? 'dd MMM HH:mm' : (timeUnit === 'month' ? 'MMM yyyy' : 'dd MMM yyyy');
+    // Axe pinné sur la fenêtre pour les vues alignées sur le calendrier ; la
+    // 24h roulante garde l'auto-range historique (fenêtre non fixe).
+    if (currentWindow && !currentIsLiveDay) {
+      chart.options.scales.x.min = currentWindow.start;
+      chart.options.scales.x.max = currentWindow.end;
+    } else {
+      delete chart.options.scales.x.min;
+      delete chart.options.scales.x.max;
+    }
     chart.update(animate ? undefined : 'none');
   }
 
@@ -1538,7 +2038,7 @@
       //    chaque cycle (segment délimité par une baisse = reset). Compte la
       //    pluie visible une seule fois, additionne les événements distincts.
       if (key === 'rain') {
-        const daily = (currentPeriod === 'season' || currentPeriod === 'year');
+        const daily = (currentGranularity === 'month' || currentGranularity === 'season' || currentGranularity === 'year');
         let total = 0, seg = 0, prev = null, any = false;
         for (const d of data) {
           const v = val(d, 'rain');
@@ -1618,26 +2118,363 @@
     });
   }
 
-  // ── Period subtitles ─────────────────────────────────────────────────────────
+  // ── Time-travel : navigation (étiquette, boutons, URL) ──────────────────────
+  function isAtFirstData(win, granularity) {
+    if (earliestDataMs == null) return false;
+    const ep = tzPartsFromUtc(earliestDataMs);
+    const earliestWin = windowFor({ y: ep.y, mo: ep.mo, d: ep.d }, granularity);
+    return win.start <= earliestWin.start;
+  }
+
+  function updateNavUI(win, granularity, isLiveDay) {
+    const t = i18n[currentLang];
+    document.getElementById('period-label').textContent = periodLabel(win, granularity, currentAnchor, currentLang);
+    document.getElementById('chart-subtitle').textContent = isLiveDay ? t.sub24h : '';
+    const live = isLiveDay || isLiveWindow(win);
+    document.getElementById('step-next').disabled = live;
+    document.getElementById('today-btn').disabled = live;
+    document.getElementById('step-prev').disabled = isAtFirstData(win, granularity);
+  }
+
+  function setChartStatus(state) {
+    const el = document.getElementById('chart-status');
+    if (!el) return;
+    const t = i18n[currentLang];
+    if (state === 'ok') { el.style.display = 'none'; return; }
+    el.className = 'chart-status' + (state === 'error' ? ' chart-status-error' : '');
+    el.textContent = state === 'loading' ? t.loading : state === 'empty' ? t.noData : t.loadError;
+    el.style.display = '';
+  }
+
+  // ── Time-travel : sélecteur de période (popover, section 4 du plan) ────────
+  // La grille s'adapte à la granularité active : calendrier de jours pour
+  // 24h/7j (cliquer un jour sélectionne sa semaine entière en mode 7j),
+  // grille 3×4 de mois pour Mois, 4 blocs pour Saison, liste pour Année.
+  let pickerOpen = false;
+  // Navigation interne du calendrier/de la grille — indépendante de
+  // currentAnchor tant qu'aucune case n'a été choisie (parcourir n'affiche
+  // rien tant qu'on n'a pas cliqué une case sélectionnable).
+  let pickerViewY = null, pickerViewMo = null;
+
+  const MONTH_ABBR = {
+    fr: ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc'],
+    en: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+  };
+  const WEEKDAY_ABBR = { fr: ['L','M','M','J','V','S','D'], en: ['M','T','W','T','F','S','S'] };
+
+  function earliestAnchorOrFallback() {
+    if (earliestDataMs == null) return currentAnchor;
+    const p = tzPartsFromUtc(earliestDataMs);
+    return { y: p.y, mo: p.mo, d: p.d };
+  }
+
+  function selectPeriod(anchor) {
+    currentAnchor = anchor;
+    load(currentPeriod);
+    closePicker();
+  }
+
+  function renderPickerHeader(label, disablePrev, disableNext) {
+    return `<div class="picker-head">
+      <button type="button" class="picker-nav" data-nav="prev" ${disablePrev ? 'disabled' : ''}><i class="ti ti-chevron-left"></i></button>
+      <span class="picker-head-label">${label}</span>
+      <button type="button" class="picker-nav" data-nav="next" ${disableNext ? 'disabled' : ''}><i class="ti ti-chevron-right"></i></button>
+    </div>`;
+  }
+
+  // Calendrier de jours — partagé par 24h (sélection = un jour) et 7j
+  // (sélection = la semaine entière contenant le jour cliqué, puisque
+  // windowForWeek() aligne toute ancre sur le lundi de sa semaine).
+  function renderDayCalendar() {
+    const lang = currentLang;
+    const y = pickerViewY, mo = pickerViewMo;
+    const first = weekdayISO(y, mo, 1); // 1=lun..7=dim, position du 1er du mois
+    const nm = addMonths(y, mo, 1);
+    const lastDay = addDays(nm.y, nm.mo, 1, -1).d; // dernier jour du mois (jour 0 du suivant)
+    const todayA = todayAnchor();
+    const earliest = earliestAnchorOrFallback();
+    const earliestWinStart = dayStart(earliest.y, earliest.mo, earliest.d);
+    const isWeekMode = GRAN[currentPeriod] === 'week';
+    const selWin = isWeekMode ? windowForWeek(currentAnchor) : null;
+
+    let cells = '';
+    for (let i = 1; i < first; i++) cells += '<span class="picker-day picker-day-empty"></span>';
+    for (let d = 1; d <= lastDay; d++) {
+      const cellStart = dayStart(y, mo, d);
+      const disabled = cellStart > Date.now() || cellStart < earliestWinStart;
+      const isToday = (y === todayA.y && mo === todayA.mo && d === todayA.d);
+      const isSelected = isWeekMode
+        ? (cellStart >= selWin.start && cellStart < selWin.end)
+        : (y === currentAnchor.y && mo === currentAnchor.mo && d === currentAnchor.d);
+      const cls = ['picker-day'];
+      if (isToday) cls.push('picker-day-today');
+      if (isSelected) cls.push('picker-day-selected');
+      if (disabled) cls.push('picker-day-disabled');
+      cells += `<button type="button" class="${cls.join(' ')}" ${disabled ? 'disabled' : ''} data-y="${y}" data-mo="${mo}" data-d="${d}">${d}</button>`;
+    }
+    const weekdayRow = WEEKDAY_ABBR[lang].map(w => `<span class="picker-weekday">${w}</span>`).join('');
+    const label = fmtMonthYear(y, mo, lang);
+    const disablePrev = y < earliest.y || (y === earliest.y && mo <= earliest.mo);
+    const disableNext = y > todayA.y || (y === todayA.y && mo >= todayA.mo);
+    return renderPickerHeader(label, disablePrev, disableNext) +
+      `<div class="picker-grid picker-grid-days">${weekdayRow}${cells}</div>`;
+  }
+
+  function renderMonthGrid() {
+    const lang = currentLang;
+    const y = pickerViewY;
+    const todayA = todayAnchor();
+    const earliest = earliestAnchorOrFallback();
+    const earliestStart = dayStart(earliest.y, earliest.mo, 1);
+    let cells = '';
+    for (let mo = 1; mo <= 12; mo++) {
+      const cellStart = dayStart(y, mo, 1);
+      const disabled = cellStart > Date.now() || cellStart < earliestStart;
+      const isSelected = (y === currentAnchor.y && mo === currentAnchor.mo);
+      const isToday = (y === todayA.y && mo === todayA.mo);
+      const cls = ['picker-month'];
+      if (isSelected) cls.push('picker-day-selected');
+      if (isToday) cls.push('picker-day-today');
+      if (disabled) cls.push('picker-day-disabled');
+      cells += `<button type="button" class="${cls.join(' ')}" ${disabled ? 'disabled' : ''} data-y="${y}" data-mo="${mo}">${MONTH_ABBR[lang][mo - 1]}</button>`;
+    }
+    const disablePrev = y <= earliest.y;
+    const disableNext = y >= todayA.y;
+    return renderPickerHeader(String(y), disablePrev, disableNext) +
+      `<div class="picker-grid picker-grid-months">${cells}</div>`;
+  }
+
+  function renderSeasonGrid() {
+    const lang = currentLang, t = i18n[lang];
+    const y = pickerViewY; // année d'étiquette (celle de janvier pour l'hiver)
+    const todayA = todayAnchor();
+    const nowSeason = seasonOf(todayA.y, todayA.mo);
+    const curSeason = seasonOf(currentAnchor.y, currentAnchor.mo);
+    const earliest = earliestAnchorOrFallback();
+    const earliestSeason = seasonOf(earliest.y, earliest.mo);
+    const MID = [1, 4, 7, 10];
+    let cells = '';
+    for (let idx = 0; idx < 4; idx++) {
+      const win = windowForSeason({ y, mo: MID[idx], d: 15 });
+      const beforeFirst = y < earliestSeason.year || (y === earliestSeason.year && idx < earliestSeason.idx);
+      const disabled = win.start > Date.now() || beforeFirst;
+      const isSelected = (y === curSeason.year && idx === curSeason.idx);
+      const cls = ['picker-season'];
+      if (isSelected) cls.push('picker-day-selected');
+      if (disabled) cls.push('picker-day-disabled');
+      cells += `<button type="button" class="${cls.join(' ')}" ${disabled ? 'disabled' : ''} data-y="${y}" data-idx="${idx}">${t.seasonNames[idx]}</button>`;
+    }
+    const disablePrev = y <= earliestSeason.year;
+    const disableNext = y >= nowSeason.year;
+    return renderPickerHeader(String(y), disablePrev, disableNext) +
+      `<div class="picker-grid picker-grid-seasons">${cells}</div>`;
+  }
+
+  function renderYearList() {
+    const earliest = earliestAnchorOrFallback();
+    const nowY = todayAnchor().y;
+    let cells = '';
+    for (let y = nowY; y >= earliest.y; y--) {
+      const cls = ['picker-year'];
+      if (y === currentAnchor.y) cls.push('picker-day-selected');
+      cells += `<button type="button" class="${cls.join(' ')}" data-y="${y}">${y}</button>`;
+    }
+    return `<div class="picker-grid picker-grid-years">${cells}</div>`;
+  }
+
+  function renderPicker() {
+    const granularity = GRAN[currentPeriod];
+    const t = i18n[currentLang];
+    let body;
+    if (granularity === 'day' || granularity === 'week') body = renderDayCalendar();
+    else if (granularity === 'month')  body = renderMonthGrid();
+    else if (granularity === 'season') body = renderSeasonGrid();
+    else                                body = renderYearList();
+    document.getElementById('picker-popover').innerHTML = body +
+      `<div class="picker-foot"><button type="button" class="picker-today-btn" id="picker-today">` +
+      `<i class="ti ti-clock-hour-4"></i>${t.todayBtn}</button></div>`;
+  }
+
+  function onDocClickForPicker(e) {
+    const pop = document.getElementById('picker-popover');
+    const label = document.getElementById('period-label');
+    if (pop.contains(e.target) || label.contains(e.target)) return;
+    closePicker();
+  }
+  function onKeydownForPicker(e) {
+    if (e.key === 'Escape') closePicker();
+  }
+  function openPicker() {
+    const granularity = GRAN[currentPeriod];
+    pickerViewY = granularity === 'season' ? seasonOf(currentAnchor.y, currentAnchor.mo).year : currentAnchor.y;
+    pickerViewMo = currentAnchor.mo;
+    renderPicker();
+    document.getElementById('picker-popover').style.display = '';
+    document.getElementById('period-label').setAttribute('aria-expanded', 'true');
+    pickerOpen = true;
+    document.addEventListener('click', onDocClickForPicker, true);
+    document.addEventListener('keydown', onKeydownForPicker, true);
+  }
+  function closePicker() {
+    if (!pickerOpen) return;
+    document.getElementById('picker-popover').style.display = 'none';
+    document.getElementById('period-label').setAttribute('aria-expanded', 'false');
+    pickerOpen = false;
+    document.removeEventListener('click', onDocClickForPicker, true);
+    document.removeEventListener('keydown', onKeydownForPicker, true);
+  }
+
+  document.getElementById('period-label').addEventListener('click', () => {
+    if (pickerOpen) closePicker(); else openPicker();
+  });
+
+  // Délégation d'événements : le contenu du popover est régénéré à chaque
+  // navigation/ouverture, un seul écouteur (posé une fois) suffit.
+  document.getElementById('picker-popover').addEventListener('click', (e) => {
+    if (e.target.closest('#picker-today')) {
+      currentAnchor = todayAnchor();
+      load(currentPeriod);
+      closePicker();
+      return;
+    }
+    const navBtn = e.target.closest('.picker-nav');
+    if (navBtn) {
+      if (navBtn.disabled) return;
+      const dir = navBtn.dataset.nav === 'prev' ? -1 : 1;
+      const granularity = GRAN[currentPeriod];
+      if (granularity === 'day' || granularity === 'week') {
+        const r = addMonths(pickerViewY, pickerViewMo, dir);
+        pickerViewY = r.y; pickerViewMo = r.mo;
+      } else {
+        pickerViewY += dir;
+      }
+      renderPicker();
+      return;
+    }
+    const dayBtn = e.target.closest('.picker-day:not(.picker-day-empty)');
+    if (dayBtn) { if (!dayBtn.disabled) selectPeriod({ y: +dayBtn.dataset.y, mo: +dayBtn.dataset.mo, d: +dayBtn.dataset.d }); return; }
+    const monthBtn = e.target.closest('.picker-month');
+    if (monthBtn) { if (!monthBtn.disabled) selectPeriod({ y: +monthBtn.dataset.y, mo: +monthBtn.dataset.mo, d: 1 }); return; }
+    const seasonBtn = e.target.closest('.picker-season');
+    if (seasonBtn) {
+      if (seasonBtn.disabled) return;
+      const idx = +seasonBtn.dataset.idx;
+      selectPeriod({ y: +seasonBtn.dataset.y, mo: [1, 4, 7, 10][idx], d: 15 });
+      return;
+    }
+    const yearBtn = e.target.closest('.picker-year');
+    if (yearBtn) selectPeriod({ y: +yearBtn.dataset.y, mo: 6, d: 15 });
+  });
+
+  // Formats section 7 du plan : ?g=day&start=YYYY-MM-DD, ?g=week&start=<lundi>,
+  // ?g=month&start=YYYY-MM, ?g=season&start=YYYY-{hiver|printemps|ete|automne},
+  // ?g=year&start=YYYY. replaceState (pas pushState) pour ne pas polluer
+  // l'historique du navigateur à chaque pas. Vue live par défaut → URL propre.
+  const SEASON_SLUGS = ['hiver', 'printemps', 'ete', 'automne'];
+  function urlStartParam(win, granularity) {
+    const pad2 = n => String(n).padStart(2, '0');
+    if (granularity === 'day')   return `${currentAnchor.y}-${pad2(currentAnchor.mo)}-${pad2(currentAnchor.d)}`;
+    if (granularity === 'week')  { const p = tzPartsFromUtc(win.start); return `${p.y}-${pad2(p.mo)}-${pad2(p.d)}`; }
+    if (granularity === 'month') return `${currentAnchor.y}-${pad2(currentAnchor.mo)}`;
+    if (granularity === 'season') return `${win.seasonYear}-${SEASON_SLUGS[win.seasonIdx]}`;
+    return String(currentAnchor.y);
+  }
+  function updateUrlState(win, granularity, isLiveDay) {
+    const url = new URL(location.href);
+    if (isLiveDay && granularity === 'day') {
+      url.search = '';
+    } else {
+      url.searchParams.set('g', granularity);
+      url.searchParams.set('start', urlStartParam(win, granularity));
+    }
+    history.replaceState(null, '', url.pathname + url.search);
+  }
+  function parseUrlState() {
+    const qs = new URLSearchParams(location.search);
+    const g = qs.get('g'), start = qs.get('start');
+    if (!g || !start) return null;
+    const period = Object.keys(GRAN).find(k => GRAN[k] === g);
+    if (!period) return null;
+    let m;
+    if (g === 'day' || g === 'week') {
+      m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(start);
+      if (!m) return null;
+      return { period, anchor: { y: +m[1], mo: +m[2], d: +m[3] } };
+    }
+    if (g === 'month') {
+      m = /^(\d{4})-(\d{2})$/.exec(start);
+      if (!m) return null;
+      return { period, anchor: { y: +m[1], mo: +m[2], d: 1 } };
+    }
+    if (g === 'season') {
+      m = new RegExp(`^(\\d{4})-(${SEASON_SLUGS.join('|')})$`).exec(start);
+      if (!m) return null;
+      const idx = SEASON_SLUGS.indexOf(m[2]);
+      return { period, anchor: { y: +m[1], mo: [1, 4, 7, 10][idx], d: 15 } };
+    }
+    // year
+    m = /^(\d{4})$/.exec(start);
+    if (!m) return null;
+    return { period, anchor: { y: +m[1], mo: 6, d: 15 } };
+  }
+
   // ── Load ─────────────────────────────────────────────────────────────────────
   async function load(period, animate = true) {
     currentPeriod = period;
-    const subKeys = { '24h': 'sub24h', '7d': 'sub7d', '30d': 'sub30d', 'season': 'subSeason', 'year': 'subYear' };
-    document.getElementById('chart-subtitle').textContent = i18n[currentLang][subKeys[period]];
+    const granularity = GRAN[period];
+    const win = windowFor(currentAnchor, granularity);
+    const isLiveDay = granularity === 'day' && isLiveWindow(win);
+
+    currentWindow = win;
+    currentGranularity = granularity;
+    currentIsLiveDay = isLiveDay;
+    updateNavUI(win, granularity, isLiveDay);
+    updateUrlState(win, granularity, isLiveDay);
+
+    const token = ++fetchToken;
+    setChartStatus('loading');
     try {
-      const data = await fetchData(period);
+      const data = await fetchWindow(win, granularity, isLiveDay);
+      if (token !== fetchToken) return; // une navigation plus récente a eu lieu entre-temps
       allData = data;
+      setChartStatus(data.length ? 'ok' : 'empty');
       updateUI(data, animate);
     } catch (e) {
+      if (token !== fetchToken) return;
       console.error(e);
+      setChartStatus('error');
     }
   }
 
+  function stepPeriod(dir) {
+    const granularity = GRAN[currentPeriod];
+    const proposed = stepAnchor(currentAnchor, granularity, dir);
+    if (dir > 0 && windowFor(proposed, granularity).start > Date.now()) return; // rien à afficher dans le futur
+    currentAnchor = proposed;
+    load(currentPeriod);
+  }
+  document.getElementById('step-prev').addEventListener('click', () => stepPeriod(-1));
+  document.getElementById('step-next').addEventListener('click', () => stepPeriod(1));
+  document.getElementById('today-btn').addEventListener('click', () => {
+    currentAnchor = todayAnchor();
+    load(currentPeriod);
+  });
+
+  // Rangée de granularité scrollable sur mobile (section 6) : ramène l'onglet
+  // actif en vue. No-op sans overflow (desktop), donc appelé sans condition.
+  function scrollActiveTabIntoView() {
+    const active = document.querySelector('.tab.active');
+    if (active) active.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+  }
+
   // ── Tab click ────────────────────────────────────────────────────────────────
+  // Changer de granularité ne réinitialise pas l'ancre : on atterrit sur la
+  // période qui contient la même date, pas sur « aujourd'hui » (section 7).
   document.querySelectorAll('.tab').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       btn.classList.add('active');
+      scrollActiveTabIntoView();
       load(btn.dataset.period);
     });
   });
@@ -1828,9 +2665,25 @@
   applyLang();
   applyPrefsToButtons();
   updateMoon();
-  load('24h');
+  detectEarliestData();
+  (function initTimeTravel() {
+    const restored = parseUrlState();
+    if (restored) {
+      currentAnchor = restored.anchor;
+      document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.period === restored.period));
+      scrollActiveTabIntoView();
+      load(restored.period);
+    } else {
+      load('24h');
+    }
+  })();
   loadForecast();
-  setInterval(() => load(currentPeriod, false), 5 * 60 * 1000);
+  // Rafraîchit seulement si la fenêtre affichée contient l'instant présent —
+  // une navigation vers le passé ne doit jamais être ramenée au présent
+  // (section 7 du plan : "auto-refresh must respect time-travel").
+  setInterval(() => {
+    if (isLiveWindow(windowFor(currentAnchor, GRAN[currentPeriod]))) load(currentPeriod, false);
+  }, 5 * 60 * 1000);
   setInterval(updateMoon, 30 * 60 * 1000);
   setInterval(loadForecast, 60 * 60 * 1000);   // prévisions : rafraîchies chaque heure
 </script>
