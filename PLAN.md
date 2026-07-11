@@ -3,6 +3,14 @@
 Document de référence à consulter avant et pendant l'implémentation.
 Cases à cocher pour suivre l'avancement.
 
+> **Ce fichier est la source de vérité pour le backlog** (consolidé le
+> 2026-07-11). `ECOWITT_HANDOFF.md` est désormais **obsolète** — c'était le
+> brief pour Phase B (branchement Ecowitt + WN32), et Phase B est maintenant
+> **100 % terminée** (WN32/`airb`/`humb` confirmé en prod le 2026-07-10). Il
+> reste consultable pour l'historique (pièges rencontrés, noms d'entités,
+> conversions d'unités) mais n'a plus aucune action en attente — ne pas y
+> chercher de TODO à jour, tout est ici.
+
 ---
 
 ## Contexte
@@ -207,10 +215,9 @@ sonde quai**. Le helper `val(d,'air')` implémente la priorité.
       `_wind_gust`, `_wind_direction`, `_rain_rate`, `_daily_rain`, `_uv_index`,
       `_solar_radiation`, `_relative_pressure`. WN32 (2026-07-10) : id `0x9E`,
       remplace le T/H intégré du WS69 comme capteur « outdoor » principal du
-      gateway → `sensor.gw3000b_outdoor_temperature` / `_humidity` (⏳ à
-      confirmer dans Réglages → Appareils → `gw3000b` avant le premier déploiement
-      — le macro `num()` étant null-safe, un mauvais nom d'entité échouerait
-      silencieusement en `null` plutôt qu'en erreur).
+      gateway → `sensor.gw3000b_outdoor_temperature` / `_humidity` — ✅ confirmé
+      en prod (2026-07-10, voir la tâche Firebase ci-dessus pour le détail du
+      piège de nom d'entité rencontré et corrigé).
 - [x] `manitou_firebase` payload — ✅ **10 champs** ajoutés via macro `num()`
       null-safe, `airb`/`humb` (WN32) branchés (2026-07-10).
 - [x] Helper `val('air')` priorité WN32 → véranda → quai — ✅ déjà codé
@@ -332,12 +339,63 @@ prioriser avant de commencer.
   **Prérequis avant de commencer** : (1) commander la cam **variante 4 mm** +
   injecteur actif ; (2) confirmer un port data libre sur le switch ; (3) capturer
   l'URL RTSP + l'ajouter à HA.
-- [ ] **Navigation temporelle sur le graphique** : pouvoir choisir un jour, un
-      mois ou une année précis dans le passé (pas seulement des fenêtres
-      glissantes 24h/7j/30j/Saison/Année) — un vrai sélecteur de date pour
-      « remonter dans le temps ». Implique une UI de sélection de date +
-      requêtes RTDB par plage arbitraire (déjà possible via `orderBy`+
-      `startAt`/`endAt` sur la clé timestamp).
+- [x] **Navigation temporelle sur le graphique — étapes 1-3** : ✅ fait et
+      déployé (2026-07-11, commit `88476bf`). Spec complète dans
+      `D:\Claude desktop\ESPHome\plan.md` (hors dépôt git pour l'instant — à
+      copier dans `manitou/` si on veut le versionner). Livré :
+  - Fenêtres alignées sur le calendrier (jour/semaine/mois/saison/année,
+    fuseau America/Toronto, DST-safe) remplaçant les fenêtres glissantes
+    « derniers N ».
+  - Couche de données : `startAt`/`endAt` sur `/readings` (jour/semaine),
+    `/daily` filtré (mois/saison/année), cache mémoire + annulation des
+    requêtes en vol pour un stepping rapide sans fenêtre périmée.
+  - Stepper `‹ label ›` + bouton « Aujourd'hui », état dans l'URL (restaure au
+    rechargement), changement de granularité préserve la position visée.
+  - Sélecteur de période adaptatif (calendrier jour / grille mois / blocs
+    saison / liste année), cases futures ou avant-première-donnée désactivées
+    mais visibles.
+  - Mobile : rangée de granularité scrollable, cibles tactiles 44px, le
+    sélecteur devient une feuille ancrée en bas.
+  - Auto-refresh 5 min ignore le fetch du graphique quand on visite une
+    fenêtre passée (ne ramène jamais au présent).
+
+- [ ] **Navigation temporelle — étape 4 : mode comparaison (année sur année)**
+      — différé, pas commencé. Spec détaillée (à ne pas perdre) :
+  - Un seul toggle **« Comparer »** superpose la **même fenêtre alignée de
+    l'année précédente** derrière la ligne courante.
+  - Ligne courante = pleine, poids visuel normal (style actuel inchangé).
+    Ligne de comparaison = **fine, pointillée, gris/atténuée**, dessinée
+    **derrière** la courante — ne doit jamais rivaliser visuellement avec
+    « maintenant ».
+  - La légende affiche les deux années.
+  - **Les deltas sont la vraie valeur ajoutée** : sous chaque stat résumé,
+    afficher l'écart vs la période de comparaison, ex.
+    `Moy 21.4 °C (+2.4 °C vs 2025)`. Beaucoup d'utilisateurs lisent les
+    tuiles, pas les lignes.
+  - **Off par défaut** (ça ajoute du bruit visuel) — opt-in.
+  - Grâce aux fenêtres alignées sur le calendrier, « l'année précédente » est
+    **non ambiguë** pour chaque granularité (même semaine-de-l'année, même
+    saison, etc.).
+  - N'a de sens que pour les granularités « période » (semaine/mois/saison/
+    année). Pour « 24 h », soit comparer à la même date l'an dernier, soit
+    masquer le toggle — **décision produit à confirmer**.
+  - **Bloquant actuel — données insuffisantes** : la base ne remonte qu'au
+    28 juin 2026, donc « vs l'an dernier » n'a rien à montrer avant
+    **mi-2027**. Prévoir dès maintenant l'état vide : toggle **désactivé**
+    avec infobulle (« données historiques insuffisantes ») quand la fenêtre
+    de comparaison n'a aucune donnée ; si données **partielles**, dessiner ce
+    qui existe et afficher `—` pour les deltas incalculables.
+  - **Note d'implémentation** : pour superposer les deux périodes sur le même
+    axe temporel, décaler les timestamps de la série de comparaison d'un an
+    en avant pour qu'elles s'alignent visuellement.
+  - **Extension future** (hors scope v1) : remplacer « vs l'an dernier » par
+    une bande de **moyenne mobile multi-année** (« la normale », moyenne
+    5-10 ans ± plage) — même emplacement d'overlay, plus crédible pour un
+    public météo.
+  - Mobile : la rangée d'actions secondaires devait avoir « Aujourd'hui » et
+    « Comparer » en deux moitiés égales (section 6 de la spec) — différé
+    puisque Comparer n'existe pas encore ; à faire quand ce toggle sera
+    implémenté.
 - [x] **Radar météo embarqué** : ✅ fait (2026-07-07) — nouvelle section
       « Prévisions » (entre Ciel & conditions et les onglets de période),
       positionnée délibérément comme catégorie « ce qui s'en vient » (externe/
@@ -365,7 +423,9 @@ prioriser avant de commencer.
 - ✅ ~~Stats du graphique mono-mesure~~ — résolu : cœur fixe + mesure sélectionnée.
 - ✅ ~~WiFi boathouse = même sous-réseau que HA ?~~ — résolu : la station pousse
   bien les données, le push local fonctionne.
-- ⏳ **WN32** : à recevoir dans HA pour brancher `airb`/`humb`.
+- ✅ ~~WN32~~ — résolu (2026-07-10) : reçu, branché, vérifié en prod. Phase B
+  est maintenant **entièrement terminée** ; `ECOWITT_HANDOFF.md` est obsolète
+  (voir note en tête de ce fichier).
 - ⏳ **Sonde chalet** : à réévaluer après déplacement au #2.
 - ✅ ~~Responsive ≤ 480 px~~ — audité 320–480px, débordements corrigés.
 - ✅ ~~Vérif solunaire~~ — faite (USNO) : soleil/lever-lune ~1–2 min, transit/

@@ -1,7 +1,16 @@
 # Handoff — Intégration station Ecowitt (GW3002 + WS69 + WN32) → Phase B
 
-> **But de ce document** : brief autonome pour une **nouvelle session Claude Code**.
-> Tout le contexte nécessaire est ici — pas besoin de relire l'historique.
+> ⚠️ **OBSOLÈTE (2026-07-11) — Phase B est terminée, y compris WN32/`airb`/
+> `humb` (confirmé en prod le 2026-07-10).** Ce document ne contient plus
+> aucune action en attente. **`PLAN.md` est la source de vérité pour le
+> backlog actuel** — n'y cherchez pas de TODO ici. Conservé uniquement comme
+> référence historique (pièges rencontrés, noms d'entités capturés,
+> conversions d'unités) au cas où une intégration de capteur similaire
+> reviendrait.
+
+> **But de ce document (à l'origine)** : brief autonome pour une **nouvelle
+> session Claude Code**. Tout le contexte nécessaire est ici — pas besoin de
+> relire l'historique.
 > Projet : site météo Lac Manitou (Firebase Hosting + Realtime Database).
 > Répertoire : `D:\Claude desktop\ESPHome\manitou`. Branche git : `weather-station`.
 
