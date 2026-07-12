@@ -603,6 +603,33 @@
     }
     .picker-today-btn:hover { color: var(--text); background: var(--glass-hover); }
 
+    /* ── Plage personnalisée (picker "custom") ── */
+    .picker-custom { display: flex; flex-direction: column; gap: .6rem; min-width: 220px; }
+    .picker-custom-field { display: flex; flex-direction: column; gap: .25rem; font-size: .75rem; color: var(--muted); }
+    .picker-custom-field input[type="date"] {
+      background: var(--glass);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: .45rem .5rem;
+      font-family: inherit;
+      font-size: .85rem;
+      color-scheme: dark;
+    }
+    .picker-apply-btn {
+      background: rgba(56,189,248,.15);
+      border: 1px solid rgba(56,189,248,.4);
+      color: #7dd3fc;
+      border-radius: 8px;
+      padding: .55rem;
+      font-size: .8rem;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background .15s;
+    }
+    .picker-apply-btn:hover { background: rgba(56,189,248,.25); }
+
     /* Stepper mobile : pleine largeur, cibles tactiles ≥44px (section 6 du
        plan). Doit venir APRÈS les règles .step-btn/.today-btn de base ci-
        dessus : à spécificité égale, l'ordre source tranche, et un bloc
@@ -975,6 +1002,7 @@
     <button class="tab" data-period="30d"    data-i18n="30d">Mois</button>
     <button class="tab" data-period="season" data-i18n="season">Saison</button>
     <button class="tab" data-period="year"   data-i18n="year">Année</button>
+    <button class="tab" data-period="custom" data-i18n="custom">Personnalisé</button>
   </div>
 
   <!-- Time-travel : position dans la période active -->
@@ -1057,6 +1085,7 @@
       '30d':         'Mois',
       'season':      'Saison',
       'year':        'Année',
+      'custom':      'Personnalisé',
       chartTitle:    'Historique des données',
       sub24h:        'Dernières 24 heures',
       stepPrev:      'Période précédente',
@@ -1066,6 +1095,9 @@
       seasonNames:   ['Hiver','Printemps','Été','Automne'],
       noData:        'Aucune donnée pour cette période',
       loadError:     'Erreur de chargement — réessayer',
+      customStart:   'Début',
+      customEnd:     'Fin',
+      customApply:   'Appliquer',
       legendAir:     'Air',
       legendSurface: 'Surface',
       legendDepth:   '4 pieds',
@@ -1125,6 +1157,7 @@
       '30d':         'Month',
       'season':      'Season',
       'year':        'Year',
+      'custom':      'Custom',
       chartTitle:    'Historical data',
       sub24h:        'Last 24 hours',
       stepPrev:      'Previous period',
@@ -1134,6 +1167,9 @@
       seasonNames:   ['Winter','Spring','Summer','Fall'],
       noData:        'No data for this period',
       loadError:     'Failed to load — retry',
+      customStart:   'Start',
+      customEnd:     'End',
+      customApply:   'Apply',
       legendAir:     'Air',
       legendSurface: 'Surface',
       legendDepth:   '4 feet',
@@ -1216,7 +1252,7 @@
   // '24h'/'7d'/'30d' restent les identifiants d'onglet historiques ; GRAN les
   // fait correspondre à une granularité de fenêtre alignée sur le calendrier.
   const STATION_TZ = 'America/Toronto';
-  const GRAN = { '24h': 'day', '7d': 'week', '30d': 'month', 'season': 'season', 'year': 'year' };
+  const GRAN = { '24h': 'day', '7d': 'week', '30d': 'month', 'season': 'season', 'year': 'year', 'custom': 'custom' };
 
   function tzPartsFromUtc(utcMs) {
     const dtf = new Intl.DateTimeFormat('en-US', {
@@ -1375,6 +1411,29 @@
   let earliestDataMs = null;
   let fetchToken = 0;
   const windowCache = new Map();
+
+  // Plage personnalisée (granularité "custom") : {start, end} choisis
+  // librement par l'utilisateur, PAS alignés sur le calendrier — coexiste
+  // avec les granularités alignées plutôt que de les remplacer.
+  let customRange = null;
+  function defaultCustomRange() {
+    const a = todayAnchor();
+    const end = dayStart(a.y, a.mo, a.d + 1); // fin exclusive = minuit après aujourd'hui
+    const s = addDays(a.y, a.mo, a.d, -6);    // 7 jours au total, aujourd'hui inclus
+    return { start: dayStart(s.y, s.mo, s.d), end };
+  }
+  function customRangeLabel(win, lang) {
+    const locale = lang === 'fr' ? 'fr-CA' : 'en-CA';
+    const s = tzPartsFromUtc(win.start);
+    const e = tzPartsFromUtc(win.end - 43200000); // midi de la veille de la fin (abri DST)
+    const dS = new Date(Date.UTC(s.y, s.mo - 1, s.d));
+    const dE = new Date(Date.UTC(e.y, e.mo - 1, e.d));
+    const optsShort = { day: 'numeric', month: 'short', timeZone: 'UTC' };
+    const optsFull = { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' };
+    const startStr = dS.toLocaleDateString(locale, s.y === e.y ? optsShort : optsFull).replace('.', '');
+    const endStr = dE.toLocaleDateString(locale, optsFull).replace('.', '');
+    return `${startStr} – ${endStr}`;
+  }
 
   // Valeur d'une série pour un point de données.
   // "air" = température véranda (airv) avec repli sur la sonde du quai (air).
@@ -1643,6 +1702,14 @@
     if (isLiveDay)                    rows = await fetchReadingsRolling24h();
     else if (granularity === 'day')   rows = await fetchReadingsRange(win.start, win.end);
     else if (granularity === 'week')  rows = bucketRows(await fetchReadingsRange(win.start, win.end), 36e5);
+    else if (granularity === 'custom') {
+      // Plage libre : source + agrégation selon la longueur choisie, mêmes
+      // seuils que les granularités fixes (day≈brut, week≈horaire, sinon /daily).
+      const spanDays = (win.end - win.start) / 864e5;
+      if (spanDays <= 2)       rows = await fetchReadingsRange(win.start, win.end);
+      else if (spanDays <= 45) rows = bucketRows(await fetchReadingsRange(win.start, win.end), 36e5);
+      else                     rows = await fetchDailyRange(win.start, win.end);
+    }
     else                               rows = await fetchDailyRange(win.start, win.end);
 
     if (!isLiveDay && isPast) windowCache.set(cacheKey, rows);
@@ -1980,9 +2047,15 @@
       chart.options.scales.yF.max = toF(yMax);
     }
 
-    const timeUnit = currentIsLiveDay || currentGranularity === 'day' ? 'hour'
-      : (currentGranularity === 'season' || currentGranularity === 'year') ? 'month'
-      : 'day';
+    let timeUnit;
+    if (currentGranularity === 'custom') {
+      const spanDays = (currentWindow.end - currentWindow.start) / 864e5;
+      timeUnit = spanDays <= 2 ? 'hour' : spanDays <= 90 ? 'day' : 'month';
+    } else {
+      timeUnit = currentIsLiveDay || currentGranularity === 'day' ? 'hour'
+        : (currentGranularity === 'season' || currentGranularity === 'year') ? 'month'
+        : 'day';
+    }
     chart.options.scales.x.time.unit = timeUnit;
     // Format d'infobulle adapté à la granularité (une vue « année » n'a pas
     // besoin de l'heure ; le format fixe précédent devenait faux au-delà de 24h).
@@ -2038,7 +2111,8 @@
       //    chaque cycle (segment délimité par une baisse = reset). Compte la
       //    pluie visible une seule fois, additionne les événements distincts.
       if (key === 'rain') {
-        const daily = (currentGranularity === 'month' || currentGranularity === 'season' || currentGranularity === 'year');
+        const daily = (currentGranularity === 'month' || currentGranularity === 'season' || currentGranularity === 'year')
+          || (currentGranularity === 'custom' && (currentWindow.end - currentWindow.start) > 45 * 864e5);
         let total = 0, seg = 0, prev = null, any = false;
         for (const d of data) {
           const v = val(d, 'rain');
@@ -2128,12 +2202,22 @@
 
   function updateNavUI(win, granularity, isLiveDay) {
     const t = i18n[currentLang];
-    document.getElementById('period-label').textContent = periodLabel(win, granularity, currentAnchor, currentLang);
+    document.getElementById('period-label').textContent = granularity === 'custom'
+      ? customRangeLabel(win, currentLang)
+      : periodLabel(win, granularity, currentAnchor, currentLang);
     document.getElementById('chart-subtitle').textContent = isLiveDay ? t.sub24h : '';
-    const live = isLiveDay || isLiveWindow(win);
-    document.getElementById('step-next').disabled = live;
-    document.getElementById('today-btn').disabled = live;
-    document.getElementById('step-prev').disabled = isAtFirstData(win, granularity);
+
+    if (granularity === 'custom') {
+      document.getElementById('step-next').disabled = win.end > Date.now();
+      document.getElementById('step-prev').disabled = earliestDataMs != null && win.start <= earliestDataMs;
+      const def = defaultCustomRange();
+      document.getElementById('today-btn').disabled = (win.start === def.start && win.end === def.end);
+    } else {
+      const live = isLiveDay || isLiveWindow(win);
+      document.getElementById('step-next').disabled = live;
+      document.getElementById('today-btn').disabled = live;
+      document.getElementById('step-prev').disabled = isAtFirstData(win, granularity);
+    }
   }
 
   function setChartStatus(state) {
@@ -2282,11 +2366,38 @@
     return `<div class="picker-grid picker-grid-years">${cells}</div>`;
   }
 
+  // Plage libre : deux champs date natifs + bouton Appliquer. Bornés par la
+  // première donnée et « aujourd'hui » via min/max — pas de saisie invalide
+  // possible pour ces deux bornes (l'ordre début/fin est normalisé à l'apply).
+  function renderCustomPicker() {
+    const t = i18n[currentLang];
+    const pad2 = n => String(n).padStart(2, '0');
+    const fmt = ms => { const p = tzPartsFromUtc(ms); return `${p.y}-${pad2(p.mo)}-${pad2(p.d)}`; };
+    const r = customRange || defaultCustomRange();
+    const startVal = fmt(r.start);
+    const endVal = fmt(r.end - 43200000); // borne de fin exclusive -> dernier jour inclus affiché
+    const maxVal = fmt(Date.now());
+    const minVal = earliestDataMs != null ? fmt(earliestDataMs) : '';
+    return `
+      <div class="picker-custom">
+        <label class="picker-custom-field">
+          <span>${t.customStart}</span>
+          <input type="date" id="custom-start-input" value="${startVal}" min="${minVal}" max="${maxVal}">
+        </label>
+        <label class="picker-custom-field">
+          <span>${t.customEnd}</span>
+          <input type="date" id="custom-end-input" value="${endVal}" min="${minVal}" max="${maxVal}">
+        </label>
+        <button type="button" class="picker-apply-btn" id="picker-custom-apply">${t.customApply}</button>
+      </div>`;
+  }
+
   function renderPicker() {
     const granularity = GRAN[currentPeriod];
     const t = i18n[currentLang];
     let body;
-    if (granularity === 'day' || granularity === 'week') body = renderDayCalendar();
+    if (granularity === 'custom') body = renderCustomPicker();
+    else if (granularity === 'day' || granularity === 'week') body = renderDayCalendar();
     else if (granularity === 'month')  body = renderMonthGrid();
     else if (granularity === 'season') body = renderSeasonGrid();
     else                                body = renderYearList();
@@ -2332,8 +2443,25 @@
   // navigation/ouverture, un seul écouteur (posé une fois) suffit.
   document.getElementById('picker-popover').addEventListener('click', (e) => {
     if (e.target.closest('#picker-today')) {
-      currentAnchor = todayAnchor();
+      if (GRAN[currentPeriod] === 'custom') customRange = defaultCustomRange();
+      else currentAnchor = todayAnchor();
       load(currentPeriod);
+      closePicker();
+      return;
+    }
+    if (e.target.closest('#picker-custom-apply')) {
+      const startVal = document.getElementById('custom-start-input').value;
+      const endVal = document.getElementById('custom-end-input').value;
+      const m1 = /^(\d{4})-(\d{2})-(\d{2})$/.exec(startVal);
+      const m2 = /^(\d{4})-(\d{2})-(\d{2})$/.exec(endVal);
+      if (!m1 || !m2) return; // champ vide/invalide — ne rien faire
+      const msA = dayStart(+m1[1], +m1[2], +m1[3]);
+      const msB = dayStart(+m2[1], +m2[2], +m2[3]);
+      const lo = Math.min(msA, msB), hiInclusive = Math.max(msA, msB);
+      const hp = tzPartsFromUtc(hiInclusive);
+      const hiNext = addDays(hp.y, hp.mo, hp.d, 1);
+      customRange = { start: lo, end: dayStart(hiNext.y, hiNext.mo, hiNext.d) };
+      load('custom');
       closePicker();
       return;
     }
@@ -2383,9 +2511,17 @@
     const url = new URL(location.href);
     if (isLiveDay && granularity === 'day') {
       url.search = '';
+    } else if (granularity === 'custom') {
+      const pad2 = n => String(n).padStart(2, '0');
+      const s = tzPartsFromUtc(win.start);
+      const e = tzPartsFromUtc(win.end - 43200000);
+      url.searchParams.set('g', 'custom');
+      url.searchParams.set('start', `${s.y}-${pad2(s.mo)}-${pad2(s.d)}`);
+      url.searchParams.set('end', `${e.y}-${pad2(e.mo)}-${pad2(e.d)}`);
     } else {
       url.searchParams.set('g', granularity);
       url.searchParams.set('start', urlStartParam(win, granularity));
+      url.searchParams.delete('end');
     }
     history.replaceState(null, '', url.pathname + url.search);
   }
@@ -2396,6 +2532,15 @@
     const period = Object.keys(GRAN).find(k => GRAN[k] === g);
     if (!period) return null;
     let m;
+    if (g === 'custom') {
+      const end = qs.get('end');
+      const m1 = /^(\d{4})-(\d{2})-(\d{2})$/.exec(start);
+      const m2 = end && /^(\d{4})-(\d{2})-(\d{2})$/.exec(end);
+      if (!m1 || !m2) return null;
+      const startMs = dayStart(+m1[1], +m1[2], +m1[3]);
+      const endAnchor = addDays(+m2[1], +m2[2], +m2[3], 1);
+      return { period, customRange: { start: startMs, end: dayStart(endAnchor.y, endAnchor.mo, endAnchor.d) } };
+    }
     if (g === 'day' || g === 'week') {
       m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(start);
       if (!m) return null;
@@ -2422,7 +2567,13 @@
   async function load(period, animate = true) {
     currentPeriod = period;
     const granularity = GRAN[period];
-    const win = windowFor(currentAnchor, granularity);
+    let win;
+    if (granularity === 'custom') {
+      if (!customRange) customRange = defaultCustomRange();
+      win = customRange;
+    } else {
+      win = windowFor(currentAnchor, granularity);
+    }
     const isLiveDay = granularity === 'day' && isLiveWindow(win);
 
     currentWindow = win;
@@ -2448,6 +2599,16 @@
 
   function stepPeriod(dir) {
     const granularity = GRAN[currentPeriod];
+    if (granularity === 'custom') {
+      // Avance par la longueur de la plage choisie plutôt qu'une unité fixe.
+      const span = customRange.end - customRange.start;
+      const newStart = customRange.start + dir * span;
+      const newEnd = customRange.end + dir * span;
+      if (dir > 0 && newStart > Date.now()) return;
+      customRange = { start: newStart, end: newEnd };
+      load(currentPeriod);
+      return;
+    }
     const proposed = stepAnchor(currentAnchor, granularity, dir);
     if (dir > 0 && windowFor(proposed, granularity).start > Date.now()) return; // rien à afficher dans le futur
     currentAnchor = proposed;
@@ -2456,7 +2617,8 @@
   document.getElementById('step-prev').addEventListener('click', () => stepPeriod(-1));
   document.getElementById('step-next').addEventListener('click', () => stepPeriod(1));
   document.getElementById('today-btn').addEventListener('click', () => {
-    currentAnchor = todayAnchor();
+    if (GRAN[currentPeriod] === 'custom') customRange = defaultCustomRange();
+    else currentAnchor = todayAnchor();
     load(currentPeriod);
   });
 
@@ -2669,7 +2831,8 @@
   (function initTimeTravel() {
     const restored = parseUrlState();
     if (restored) {
-      currentAnchor = restored.anchor;
+      if (restored.anchor) currentAnchor = restored.anchor;
+      if (restored.customRange) customRange = restored.customRange;
       document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.period === restored.period));
       scrollActiveTabIntoView();
       load(restored.period);
@@ -2682,7 +2845,9 @@
   // une navigation vers le passé ne doit jamais être ramenée au présent
   // (section 7 du plan : "auto-refresh must respect time-travel").
   setInterval(() => {
-    if (isLiveWindow(windowFor(currentAnchor, GRAN[currentPeriod]))) load(currentPeriod, false);
+    const granularity = GRAN[currentPeriod];
+    const win = granularity === 'custom' ? customRange : windowFor(currentAnchor, granularity);
+    if (win && isLiveWindow(win)) load(currentPeriod, false);
   }, 5 * 60 * 1000);
   setInterval(updateMoon, 30 * 60 * 1000);
   setInterval(loadForecast, 60 * 60 * 1000);   // prévisions : rafraîchies chaque heure
