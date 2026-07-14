@@ -6,6 +6,7 @@
     "public": ".",
     "ignore": [
       "firebase.json",
+      "backups/**",
       "**/.*",
       "**/node_modules/**",
       "*.gs",
