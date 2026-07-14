@@ -20,11 +20,13 @@ jobs:
           curl -sf "https://lac-manitou-temperatures-d284a-default-rtdb.firebaseio.com/daily.json" \
             | jq -S . > backups/daily.json
 
-      - name: Fetch /readings (larger, weekly snapshot)
+      - name: Fetch /readings (larger, weekly snapshot, current UTC year only)
         run: |
           if [ "$(date -u +%u)" = "7" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            curl -sf "https://lac-manitou-temperatures-d284a-default-rtdb.firebaseio.com/readings.json" \
-              | jq -S . > backups/readings.json
+            YEAR="$(date -u +%Y)"
+            START_MS="$(date -u -d "${YEAR}-01-01T00:00:00Z" +%s000)"
+            curl -sf "https://lac-manitou-temperatures-d284a-default-rtdb.firebaseio.com/readings.json?orderBy=%22%24key%22&startAt=%22${START_MS}%22" \
+              | jq -S . > "backups/readings-${YEAR}.json"
           fi
 
       - name: Commit backup
