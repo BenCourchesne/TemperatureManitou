@@ -1,0 +1,40 @@
+name: Backup Firebase data
+
+on:
+  schedule:
+    - cron: '13 7 * * *'   # ~03:13 EDT / 02:13 EST daily
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch /daily (small, every run)
+        run: |
+          mkdir -p backups
+          curl -sf "https://lac-manitou-temperatures-d284a-default-rtdb.firebaseio.com/daily.json" \
+            | jq -S . > backups/daily.json
+
+      - name: Fetch /readings (larger, weekly snapshot)
+        run: |
+          if [ "$(date -u +%u)" = "7" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            curl -sf "https://lac-manitou-temperatures-d284a-default-rtdb.firebaseio.com/readings.json" \
+              | jq -S . > backups/readings.json
+          fi
+
+      - name: Commit backup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add backups/
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: automated backup $(date -u +%F)"
+            git push
+          fi
