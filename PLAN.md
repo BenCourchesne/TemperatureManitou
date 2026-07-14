@@ -341,8 +341,9 @@ prioriser avant de commencer.
   l'URL RTSP + l'ajouter à HA.
 - [x] **Navigation temporelle sur le graphique — étapes 1-3** : ✅ fait et
       déployé (2026-07-11, commit `88476bf`). Spec complète dans
-      `D:\Claude desktop\ESPHome\plan.md` (hors dépôt git pour l'instant — à
-      copier dans `manitou/` si on veut le versionner). Livré :
+      [`TIME_TRAVEL_SPEC.md`](TIME_TRAVEL_SPEC.md) (déplacée dans le dépôt le
+      2026-07-14 — l'ancienne copie hors-dépôt `D:\Claude desktop\ESPHome\plan.md`
+      est maintenant un simple pointeur vers ce fichier). Livré :
   - Fenêtres alignées sur le calendrier (jour/semaine/mois/saison/année,
     fuseau America/Toronto, DST-safe) remplaçant les fenêtres glissantes
     « derniers N ».
@@ -359,6 +360,11 @@ prioriser avant de commencer.
   - Auto-refresh 5 min ignore le fetch du graphique quand on visite une
     fenêtre passée (ne ramène jamais au présent).
 
+- [ ] **Navigation temporelle — polish : séries absentes d'une fenêtre passée**
+      — pas encore fait. Actuellement le bloc de stats est **omis entièrement**
+      quand une série n'a pas de données dans la fenêtre visitée, au lieu de
+      l'afficher grisée avec `—` (comportement voulu, critère d'acceptation non
+      coché dans [`TIME_TRAVEL_SPEC.md`](TIME_TRAVEL_SPEC.md) §10 / §8.5).
 - [ ] **Navigation temporelle — étape 4 : mode comparaison (année sur année)**
       — différé, pas commencé. Spec détaillée (à ne pas perdre) :
   - Un seul toggle **« Comparer »** superpose la **même fenêtre alignée de

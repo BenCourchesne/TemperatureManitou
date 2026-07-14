@@ -359,6 +359,7 @@ ESPHome/
    ├─ appsscript.json       GAS manifest
    ├─ ECOWITT_HANDOFF.md    Ecowitt/weather-station integration notes
    ├─ ARCHITECTURE.md       (this document)
-   ├─ PLAN.md               project planning notes
+   ├─ PLAN.md               project planning notes — source of truth for backlog/status
+   ├─ TIME_TRAVEL_SPEC.md   detailed spec for the chart's time-travel navigation feature
    └─ *.py                  backfill / correction maintenance scripts
 ```
