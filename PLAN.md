@@ -261,6 +261,44 @@ s'allument, et que graphique + `/daily` marchent pour chaque mesure.
 
 ## Bugs connus
 
+- [ ] **Sonde de vent non représentative du flux régional — à valider par
+      observation visuelle.** Constaté le 2026-07-22 : la sonde lit ~28 % de la
+      vitesse régionale et sa direction s'écarte de 34° à 119° selon le secteur
+      (tout le quadrant ouest est lu comme N/NNO). Diagnostic actuel : **effet
+      d'abri**, la sonde étant derrière l'île McCall, sous le vent d'une colline
+      de 50 m au sud-ouest. Mesures détaillées dans
+      [`SpecsCalendrierActivites.md`](SpecsCalendrierActivites.md) §18.5.
+      Confirmé par 5 sources indépendantes (comparaison sur 14 jours, modèle
+      d'élévation, géométrie du site, METAR de CYMX/CYUL/CYND, observation
+      directe du 2026-07-22 à 14 h).
+      **Doute subsistant : défaut de calibration ou d'installation ?** À trancher
+      par le protocole ci-dessous.
+
+  > **Protocole d'observation — le point décisif**
+  >
+  > Observer le vent **au pied du mât**, et non au large. C'est ce qui distingue
+  > les deux hypothèses :
+  > - le vent observé **au mât** diffère de ce qu'affiche la sonde → **défaut de
+  >   la sonde** (calibration, orientation, obstruction) ;
+  > - il **correspond** à la sonde alors que le large est différent → **effet
+  >   d'exposition**, la sonde est bonne.
+  >
+  > Noter à chaque fois : heure à la minute près, direction observée (ruban sur
+  > une canne, fumée, ou visage face au vent), force approximative, lieu exact
+  > de l'observation, et la valeur affichée par la sonde au même instant.
+  > Répéter sur plusieurs jours, en cherchant à couvrir aussi un vent venant du
+  > secteur dégagé (nord-est à est).
+  >
+  > La comparaison se fait ensuite contre le modèle GEM (Environnement Canada,
+  > `gem_seamless` via Open-Meteo) et les METAR de CYMX, CYUL et CYND, qui
+  > donnent des observations réelles indépendantes.
+
+  Relevés :
+
+  | Date | Heure | Lieu d'observation | Direction observée | Force observée | Sonde | Modèle | METAR |
+  |---|---|---|---|---|---|---|---|
+  | 2026-07-22 | 14 h 10 | depuis la fenêtre | 250° (confirmé de visu) | très léger sur place | 1,4 km/h · 277° | 17 km/h · 250° · raf. 44 | 20-33 km/h · 240-270° · raf. 41-46 |
+
 - [x] **Radar : le scroll de la souris déclenche le zoom de la carte au lieu du
       scroll de la page.** ✅ fait (fix rapide) — `panel.scrollIntoView(
       {behavior:'smooth', block:'center'})` appelé à l'ouverture des deux
