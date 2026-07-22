@@ -687,8 +687,7 @@ Cascade à priorité décroissante ; **la première règle vraie l'emporte**.
 | # | Régime | Condition | Score |
 |---|---|---|---|
 | 1 | **Passage du front** | `ΔD3 ≥ 60°` ET (`R3 > 0,5 mm` OU `G ≥ 25 km/h`) ET `dP3 > −0,5` ET `dP6 < −1` | `+2` |
-| 2 | **Postfrontal froid** | `dP3 ≥ +1,0` ET `dT6 ≤ −1,0` ET (`dN6 ≤ −20` OU `N < 40`) | `−25` |
-| 2b | *(variante sans nuages)* | `dP3 ≥ +1,5` ET `dP6 ≥ +2,5` ET `dT6 ≤ −0,5` | `−25` |
+| 2 | **Postfrontal froid** | `P − min(P sur les 18 h précédentes) ≥ 2,0` ET `dP3 ≥ +0,3` ET direction ∈ [292,5°, 67,5°] (NO/N/NE) | `−25` |
 | 3 | **Front en approche** | `dP3 ≤ −1,5` ET `dW6 > 0` ET (`N ≥ 70` OU `R3 > 0`) | `+25` |
 | 4 | **Préfrontal** | `−3,5 ≤ dP6 ≤ −0,8` ET `dN6 ≥ +10` | `+22` |
 | 5 | **Retour à la stabilité** | `|dP3| < 1` ET postfrontal dans les 12 h précédentes ET `dW6 < 0` | `+5` |
@@ -698,6 +697,39 @@ Cascade à priorité décroissante ; **la première règle vraie l'emporte**.
 Le PDF donne des scores identiques (+20 à +30) aux régimes 3 et 4 ; ils sont
 néanmoins distingués ici parce que la **règle anti-double-comptage** (§15.7) et
 l'affichage en dépendent.
+
+> ⚠️ **Ne pas utiliser la température pour détecter le postfrontal.** Première
+> version de la règle rejetée le 2026-07-22 après confrontation à la sortie du
+> 19 juillet (§17.5) : elle exigeait `dT6 ≤ −1,0`, or le **réchauffement diurne
+> masque le refroidissement postfrontal** — à 10 h ce jour-là, `dT6` valait
+> **+3,1 °C** alors que la masse d'air était nettement froide. Passer à `dT24`
+> ne règle rien : le 19 était dégagé et le 18 couvert, donc l'ensoleillement a
+> rendu l'après-midi plus chaud que la veille à la même heure.
+>
+> La règle retenue est **structurelle** : un régime postfrontal, c'est être sur
+> la **branche montante après un creux de pression**. Aucun thermomètre requis.
+> Résultat sur le 19 juillet à Devenyns : **16 h sur 17** correctement classées
+> contre 4 sur 19 avec l'ancienne règle, et **24 %** du temps seulement sur les
+> 14 jours de Manitou — pas de surdéclenchement.
+
+### 15.3b Persistance des régimes (hystérésis)
+
+Un régime météorologique est un **état physique persistant**, pas une étiquette
+recalculée indépendamment à chaque heure. Sans précaution, une valeur qui frôle
+un seuil fait clignoter la classification : le 19 juillet, l'heure de 13 h
+sortait du régime pour un `dP3` de **+0,2 au lieu de +0,3**, au milieu de dix-sept
+heures postfrontales ininterrompues.
+
+Deux garde-fous, à appliquer après la cascade :
+
+1. **Seuil de sortie plus exigeant que le seuil d'entrée** — une fois dans un
+   régime, y rester tant que les conditions ne s'en écartent pas d'une marge
+   franche (environ la moitié du seuil d'entrée).
+2. **Comblement des trous d'une heure** — si `t−1` et `t+1` portent le même
+   régime et que `t` en diffère, aligner `t` sur ses voisins.
+
+Durée minimale d'un régime : **3 heures**. En deçà, fusionner avec le voisin
+dominant.
 
 ### 15.4 Pression — 25 %
 
@@ -927,6 +959,39 @@ indice/succès, et le même découpage par régime — c'est lui qui tranchera l
 
 **Attente réaliste** : premières tendances vers 30-50 sorties, ajustement sérieux
 au-delà de 100.
+
+### 17.5 Sortie n° 1 — Lac Devenyns, dimanche 2026-07-19
+
+Première entrée du journal, saisie rétroactivement le 2026-07-22. Conditions
+horaires figées dans [`journal/2026-07-19-devenyns.json`](journal/2026-07-19-devenyns.json)
+avant expiration de la fenêtre de 92 jours d'Open-Meteo.
+
+**Résultat rapporté : pêche médiocre.**
+*(Heures de sortie, espèce ciblée, captures et secteur restent à compléter.)*
+
+Conditions (Open-Meteo `gem_seamless`, coordonnées de Devenyns) :
+
+| | |
+|---|---|
+| Pression | **hausse continue** 1003,6 → 1011,1 hPa (+7,5 sur la journée) |
+| Vent | **NO toute la journée**, 17-24 km/h, rafales **37 à 55** |
+| Température | 12,5 à 17,3 °C — air frais |
+| Ciel | 100 % couvert à l'aube, **0 % de 7 h à 12 h** — dégagement franc |
+| Pluie | négligeable |
+
+**Régime : postfrontal froid**, cas d'école. Hausse de pression, vent de
+nord-ouest, air frais, ciel qui se dégage, fortes rafales — les cinq
+caractéristiques du §1.5 du modèle de référence, qui le note **−20 à −30** et le
+donne « fortement associé à une diminution de la qualité de pêche ».
+
+**Le modèle prédit correctement ce résultat.** C'est sa première confrontation à
+une observation réelle, et elle est concluante.
+
+> ⚠️ **Ce que cette sortie ne démontre pas.** Un seul point ne valide pas un
+> modèle : il est cohérent avec lui, sans plus. Le régime postfrontal était ici
+> tellement marqué que presque n'importe quelle formulation l'aurait attrapé.
+> Sa vraie valeur a été de **révéler un défaut du classificateur** (voir §15.3),
+> pas de confirmer les pondérations.
 
 ---
 
