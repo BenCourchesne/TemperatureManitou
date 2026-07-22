@@ -1093,6 +1093,163 @@ document.addEventListener('keydown', e => {
 });
 
 /* ══════════════════════════════════════════════════════════════════════════
+   10b. MOTEUR v2 — fondation (spec §15 et §16)
+   ─────────────────────────────────────────────────────────────────────────
+   Ajout PUREMENT ADDITIF : rien de ce qui précède n'est modifié, la page se
+   comporte exactement comme avant. Ce bloc apporte le registre des lacs,
+   la config `MODEL`, la couche horaire Open-Meteo et le classificateur de
+   régime — tout ce sur quoi la Phase 1 doit être bâtie.
+
+   Testable en console sans interface :
+     await V2.load('manitou'); V2.strip('manitou', '2026-07-19')
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/** Registre des lacs (§16.1). `dir` = table de direction propre au lac (§16.4). */
+const LAKES = {
+  manitou:  { nom:'Lac Manitou',  lat:46.0471, lon:-74.3739, capteur:true,
+              dir:{ N:-15, NE:-10, E:0, SE:3, S:5, SO:10, O:5, NO:-10 } },
+  // Devenyns démarre neutre : la table de Manitou encode sa géométrie de rives,
+  // elle ne s'y transpose pas. Le journal la reconstruira (§16.4).
+  devenyns: { nom:'Lac Devenyns', lat:47.0496, lon:-73.8241, capteur:false,
+              dir:{ N:0, NE:0, E:0, SE:0, S:0, SO:0, O:0, NO:0 } }
+};
+
+/**
+ * Configuration v2 (§15.10). Destinée à remplacer `SCORING`, cohabite le temps
+ * de la transition. Hydratable depuis `localStorage` sous `lm_cp_model`.
+ * ⚠️ Valeurs de départ, PAS un étalonnage — voir §20.1, §20.2 et §20.3.
+ */
+const MODEL = {
+  base: 50,
+  horizonJours: 10,                       // horizon réel de gem_seamless (§16.2)
+  regimes: {                              // §15.3
+    X: { nom:'passage du front',   score:  2 },
+    F: { nom:'postfrontal froid',  score:-25 },
+    A: { nom:'front en approche',  score: 25 },
+    P: { nom:'préfrontal',         score: 22 },
+    R: { nom:'retour à la stabilité', score: 5 },
+    S: { nom:'stable',             score:  8 },
+    '?':{ nom:'indéterminé',       score:  0 }
+  },
+  press: {                                // §15.4
+    chuteRapide:15, baisseLente:20, stable:7, hausseLente:-3, hausseRapide:-15,
+    hautePression:-3, seuilHaute:1025
+  },
+  vent: [                                 // §15.5 — [max km/h, score]
+    [4,-3], [9,5], [18,13], [28,8], [39,0], [Infinity,-15]
+  ],
+  lune: { nouvelle:4, pleineNuit:4, pleineJour:0, quartier:1,
+          leverCoucher:4, transit:2, plafond:10 },       // §15.6
+  heure: { aube:9, matin:5, midi:-3, finJournee:6, crepuscule:9, nuit:0 },  // §15.7
+  correlation: { reduite:0.5, pleine:1.0 },              // §15.8
+  // §15.3 — seuils du classificateur postfrontal, validés le 2026-07-22
+  postfrontal: { fenetreCreux:18, hausseMin:2.0, d3Min:0.3 },
+  hysteresis:  { dureeMin:3 }                            // §15.3b
+};
+
+const SECTEURS = ['N','NE','E','SE','S','SO','O','NO'];
+const secteurDe = deg => SECTEURS[Math.round((((deg % 360) + 360) % 360) / 45) % 8];
+
+/* ── Couche horaire Open-Meteo, par lac (§15.2, §16.2) ── */
+const V2 = {
+  series: {},
+
+  /** Charge la série horaire brute d'un lac. Cache mémoire + localStorage 1 h. */
+  async load(lakeKey, passe = 14) {
+    const L = LAKES[lakeKey];
+    if (!L) throw new Error('lac inconnu : ' + lakeKey);
+    const ck = 'lm_cp_hourly_' + lakeKey;
+    const cache = LS.get(ck, null);
+    if (cache && Date.now() - cache.ts < 3600e3) { V2.series[lakeKey] = cache.h; return cache.h; }
+    const url = OPEN_METEO + '?latitude=' + L.lat + '&longitude=' + L.lon +
+      '&models=gem_seamless' +
+      '&hourly=pressure_msl,temperature_2m,wind_speed_10m,wind_gusts_10m,' +
+      'wind_direction_10m,cloud_cover,precipitation' +
+      '&timezone=' + encodeURIComponent(TZ) +
+      '&past_days=' + passe + '&forecast_days=' + (MODEL.horizonJours + 1);
+    const r = await fetch(url);
+    const j = await r.json();
+    if (!j || !j.hourly || !j.hourly.time) throw new Error('réponse Open-Meteo vide');
+    V2.series[lakeKey] = j.hourly;
+    LS.set(ck, { ts: Date.now(), h: j.hourly });
+    return j.hourly;
+  },
+
+  /**
+   * Régime brut à l'indice horaire `i` (§15.3). Cascade à priorité décroissante,
+   * la première règle vraie l'emporte.
+   *
+   * ⚠️ Le postfrontal ne s'appuie PAS sur la température : le réchauffement
+   * diurne masque le refroidissement postfrontal, et `dT24` ne règle rien non
+   * plus (l'ensoleillement change d'un jour à l'autre). La règle est
+   * structurelle — être sur la branche montante après un creux de pression.
+   * Validée le 2026-07-22 : 16 h sur 17 le 19 juillet, 24 % du temps sur 14 j.
+   */
+  regimeAt(h, i) {
+    const P = h.pressure_msl[i];
+    if (P == null || i < 24) return '?';
+    const d = n => P - h.pressure_msl[i - n];
+    const d3 = d(3), d6 = d(6), d12 = d(12);
+    const D = h.wind_direction_10m[i], D3 = h.wind_direction_10m[i - 3];
+    const virage = (D == null || D3 == null) ? null : Math.abs((D - D3 + 180) % 360 - 180);
+    const W = h.wind_speed_10m[i], W6 = h.wind_speed_10m[i - 6];
+    const N = h.cloud_cover[i], N6 = h.cloud_cover[i - 6];
+    const dN = (N == null || N6 == null) ? null : N - N6;
+    const G = h.wind_gusts_10m[i];
+    let R3 = 0; for (let k = Math.max(0, i - 2); k <= i; k++) R3 += h.precipitation[k] || 0;
+
+    const pf = MODEL.postfrontal;
+    const creux = Math.min.apply(null, h.pressure_msl.slice(i - pf.fenetreCreux, i + 1));
+    const nordique = D != null && (D >= 292.5 || D <= 67.5);
+
+    if (virage != null && virage >= 60 && (R3 > 0.5 || (G || 0) >= 25) && d3 > -0.5 && d6 < -1) return 'X';
+    if (P - creux >= pf.hausseMin && d3 >= pf.d3Min && nordique) return 'F';
+    if (d3 <= -1.5 && W6 != null && W > W6 && (N >= 70 || R3 > 0)) return 'A';
+    if (d6 >= -3.5 && d6 <= -0.8 && dN != null && dN >= 10) return 'P';
+    if (Math.abs(d3) < 1 && Math.abs(d12) < 2) return 'S';
+    return 'R';
+  },
+
+  /**
+   * Régimes de toute la série, avec persistance (§15.3b). Un régime est un état
+   * physique : il ne doit pas clignoter parce qu'une valeur frôle un seuil.
+   * Comble les trous d'une heure, puis absorbe les segments trop courts.
+   */
+  classify(lakeKey) {
+    const h = V2.series[lakeKey];
+    if (!h) throw new Error('série non chargée — appeler V2.load() d\'abord');
+    const brut = h.time.map((_, i) => V2.regimeAt(h, i));
+    for (let i = 1; i < brut.length - 1; i++)            // trous d'une heure
+      if (brut[i - 1] === brut[i + 1] && brut[i] !== brut[i - 1]) brut[i] = brut[i - 1];
+    let s = 0;                                           // segments trop courts
+    for (let i = 1; i <= brut.length; i++) {
+      if (i === brut.length || brut[i] !== brut[s]) {
+        if (i - s < MODEL.hysteresis.dureeMin && s > 0)
+          for (let k = s; k < i; k++) brut[k] = brut[s - 1];
+        s = i;
+      }
+    }
+    return brut;
+  },
+
+  /** Bande de 24 caractères pour une date — outil de relecture humaine (Phase 0). */
+  strip(lakeKey, dateISO) {
+    const h = V2.series[lakeKey], reg = V2.classify(lakeKey);
+    let out = '', ctx = [];
+    for (let i = 0; i < h.time.length; i++) {
+      if (!h.time[i].startsWith(dateISO)) continue;
+      out += reg[i];
+      ctx.push(h.time[i].slice(11, 16) + ' ' + reg[i] + ' ' +
+               Math.round(h.pressure_msl[i]) + 'hPa ' +
+               Math.round(h.wind_speed_10m[i]) + 'km/h ' + secteurDe(h.wind_direction_10m[i]));
+    }
+    return { date: dateISO, bande: out, detail: ctx };
+  }
+};
+
+window.LAKES = LAKES; window.MODEL = MODEL; window.V2 = V2;
+
+/* ══════════════════════════════════════════════════════════════════════════
    11. Démarrage + auto-refresh (n'affecte qu'aujourd'hui, ne re-ancre jamais)
    ══════════════════════════════════════════════════════════════════════════ */
 render();
