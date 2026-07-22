@@ -8,6 +8,7 @@
       "firebase.json",
       "backups/**",
       "mockups/**",
+      "journal/**",
       "**/.*",
       "**/.*/**",
       ".git/**",
