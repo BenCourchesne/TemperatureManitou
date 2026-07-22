@@ -1135,7 +1135,6 @@
       lastUpdate:    'Dernière mise à jour : ',
       loading:       'Chargement…',
       stable:        '→ stable',
-      vsHour:        'vs 1h',
       rainDry:       'sec',
       rainToday:     "aujourd'hui",
       compass:       ['N','NE','E','SE','S','SO','O','NO'],
@@ -1207,7 +1206,6 @@
       lastUpdate:    'Last update: ',
       loading:       'Loading…',
       stable:        '→ stable',
-      vsHour:        'vs 1h',
       rainDry:       'dry',
       rainToday:     'today',
       compass:       ['N','NE','E','SE','S','SW','W','NW'],
@@ -1735,6 +1733,41 @@
   }
 
   // ── Trend helper ─────────────────────────────────────────────────────────────
+  // Paramètres par mesure (défauts : 1h, seuil 0.1, décimales de METRIC_DEC).
+  // La pression suit la convention barométrique : variation sur 3h, seuil
+  // 0.5 hPa. Sur 1h à 0.3 hPa la seule marée atmosphérique semi-diurne
+  // (±1–1.5 hPa deux fois par jour) suffit à faire basculer l'indicateur par
+  // temps parfaitement stable. Elle s'affiche à 1 décimale alors que la grosse
+  // valeur de la tuile reste à l'entier (METRIC_DEC.pressure = 0).
+  const TREND_LOOKBACK = { pressure: 3 * 36e5 };
+  const TREND_THR      = { humidity: 1, pressure: 0.5 };
+  const TREND_DEC      = { pressure: 1 };
+
+  // Pas médian de la série — brut (~5 min), horaire ou journalier selon la vue.
+  function medianStep(data) {
+    const gaps = [];
+    for (let i = 1; i < data.length; i++)
+      gaps.push(new Date(data[i].t).getTime() - new Date(data[i - 1].t).getTime());
+    if (!gaps.length) return 0;
+    gaps.sort((a, b) => a - b);
+    return gaps[Math.floor(gaps.length / 2)];
+  }
+
+  // Point le plus proche de `now - span`, ou null si le meilleur candidat est à
+  // plus d'une demi-fenêtre de la cible (trou de données) : mieux vaut ne rien
+  // afficher que de comparer au premier point de la fenêtre — parfois vieux de
+  // plusieurs semaines — en étiquetant le résultat « vs 1h ».
+  function refPoint(data, key, now, span) {
+    const target = now - span;
+    let best = null, bestGap = Infinity;
+    for (const d of data) {
+      if (val(d, key) == null) continue;
+      const gap = Math.abs(new Date(d.t).getTime() - target);
+      if (gap < bestGap) { bestGap = gap; best = d; }
+    }
+    return bestGap <= span / 2 ? best : null;
+  }
+
   function trendLabel(data, key) {
     if (data.length < 2) return '';
     // Pluie : rday est un cumul quotidien croissant (reset à minuit) → une
@@ -1754,26 +1787,33 @@
     }
     const isTemp = (key === 'air' || key === 'surface' || key === 'depth');
     const unit = isTemp ? '°C' : (METRIC_UNIT[key] || '').trim();
-    const dec  = isTemp ? 1 : (METRIC_DEC[key] != null ? METRIC_DEC[key] : 0);
-    const last = val(data[data.length - 1], key);
-    // point ~1h avant
-    const now = new Date(data[data.length - 1].t).getTime();
-    let ref = val(data[0], key);
-    for (const d of data) {
-      if (now - new Date(d.t).getTime() <= 60 * 60 * 1000) { ref = val(d, key); break; }
-    }
-    if (last == null || ref == null) return '';
-    const diff = last - ref;
+    const dec  = isTemp ? 1 : (TREND_DEC[key] != null ? TREND_DEC[key]
+                            : (METRIC_DEC[key] != null ? METRIC_DEC[key] : 0));
+    const lastD = data[data.length - 1];
+    const last  = val(lastD, key);
+    const now   = new Date(lastD.t).getTime();
+    // Fenêtre de comparaison : jamais plus courte que le pas de la série, sinon
+    // les vues agrégées (mois/saison = 1 point/jour) n'ont aucun point à 1h ou
+    // 3h en arrière et retombaient systématiquement sur « stable ».
+    const span = Math.max(TREND_LOOKBACK[key] || 36e5, medianStep(data));
+    const refD = refPoint(data, key, now, span);
+    if (last == null || refD == null) return '';
+    const diff = last - val(refD, key);
     const t = i18n[currentLang];
-    const thr = key === 'humidity' ? 1 : (key === 'pressure' ? 0.3 : 0.1);
+    const thr = TREND_THR[key] != null ? TREND_THR[key] : 0.1;
     if (Math.abs(diff) < thr) return `<span class="trend-flat">${t.stable}</span>`;
     const up = diff > 0;
     const arr = up ? '↑' : '↓';
-    const txt = `${arr} ${Math.abs(diff).toFixed(dec)}${unit ? ' ' + unit : ''} ${t.vsHour}`;
+    // Le seuil peut être plus fin que la précision d'affichage de la tuile
+    // (vent : seuil 0.1, METRIC_DEC 0) → une variation retenue s'affichait
+    // « ↑ 0 km/h ». On ajoute des décimales tant que le nombre s'arrondit à 0.
+    let d2 = dec;
+    while (Number(Math.abs(diff).toFixed(d2)) === 0 && d2 < 2) d2++;
+    const txt = `${arr} ${Math.abs(diff).toFixed(d2)}${unit ? ' ' + unit : ''} vs ${Math.round(span / 36e5)}h`;
     // Températures : rouge (↑) / vert (↓). Pression en baisse : orange (prédictif).
     // Autres mesures météo : neutre gris.
     if (isTemp) return `<span class="${up ? 'trend-up' : 'trend-down'}">${txt}</span>`;
-    if (key === 'pressure' && !up) return `<span class="trend-flat" style="color:#fb923c">${arr} ${Math.abs(diff).toFixed(0)} hPa</span>`;
+    if (key === 'pressure' && !up) return `<span class="trend-flat" style="color:#fb923c">${txt}</span>`;
     return `<span class="trend-flat">${txt}</span>`;
   }
 
