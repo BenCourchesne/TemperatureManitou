@@ -18,6 +18,9 @@
       "*.md",
       "appsscript.json",
       "wireframes.html"
+    ],
+    "rewrites": [
+      { "source": "/cp", "destination": "/cp.html" }
     ]
   }
 }

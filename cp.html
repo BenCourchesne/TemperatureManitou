@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Activité solunaire — Lac Manitou</title>
+<link rel="icon" href="favico.png">
+<script src="https://cdn.jsdelivr.net/npm/suncalc@1.9.0/suncalc.js"></script>
+<style>
+  :root{
+    --bg:#07111e; --bg2:#0c1a2e; --panel:rgba(255,255,255,.045);
+    --panel2:rgba(255,255,255,.025); --hover:rgba(255,255,255,.08);
+    --border:rgba(255,255,255,.09); --border2:rgba(255,255,255,.14);
+    --text:#e2eaf4; --muted:#6b82a0; --dim:#3a4a5f;
+    --fish:#2dd4bf; --deer:#e0913f; --moon:#cbd5e1;
+    --live:#34d399; --warn:#fbbf24; --radius:16px;
+    --accent:var(--fish);
+    font-synthesis:none;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--text); line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  body::before{
+    content:''; position:fixed; inset:0; z-index:0; pointer-events:none;
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 8%, rgba(14,80,130,.28) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 85% 85%, rgba(56,189,248,.10) 0%, transparent 55%);
+  }
+  .wrap{position:relative; z-index:1; max-width:940px; margin:0 auto; padding:1.4rem 1.15rem 3rem}
+
+  .app{
+    background:linear-gradient(180deg, rgba(12,26,46,.6), rgba(7,17,30,.4));
+    border:1px solid var(--border); border-radius:22px; padding:1.2rem;
+    box-shadow:0 24px 60px rgba(0,0,0,.4);
+  }
+  .app-head{display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:1rem}
+  .app-title{display:flex; align-items:center; gap:.55rem; font-weight:650}
+  .app-title .ic{width:26px; height:26px; color:var(--accent); transition:color .3s; flex-shrink:0}
+  .app-title small{display:block; font-size:.66rem; letter-spacing:.13em; text-transform:uppercase; color:var(--muted); font-weight:600}
+  .back-lmt{display:inline-flex; align-items:center; gap:.1rem; color:var(--muted); text-decoration:none; font-size:.8rem; font-weight:600;
+    padding:.35rem .55rem .35rem .35rem; border-radius:8px; border:1px solid var(--border); margin-right:.2rem; transition:.15s; min-height:36px}
+  .back-lmt:hover{color:var(--text); background:var(--hover); border-color:var(--border2)}
+  .back-lmt svg{width:16px; height:16px}
+
+  .head-tools{display:flex; align-items:center; gap:.5rem; flex-wrap:wrap}
+  .mode-toggle{display:inline-flex; background:var(--bg2); border:1px solid var(--border); border-radius:999px; padding:.22rem}
+  .mode-toggle button{
+    display:flex; align-items:center; gap:.4rem; cursor:pointer; font-family:inherit;
+    border:0; background:transparent; color:var(--muted); font-weight:600; font-size:.82rem;
+    padding:.45rem .8rem; border-radius:999px; transition:.18s; min-height:38px;
+  }
+  .mode-toggle button svg{width:17px; height:17px}
+  .mode-toggle button.on{color:#07131f}
+  .mode-toggle button[data-m=fish].on{background:var(--fish)}
+  .mode-toggle button[data-m=deer].on{background:var(--deer); color:#1c1206}
+  .icon-btn{width:38px; height:38px; border-radius:10px; border:1px solid var(--border); background:var(--bg2); color:var(--muted);
+    cursor:pointer; display:inline-flex; align-items:center; justify-content:center; transition:.15s; font-family:inherit; font-size:.78rem; font-weight:700}
+  .icon-btn:hover{color:var(--text); background:var(--hover); border-color:var(--border2)}
+  .icon-btn.on{color:var(--accent); border-color:var(--accent)}
+  .icon-btn svg{width:18px; height:18px}
+
+  .seg{display:inline-flex; background:var(--bg2); border:1px solid var(--border); border-radius:10px; overflow:hidden}
+  .seg button{
+    cursor:pointer; font-family:inherit; border:0; background:transparent; color:var(--muted);
+    font-weight:600; font-size:.8rem; padding:.5rem .95rem; transition:.15s; min-height:40px;
+  }
+  .seg button.on{background:var(--accent); color:#07131f}
+  body[data-mode=deer] .seg button.on{color:#1c1206}
+
+  .rating{display:inline-flex; gap:3px; align-items:center}
+  .rating svg{width:var(--rs,17px); height:var(--rs,17px); color:var(--accent); transition:color .3s}
+  .rating svg.off{color:var(--dim)}
+  .rating.lg{--rs:26px}
+  .rating.sm{--rs:13px; gap:2px}
+
+  /* ── Réglages (poids) ── */
+  .settings{border:1px solid var(--border); border-radius:12px; background:var(--panel); padding:.85rem 1rem; margin-bottom:1rem}
+  .settings[hidden]{display:none}
+  .settings h2{font-size:.66rem; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); font-weight:700; margin-bottom:.6rem}
+  .wrow{display:grid; grid-template-columns:88px 1fr 46px; align-items:center; gap:.7rem; padding:.22rem 0; font-size:.82rem}
+  .wrow input[type=range]{width:100%; accent-color:var(--accent); height:24px}
+  .wrow output{font-size:.75rem; color:var(--dim); font-weight:600; font-variant-numeric:tabular-nums; text-align:right}
+  .settings-foot{display:flex; justify-content:space-between; align-items:center; gap:.6rem; margin-top:.6rem; font-size:.72rem; color:var(--dim)}
+  .settings-foot button{cursor:pointer; font-family:inherit; font-size:.75rem; font-weight:600; color:var(--muted);
+    background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:.4rem .7rem; min-height:36px}
+  .settings-foot button:hover{color:var(--text); border-color:var(--border2)}
+
+  /* ── Facteurs ── */
+  .factors{margin-top:.9rem; border:1px solid var(--border); border-radius:12px; background:var(--panel); padding:.75rem .85rem}
+  .fx-head{display:flex; justify-content:space-between; align-items:center; gap:.5rem; font-size:.6rem; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); font-weight:700; margin-bottom:.5rem}
+  .fx-src{color:var(--accent); letter-spacing:.03em; transition:color .3s; text-align:right}
+  .fx-row{display:flex; align-items:center; gap:.6rem; padding:.32rem 0}
+  .fx-row.muted{opacity:.5}
+  .fx-lead{display:flex; align-items:center; gap:.42rem; min-width:96px; font-size:.82rem}
+  .fx-lead b{font-weight:600}
+  .fx-lead svg{width:14px; height:14px; color:var(--muted); flex-shrink:0}
+  .dots{display:inline-flex; gap:3px; flex-shrink:0; min-width:40px}
+  .dots i{width:7px; height:7px; border-radius:50%; background:var(--dim)}
+  .dots i.on{background:var(--accent); box-shadow:0 0 5px color-mix(in srgb,var(--accent) 55%,transparent)}
+  .dots.na{color:var(--dim); font-weight:700; letter-spacing:3px; font-size:.8rem}
+  .fx-read{flex:1; font-size:.78rem; color:var(--muted); min-width:0}
+  .fx-wt{font-size:.72rem; color:var(--dim); font-weight:600; font-variant-numeric:tabular-nums; min-width:34px; text-align:right}
+  .fx-note{font-size:.72rem; color:var(--dim); margin:.35rem 0 .1rem; font-style:italic}
+  .fx-total{display:flex; align-items:center; gap:.7rem; margin-top:.55rem; padding-top:.6rem; border-top:1px solid var(--border)}
+  .ft-lab{font-size:.66rem; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); font-weight:700}
+  .fx-verdict{font-size:.85rem; font-weight:650; color:var(--accent); margin-left:auto; text-align:right}
+
+  /* ── Grille mois ── */
+  .cal-legend{display:flex; gap:1rem; flex-wrap:wrap; font-size:.72rem; color:var(--muted); margin-bottom:.7rem; align-items:center}
+  .cal-legend b{color:var(--text); font-weight:600}
+  .dow{display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-bottom:6px}
+  .dow span{text-align:center; font-size:.62rem; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); font-weight:600}
+  .cal{display:grid; grid-template-columns:repeat(7,1fr); gap:6px}
+  .cell{
+    position:relative; aspect-ratio:1/1.08; border:1px solid var(--border); border-radius:11px;
+    background:var(--panel2); cursor:pointer; padding:.4rem .35rem; display:flex; flex-direction:column;
+    align-items:center; justify-content:space-between; transition:.15s; overflow:hidden; font:inherit; color:inherit;
+  }
+  .cell:hover{border-color:var(--border2); background:var(--hover); transform:translateY(-1px)}
+  .cell.blank{opacity:.2; cursor:default; background:transparent; border-color:transparent}
+  .cell.today{border-color:var(--accent)}
+  .cell.sel{border-color:var(--accent); background:rgba(45,212,191,.10)}
+  body[data-mode=deer] .cell.sel{background:rgba(224,145,63,.10)}
+  .cell.nohorizon::after{content:''; position:absolute; bottom:4px; right:5px; width:4px; height:4px; border-radius:50%; background:var(--dim)}
+  .cell .dnum{font-size:.82rem; font-weight:650; align-self:flex-start; font-variant-numeric:tabular-nums}
+  .cell .glow{position:absolute; inset:0; opacity:calc(var(--sc,0)/4*.22); background:radial-gradient(circle at 50% 120%, var(--accent), transparent 70%); pointer-events:none}
+  .cell .mn{position:absolute; top:.34rem; right:.34rem; width:12px; height:12px; color:var(--moon); opacity:.65}
+  .cell .rating{margin-bottom:.05rem; flex-wrap:wrap; justify-content:center; max-width:100%}
+  .cell-sc{display:none; font-variant-numeric:tabular-nums}
+
+  /* ── Vue semaine ── */
+  .wk{display:flex; flex-direction:column; gap:8px}
+  .wk-row{display:grid; grid-template-columns:auto auto 1fr; gap:.8rem; align-items:center; text-align:left; font:inherit; color:inherit;
+    border:1px solid var(--border); border-radius:12px; background:var(--panel2); padding:.6rem .8rem; cursor:pointer; transition:.15s; width:100%}
+  .wk-row:hover{border-color:var(--border2); background:var(--hover)}
+  .wk-row.sel{border-color:var(--accent)}
+  .wk-day{min-width:74px}
+  .wk-day b{display:block; font-size:.9rem; font-weight:650; text-transform:capitalize}
+  .wk-day span{font-size:.7rem; color:var(--muted)}
+
+  /* ── Barre 24 h ── */
+  .tl{display:block; position:relative; height:38px; border-radius:9px; background:linear-gradient(90deg,#0a1524,#0d1c30); border:1px solid var(--border); overflow:hidden}
+  .tl.slim{height:26px}
+  .tl .night{position:absolute; top:0; bottom:0; background:rgba(0,0,0,.28)}
+  .tl .band{position:absolute; top:0; bottom:0; border-radius:3px}
+  .tl .maj{background:color-mix(in srgb, var(--accent) 78%, transparent); box-shadow:0 0 12px color-mix(in srgb,var(--accent) 60%, transparent)}
+  .tl .min{background:color-mix(in srgb, var(--accent) 32%, transparent)}
+  .tl .now{position:absolute; top:-2px; bottom:-2px; width:2px; background:var(--live); box-shadow:0 0 8px var(--live)}
+  .tl .now::after{content:''; position:absolute; top:-3px; left:-3px; width:8px; height:8px; border-radius:50%; background:var(--live)}
+  .tl-scale{display:flex; justify-content:space-between; font-size:.6rem; color:var(--dim); margin-top:3px; font-variant-numeric:tabular-nums}
+
+  /* ── Détail ── */
+  .detail{margin-top:1rem; border:1px solid var(--border); border-radius:var(--radius); background:var(--panel2); padding:1rem 1.1rem}
+  .detail-head{display:flex; align-items:center; justify-content:space-between; gap:.8rem; flex-wrap:wrap; margin-bottom:.8rem}
+  /* pas de `capitalize` : en français seule la 1re lettre se majuscule (« 22 juillet »),
+     la capitale est posée en JS via capFirst() */
+  .detail-head .dh-date{font-size:1.05rem; font-weight:650}
+  .detail-head .dh-phase{font-size:.76rem; color:var(--muted); display:flex; align-items:center; gap:.4rem; margin-top:.1rem}
+  .detail-head .dh-phase svg{width:14px; height:14px; color:var(--moon)}
+  .day-step{display:flex; align-items:center; gap:.4rem}
+  .day-step button{width:44px; height:44px; border-radius:10px; border:1px solid var(--border); background:var(--bg2); color:var(--muted);
+    cursor:pointer; display:flex; align-items:center; justify-content:center; transition:.15s; font-family:inherit; padding:0}
+  .day-step button:hover{color:var(--text); background:var(--hover); border-color:var(--border2)}
+  .day-step button svg{width:18px; height:18px}
+  .day-step .today-reset{width:auto; gap:.35rem; padding:0 .75rem; font-size:.76rem; font-weight:600}
+  .day-step .today-reset svg{width:15px; height:15px}
+  .win-grid{display:grid; grid-template-columns:1fr 1fr; gap:.6rem; margin:.9rem 0 .2rem}
+  .win{border:1px solid var(--border); border-radius:11px; padding:.55rem .75rem; background:var(--panel)}
+  .win .wl{font-size:.6rem; letter-spacing:.1em; text-transform:uppercase; font-weight:700; display:flex; align-items:center; gap:.35rem}
+  .win.major .wl{color:var(--accent)}
+  .win.minor .wl{color:color-mix(in srgb,var(--accent) 65%, var(--muted))}
+  .win .wt{font-size:.92rem; font-weight:600; margin-top:.25rem; font-variant-numeric:tabular-nums}
+  .astro{display:flex; gap:1.2rem; flex-wrap:wrap; font-size:.78rem; color:var(--muted); margin-top:.7rem}
+  .astro span{display:flex; align-items:center; gap:.35rem}
+  .astro svg{width:14px; height:14px}
+  .tip{margin-top:.9rem; border-left:2px solid var(--accent); background:rgba(45,212,191,.05); padding:.6rem .8rem; border-radius:0 8px 8px 0; font-size:.82rem}
+  body[data-mode=deer] .tip{background:rgba(224,145,63,.06)}
+  .tip b{color:var(--text)}
+
+  .foot{font-size:.7rem; color:var(--dim); text-align:center; margin-top:1.4rem; line-height:1.6}
+
+  @media (max-width:560px){
+    .wrap{padding:1rem .7rem 2.5rem}
+    .app{padding:.9rem}
+    .win-grid{grid-template-columns:1fr}
+    /* Cases calendrier trop petites à 7 colonnes pour 4 icônes → score numérique (§6) */
+    .cell{aspect-ratio:1/1.15; padding:.3rem .3rem}
+    .cell .rating{display:none}
+    .cell .dnum{font-size:.72rem}
+    .cell-sc{display:block; font-size:.9rem; font-weight:700; color:var(--accent); line-height:1}
+    .fx-lead{min-width:82px}
+    /* la lecture contextuelle passe sous les points/poids — sans flex-wrap sur la
+       rangée, flex-basis:100% se ferait juste écraser en colonne étroite */
+    .fx-row{flex-wrap:wrap}
+    .fx-read{flex-basis:100%; order:5; padding-left:.3rem}
+    /* §6 : cibles tactiles ≥ 44 px. Seules les cases du calendrier y échappent —
+       7 colonnes à 360 px imposent ~39 px, d'où le score numérique (voir plus haut). */
+    .mode-toggle{flex:1}
+    .mode-toggle button{flex:1; justify-content:center; min-height:44px}
+    .seg button{min-height:44px}
+    .icon-btn{width:44px; height:44px}
+    .back-lmt{min-height:44px}
+    .head-tools{width:100%}
+    .seg-scroll{overflow-x:auto; -webkit-overflow-scrolling:touch}
+    .wrow{grid-template-columns:70px 1fr 42px; gap:.5rem}
+    /* Semaine : jour + cote sur une ligne, barre 24 h en dessous — à 320 px la
+       3e colonne ne laissait que ~60 px à la barre. */
+    .wk-row{grid-template-columns:auto 1fr; gap:.45rem .6rem}
+    .wk-row .wkt{grid-column:1 / -1}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
+</style>
+</head>
+<body data-mode="fish">
+<div class="wrap">
+  <div class="app" id="app"></div>
+  <p class="foot" id="foot"></p>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+/* ══════════════════════════════════════════════════════════════════════════
+   0. Constantes partagées avec index.html
+   ══════════════════════════════════════════════════════════════════════════ */
+const TZ   = 'America/Toronto';
+const LAKE = { lat: 46.0471, lon: -74.3739 };
+const RTDB = 'https://lac-manitou-temperatures-d284a-default-rtdb.firebaseio.com';
+const OPEN_METEO = 'https://api.open-meteo.com/v1/forecast';
+const DAY_MS = 864e5;
+
+// JSON pour les objets propres à cette page. ⚠ `lm_lang` et les autres
+// préférences partagées avec index.html sont stockées en CHAÎNE BRUTE là-bas
+// (LS.get/set y font un simple getItem/setItem) — les écrire en JSON y
+// injecterait des guillemets et casserait la bascule de langue. D'où rawGet/rawSet.
+const LS = {
+  get(k, d){ try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch(e){ return d; } },
+  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} },
+  del(k){ try { localStorage.removeItem(k); } catch(e){} },
+  rawGet(k, d){ try { return localStorage.getItem(k) || d; } catch(e){ return d; } },
+  rawSet(k, v){ try { localStorage.setItem(k, v); } catch(e){} }
+};
+
+/* ══════════════════════════════════════════════════════════════════════════
+   1. Config de scoring — seuils ET poids centralisés (spec §2.5)
+      Hydratée depuis localStorage au chargement.
+   ══════════════════════════════════════════════════════════════════════════ */
+const WEIGHTS_KEY = 'lm_activity_weights';   // poids bruts (0-100), normalisés à la lecture
+const THRESH_KEY  = 'lm_cp_thresholds';      // surcharges de seuils (édition avancée)
+
+const SCORING = {
+  // Poids par défaut — partagés aux deux modes (§2.5)
+  weights: { moon: .35, press: .35, wind: .10, dir: .20 },
+
+  // Lune : bornes de distance à la syzygie (pêche) / à la nouvelle lune (chasse)
+  moon: { fish: [.035, .10, .17], deer: [.06, .16, .32] },
+
+  // Pression : delta hPa / 24 h. `todayTrendHours` = fenêtre du calcul « aujourd'hui ».
+  // ⚠ Les seuils sont calibrés sur 24 h mais la spec §3 demande une tendance 6 h
+  //   pour le jour courant — à valider avec Ben, ajustable ici.
+  press: { d4: -3, d3: -1, d2: 2, todayTrendHours: 6 },
+
+  // Vent : [minIdéal, maxIdéal, minBon, maxBon, maxPassable] en km/h
+  wind: { fish: [8, 15, 5, 20, 28], deer: [8, 18, 5, 24, 30] },
+
+  // Direction : 8 secteurs (clés internes en français : O = ouest)
+  dir: {
+    fish: { O:4, SO:4, S:3, SE:3, N:2, NO:2, E:1, NE:1 },
+    deer: { N:4, NO:4, O:3, NE:3, E:2, SO:2, S:1, SE:1 }
+  },
+
+  // Horizon de prévision météo (jours) — au-delà : lune seule
+  horizonDays: 15
+};
+
+function loadScoring(){
+  const raw = LS.get(WEIGHTS_KEY, null);
+  if (raw && typeof raw === 'object') {
+    const sum = ['moon','press','wind','dir'].reduce((s,k)=> s + (Number(raw[k]) || 0), 0);
+    if (sum > 0) {
+      for (const k of ['moon','press','wind','dir']) SCORING.weights[k] = (Number(raw[k]) || 0) / sum;
+    }
+  }
+  const th = LS.get(THRESH_KEY, null);
+  if (th && typeof th === 'object') {
+    for (const k of ['moon','press','wind','dir']) if (th[k]) Object.assign(SCORING[k], th[k]);
+  }
+}
+function saveWeights(){ LS.set(WEIGHTS_KEY, SCORING.weights); }
+loadScoring();
+
+/* ══════════════════════════════════════════════════════════════════════════
+   2. Dates civiles en America/Toronto (spec §9)
+      Un « jour » = {y, m, d} (m 1-12). L'arithmétique se fait en UTC sur
+      l'étiquette civile → insensible au DST ; les bornes réelles passent par
+      zonedMidnight(), qui interroge Intl et gère les jours de 23 h / 25 h.
+   ══════════════════════════════════════════════════════════════════════════ */
+const _dtfParts = new Intl.DateTimeFormat('en-US', {
+  timeZone: TZ, hour12: false, year:'numeric', month:'2-digit', day:'2-digit',
+  hour:'2-digit', minute:'2-digit', second:'2-digit'
+});
+function tzOffsetMs(utcMs){
+  const p = {};
+  for (const x of _dtfParts.formatToParts(new Date(utcMs))) p[x.type] = x.value;
+  const asUTC = Date.UTC(+p.year, +p.month - 1, +p.day, (+p.hour) % 24, +p.minute, +p.second);
+  return asUTC - utcMs;
+}
+function civOf(utcMs){
+  const p = {};
+  for (const x of _dtfParts.formatToParts(new Date(utcMs))) p[x.type] = x.value;
+  return { y:+p.year, m:+p.month, d:+p.day };
+}
+/** Instant UTC de minuit local (Toronto) pour un jour civil. Double passe = DST-safe. */
+function zonedMidnight(c){
+  const naive = Date.UTC(c.y, c.m - 1, c.d);
+  let ts = naive - tzOffsetMs(naive);
+  ts = naive - tzOffsetMs(ts);
+  return ts;
+}
+const civKey  = c => c.y + '-' + String(c.m).padStart(2,'0') + '-' + String(c.d).padStart(2,'0');
+const civFromKey = k => { const a = k.split('-').map(Number); return { y:a[0], m:a[1], d:a[2] }; };
+function civAdd(c, n){ const d = new Date(Date.UTC(c.y, c.m - 1, c.d) + n * DAY_MS);
+  return { y:d.getUTCFullYear(), m:d.getUTCMonth() + 1, d:d.getUTCDate() }; }
+const civDow  = c => new Date(Date.UTC(c.y, c.m - 1, c.d)).getUTCDay();
+const civEq   = (a,b) => a.y === b.y && a.m === b.m && a.d === b.d;
+const civDiff = (a,b) => Math.round((Date.UTC(a.y,a.m-1,a.d) - Date.UTC(b.y,b.m-1,b.d)) / DAY_MS);
+const civToday = () => civOf(Date.now());
+/** Bornes réelles du jour civil : [début, fin[ en ms UTC. Longueur ≠ 24 h les jours de DST. */
+function civSpan(c){ const s = zonedMidnight(c); return { start: s, end: zonedMidnight(civAdd(c, 1)) }; }
+/** Clé du bucket /daily (jour UTC de même étiquette) — décalage assumé, spec §9. */
+const dailyKeyOf = c => Date.UTC(c.y, c.m - 1, c.d);
+
+/* ══════════════════════════════════════════════════════════════════════════
+   3. i18n (spec §8) — la langue est partagée avec index.html (`lm_lang`)
+   ══════════════════════════════════════════════════════════════════════════ */
+let lang = LS.rawGet('lm_lang', 'fr');
+if (lang !== 'fr' && lang !== 'en') lang = 'fr';
+
+const I18N = {
+  fr: {
+    title:'Activité solunaire', modeFish:'Pêcheur', modeDeer:'Chasseur',
+    subFish:'Mode pêche', subDeer:'Mode chasse', back:'lmt', backTitle:'Retour au tableau de bord',
+    day:'Jour', week:'Semaine', month:'Mois',
+    factors:'Facteurs de la cote', ofFish:'pêche', ofDeer:'chasse',
+    moon:'Lune', press:'Pression', wind:'Vent', dir:'Direction', total:'Total',
+    verdicts:{ fish:['Journée creuse','Activité modérée','Bonne journée','Journée exceptionnelle'],
+               deer:['Peu favorable','Passable','Favorable','Très favorable'] },
+    pressRead:{ 4:['▼','chute · front qui arrive'], 3:['▼','en baisse'], 2:['→','stable'], 1:['▲','en hausse'] },
+    windRead:{ fish:['calme plat','ride idéale','clapot','trop fort'],
+               deer:['trop calme',"porte l'odeur",'soutenu','gibier au sol'] },
+    dirRead:{ fish:["vent d'ouest favorable",'favorable','neutre',"vent d'est défavorable"],
+              deer:['quadrant froid favorable','favorable','neutre','air chaud défavorable'] },
+    moonLvl:['fort','moyen','faible'],
+    major:'Majeure', minor:'Mineure',
+    src:{ sensor:'Capteur', measured:'Mesuré', forecast:'Open-Meteo', moon:'Lune seule' },
+    beyond:'hors horizon', unavail:'non mesuré',
+    beyondNote:'Pression, vent et direction non prévisibles au-delà de ~14 jours — cote sur la lune seule.',
+    pastNote:'Aucune mesure météo pour ce jour (capteurs installés début juillet 2026) — cote sur la lune seule.',
+    partialNote:'Facteur(s) météo indisponible(s) pour ce jour — poids renormalisés sur les autres.',
+    today:'Aujourd\'hui', prevDay:'Jour précédent', nextDay:'Jour suivant',
+    sunrise:'Lever', sunset:'Coucher', moonrise:'Lune',
+    excellent:'excellente', poor:'faible', noHorizon:'sans données météo',
+    weekOf:'Semaine du', lit:'% éclairée',
+    settings:'Réglages', weightsTitle:'Poids des facteurs', reset:'Défauts',
+    weightsHint:'Les poids sont normalisés à 100 % et conservés sur cet appareil.',
+    tipFish:"<b>Pêche.</b> Cale tes sorties sur les <b>majeures</b> (passage de la lune) et surveille une pression en baisse — c'est là que ça mord en salves.",
+    tipDeerLead:'Chasse.',
+    tipDeerDark:'Nuits sombres → le cerf bouge de jour : bonne fenêtre diurne.',
+    tipDeerBright:'Nuits claires → activité repoussée la nuit : chasse de jour plus difficile.',
+    tipDeerMid:'Mise sur les mineures près de l\'aube et du crépuscule.',
+    tipDeerTail:'Un vent modéré et une chute de pression décuplent le mouvement.',
+    phases:['Nouvelle lune','Premier croissant','Premier quartier','Gibbeuse croissante',
+            'Pleine lune','Gibbeuse décroissante','Dernier quartier','Dernier croissant'],
+    sectors:{ N:'N', NE:'NE', E:'E', SE:'SE', S:'S', SO:'SO', O:'O', NO:'NO' },
+    footNote:'Cote indicative — modèle solunaire + météo. Seuils et poids ajustables dans Réglages.',
+    loading:'Chargement des données…'
+  },
+  en: {
+    title:'Solunar activity', modeFish:'Angler', modeDeer:'Hunter',
+    subFish:'Fishing mode', subDeer:'Hunting mode', back:'lmt', backTitle:'Back to dashboard',
+    day:'Day', week:'Week', month:'Month',
+    factors:'Rating factors', ofFish:'fishing', ofDeer:'hunting',
+    moon:'Moon', press:'Pressure', wind:'Wind', dir:'Direction', total:'Total',
+    verdicts:{ fish:['Slow day','Moderate','Good day','Exceptional'],
+               deer:['Poor','Fair','Good','Excellent'] },
+    pressRead:{ 4:['▼','sharp drop · front'], 3:['▼','falling'], 2:['→','steady'], 1:['▲','rising'] },
+    windRead:{ fish:['dead calm','ideal chop','choppy','too rough'],
+               deer:['too still','carries scent','gusty','deer bedded'] },
+    dirRead:{ fish:['west wind favours','favourable','neutral','east wind against'],
+              deer:['cool quadrant','favourable','neutral','warm air against'] },
+    moonLvl:['strong','moderate','weak'],
+    major:'Major', minor:'Minor',
+    src:{ sensor:'Sensor', measured:'Measured', forecast:'Open-Meteo', moon:'Moon only' },
+    beyond:'beyond horizon', unavail:'not measured',
+    beyondNote:'Pressure, wind and direction are not forecastable past ~14 days — moon-only rating.',
+    pastNote:'No weather measurement for that day (sensors installed early July 2026) — moon-only rating.',
+    partialNote:'Some weather factors are unavailable for this day — weights renormalised on the rest.',
+    today:'Today', prevDay:'Previous day', nextDay:'Next day',
+    sunrise:'Sunrise', sunset:'Sunset', moonrise:'Moon',
+    excellent:'excellent', poor:'weak', noHorizon:'no weather data',
+    weekOf:'Week of', lit:'% lit',
+    settings:'Settings', weightsTitle:'Factor weights', reset:'Defaults',
+    weightsHint:'Weights are normalised to 100 % and kept on this device.',
+    tipFish:'<b>Fishing.</b> Time your outings on the <b>major</b> windows (moon transit) and watch for falling pressure — that is when they bite in bursts.',
+    tipDeerLead:'Hunting.',
+    tipDeerDark:'Dark nights → deer move by day: good daylight window.',
+    tipDeerBright:'Bright nights → activity shifts to the night: harder daytime hunting.',
+    tipDeerMid:'Focus on the minor windows around dawn and dusk.',
+    tipDeerTail:'Moderate wind and a pressure drop multiply movement.',
+    phases:['New moon','Waxing crescent','First quarter','Waxing gibbous',
+            'Full moon','Waning gibbous','Last quarter','Waning crescent'],
+    sectors:{ N:'N', NE:'NE', E:'E', SE:'SE', S:'S', SO:'SW', O:'W', NO:'NW' },
+    footNote:'Indicative rating — solunar model + weather. Thresholds and weights adjustable in Settings.',
+    loading:'Loading data…'
+  }
+};
+const T = () => I18N[lang];
+const locale = () => lang === 'fr' ? 'fr-CA' : 'en-CA';
+
+/* ══════════════════════════════════════════════════════════════════════════
+   4. Icônes
+   ══════════════════════════════════════════════════════════════════════════ */
+const ICON = {
+  fish:'<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4.2 12c1.1-2.9 5.6-4.8 9.4-4.8 3.9 0 7 1.9 8 4.8-1 2.9-4.1 4.8-8 4.8-3.8 0-8.3-1.9-9.4-4.8z"/><path d="M4.2 12 .8 8.4c-.3-.3-.8 0-.7.4l.7 3.2-.7 3.2c-.1.4.4.7.7.4L4.2 12z"/><circle cx="16.4" cy="10.5" r="1.05" fill="#07131f"/></svg>',
+  deer:'<svg viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 10.5C7.2 8.9 7 6.2 5.6 4.3M9 10.5C6.9 10.2 5.4 9.7 4 8.2M9 10.5C8.6 8.6 8.7 7 8 5.4"/><path d="M15 10.5c1.8-1.6 2-4.3 3.4-6.2M15 10.5c2.1-.3 3.6-.8 5-2.3M15 10.5c.4-1.9.3-3.5 1-5.1"/></g><path d="M9 10.4c.5 1 1.6 1.8 3 1.8s2.5-.8 3-1.8c1 1 1.4 2.7 1 4.4-.5 2.3-2 4.2-4 4.2s-3.5-1.9-4-4.2c-.4-1.7 0-3.4 1-4.4z" fill="currentColor"/></svg>',
+  moon:'<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a7 7 0 1 0 10.5 10.5z"/></svg>',
+  gauge:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 14l3-3M4.5 18a9 9 0 1 1 15 0"/></svg>',
+  wind:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10a2.5 2.5 0 1 0-2.5-2.5M3 16h13a2.5 2.5 0 1 1-2.5 2.5M3 12h7"/></svg>',
+  compass:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2.2 5.3-5.3 2.2 2.2-5.3z"/></svg>',
+  sunrise:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 18h18M12 3v4M6 9l1.5 1.5M18 9l-1.5 1.5"/><path d="M8 18a4 4 0 0 1 8 0"/></svg>',
+  sunset:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 18h18M12 10V4M6 8l1.5 1.5M18 8l-1.5 1.5"/><path d="M8 18a4 4 0 0 1 8 0"/></svg>',
+  chevL:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>',
+  chevR:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>',
+  clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l2.5 1.5"/></svg>',
+  sliders:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h10M18 18h2"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="16" cy="18" r="2"/></svg>'
+};
+
+/* ══════════════════════════════════════════════════════════════════════════
+   5. Astronomie — SunCalc, bornes du jour civil Toronto
+   ══════════════════════════════════════════════════════════════════════════ */
+function moonPhaseSVG(phase){
+  const R = 7, C = 9, k = Math.cos(phase * 2 * Math.PI), rx = Math.abs(R * k);
+  const os = phase < 0.5 ? 1 : 0, is = k >= 0 ? os : 1 - os;
+  const d = `M${C},${C-R} A${R},${R} 0 0,${os} ${C},${C+R} A${rx},${R} 0 0,${is} ${C},${C-R} Z`;
+  return `<svg viewBox="0 0 18 18" aria-hidden="true"><circle cx="${C}" cy="${C}" r="${R}" fill="none" stroke="currentColor" stroke-width="1" opacity=".35"/><path d="${d}" fill="currentColor"/></svg>`;
+}
+/** Index de phase — mêmes fenêtres étroites que updateMoon() dans index.html. */
+function phaseIndex(p){
+  const TH = 0.02;
+  if (p < TH || p > 1 - TH) return 0;
+  if (Math.abs(p - .25) < TH) return 2;
+  if (Math.abs(p - .5)  < TH) return 4;
+  if (Math.abs(p - .75) < TH) return 6;
+  if (p < .25) return 1;
+  if (p < .5)  return 3;
+  if (p < .75) return 5;
+  return 7;
+}
+
+const _solunarCache = new Map();
+/**
+ * Solunaire d'un jour civil : phase, illumination, majeures (transit lune ±1 h),
+ * mineures (lever/coucher lune ±30 min), soleil. Le balayage couvre les bornes
+ * réelles du jour (23 h / 24 h / 25 h) → lever/coucher de lune bornés au bon jour.
+ */
+function solunar(c){
+  const key = civKey(c);
+  if (_solunarCache.has(key)) return _solunarCache.get(key);
+  const { start, end } = civSpan(c);
+  const noon = start + (end - start) / 2;
+  const ill = SunCalc.getMoonIllumination(new Date(noon));
+  const HR = 3600000, STEP = 10 * 60000;
+
+  let maxA = -Infinity, minA = Infinity, tMax = noon, tMin = noon;
+  let prevT = null, prevA = null;
+  const crossUp = [], crossDown = [];
+  for (let t = start; t <= end; t += STEP) {
+    const a = SunCalc.getMoonPosition(new Date(t), LAKE.lat, LAKE.lon).altitude;
+    if (a > maxA) { maxA = a; tMax = t; }
+    if (a < minA) { minA = a; tMin = t; }
+    if (prevA !== null && (prevA < 0) !== (a < 0)) {
+      const f = -prevA / (a - prevA);                    // interpolation linéaire du zéro
+      (a > 0 ? crossUp : crossDown).push(prevT + f * (t - prevT));
+    }
+    prevT = t; prevA = a;
+  }
+  const sun = SunCalc.getTimes(new Date(noon), LAKE.lat, LAKE.lon);
+  const out = {
+    phase: ill.phase, fraction: ill.fraction, start, end,
+    majors: [[tMax - HR, tMax + HR], [tMin - HR, tMin + HR]].sort((a,b)=>a[0]-b[0]),
+    minors: [].concat(crossUp, crossDown).sort((a,b)=>a-b).map(t => [t - HR/2, t + HR/2]),
+    moonrise: crossUp[0] ?? null, moonset: crossDown[0] ?? null,
+    sunrise: sun.sunrise && !isNaN(sun.sunrise) ? +sun.sunrise : null,
+    sunset:  sun.sunset  && !isNaN(sun.sunset)  ? +sun.sunset  : null
+  };
+  _solunarCache.set(key, out);
+  return out;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   6. Couche de données météo (spec §3)
+      Aujourd'hui  → /readings (capteur)
+      Passé        → /daily
+      Futur ≤ 15 j → Open-Meteo (cache localStorage, TTL 1 h)
+      Au-delà      → null (lune seule)
+   ══════════════════════════════════════════════════════════════════════════ */
+const SECTORS = ['N','NE','E','SE','S','SO','O','NO'];
+const degToSector = deg => SECTORS[Math.round((((deg % 360) + 360) % 360) / 45) % 8];
+/** Moyenne vectorielle d'un tableau de degrés (jamais arithmétique — cf. ARCHITECTURE §4.2). */
+function vectorMean(degs){
+  let sx = 0, sy = 0, n = 0;
+  for (const d of degs) { if (d == null || isNaN(d)) continue; const r = d * Math.PI / 180; sx += Math.sin(r); sy += Math.cos(r); n++; }
+  if (!n) return null;
+  const mag = Math.hypot(sx, sy) / n;
+  if (mag < 0.2) return null;                          // vent trop variable → pas de direction
+  return ((Math.atan2(sx, sy) * 180 / Math.PI) + 360) % 360;
+}
+const mean = arr => arr.length ? arr.reduce((a,b)=>a+b,0) / arr.length : null;
+
+const DATA = { daily:null, today:null, forecast:null, ready:false, errors:[] };
+
+async function fetchDaily(){
+  try {
+    const r = await fetch(RTDB + '/daily.json');
+    const obj = await r.json();
+    const out = {};
+    for (const k in (obj || {})) out[k] = obj[k];
+    return out;
+  } catch(e){ DATA.errors.push('daily'); return {}; }
+}
+
+/** Lectures brutes du jour courant + marge pour la tendance de pression. */
+async function fetchToday(){
+  const now = Date.now();
+  const span = civSpan(civToday());
+  const trendMs = SCORING.press.todayTrendHours * 3600e3;
+  // Fenêtre : début du jour civil, ou now − trend − 1 h si on est tôt le matin.
+  const start = Math.min(span.start, now - trendMs - 3600e3);
+  try {
+    const url = RTDB + '/readings.json?orderBy=' + encodeURIComponent('"$key"') +
+                '&startAt=' + encodeURIComponent('"' + start + '"');
+    const r = await fetch(url);
+    const obj = await r.json();
+    if (!obj) return [];
+    return Object.keys(obj).map(k => ({ t:Number(k), ...obj[k] })).sort((a,b)=>a.t-b.t);
+  } catch(e){ DATA.errors.push('readings'); return []; }
+}
+
+const FC_KEY = 'lm_cp_forecast';
+const FC_TTL = 3600e3;
+async function fetchForecast(){
+  const cached = LS.get(FC_KEY, null);
+  if (cached && cached.ts && Date.now() - cached.ts < FC_TTL && cached.days) return cached.days;
+  const url = OPEN_METEO +
+    '?latitude=' + LAKE.lat + '&longitude=' + LAKE.lon +
+    '&hourly=pressure_msl,wind_speed_10m,wind_gusts_10m,wind_direction_10m' +
+    '&timezone=' + encodeURIComponent(TZ) + '&forecast_days=16';
+  try {
+    const r = await fetch(url);
+    const j = await r.json();
+    const h = j && j.hourly;
+    if (!h || !h.time) throw new Error('no hourly');
+    const acc = {};
+    for (let i = 0; i < h.time.length; i++) {
+      // `time` est déjà en heure locale Toronto → la partie date EST la clé du jour civil.
+      const key = h.time[i].slice(0, 10);
+      const a = acc[key] || (acc[key] = { press:[], wind:[], gust:[], dir:[] });
+      if (h.pressure_msl[i]      != null) a.press.push(h.pressure_msl[i]);
+      if (h.wind_speed_10m[i]    != null) a.wind.push(h.wind_speed_10m[i]);
+      if (h.wind_gusts_10m[i]    != null) a.gust.push(h.wind_gusts_10m[i]);
+      if (h.wind_direction_10m[i]!= null) a.dir.push(h.wind_direction_10m[i]);
+    }
+    const days = {};
+    for (const k in acc) {
+      const a = acc[k];
+      days[k] = { press: mean(a.press), wind: mean(a.wind), gust: a.gust.length ? Math.max(...a.gust) : null, dirDeg: vectorMean(a.dir) };
+    }
+    LS.set(FC_KEY, { ts: Date.now(), days });
+    return days;
+  } catch(e){
+    DATA.errors.push('open-meteo');
+    // Échec réseau → on garde un cache périmé s'il existe, sinon lune seule (§3.1)
+    return (cached && cached.days) || null;
+  }
+}
+
+async function loadData(){
+  const [daily, today, forecast] = await Promise.all([fetchDaily(), fetchToday(), fetchForecast()]);
+  DATA.daily = daily; DATA.today = today; DATA.forecast = forecast; DATA.ready = true;
+}
+
+/**
+ * Météo agrégée d'un jour civil.
+ * → { press, delta, wind, dirDeg, src } | null (aucune donnée exploitable)
+ * Chaque champ peut valoir null indépendamment (le trou « direction passée », §3.2).
+ */
+function dayWeather(c){
+  const dd = civDiff(c, civToday());
+  const key = civKey(c);
+
+  // ── Passé : /daily (Mesuré) ───────────────────────────────────────────────
+  if (dd < 0) {
+    const b = DATA.daily && DATA.daily[dailyKeyOf(c)];
+    if (!b) return null;
+    const prev = DATA.daily && DATA.daily[dailyKeyOf(civAdd(c, -1))];
+    const press = b.press != null ? b.press : null;
+    return {
+      press,
+      delta: (press != null && prev && prev.press != null) ? press - prev.press : null,
+      wind:  b.wind != null ? b.wind : null,
+      dirDeg: b.wdirdom != null ? b.wdirdom : null,       // absent avant la migration → fallback
+      src: 'measured'
+    };
+  }
+
+  // ── Aujourd'hui : capteur ─────────────────────────────────────────────────
+  if (dd === 0) {
+    const rows = DATA.today || [];
+    const now = Date.now(), span = civSpan(c);
+    // Vent/direction : partie écoulée du jour civil, avec un plancher de 3 h de
+    // recul pour rester représentatif en tout début de journée.
+    const from = Math.min(span.start, now - 3 * 3600e3);
+    const win = rows.filter(r => r.t >= from);
+    const wind = mean(win.filter(r => r.wind != null).map(r => r.wind));
+    const dirDeg = vectorMean(win.map(r => r.wdir));
+    const withP = rows.filter(r => r.press != null);
+    let press = null, delta = null;
+    if (withP.length) {
+      press = withP[withP.length - 1].press;
+      const target = now - SCORING.press.todayTrendHours * 3600e3;
+      let best = null, bestGap = Infinity;
+      for (const r of withP) { const g = Math.abs(r.t - target); if (g < bestGap) { bestGap = g; best = r; } }
+      if (best && bestGap < 90 * 60000) delta = press - best.press;   // tolérance ±90 min
+    }
+    if (press == null && wind == null && dirDeg == null) {
+      // Capteur muet → on retombe sur la prévision du jour si elle existe (§11)
+      const f = DATA.forecast && DATA.forecast[key];
+      if (f) return { press:f.press, delta:forecastDelta(c), wind:f.wind, dirDeg:f.dirDeg, src:'forecast' };
+      return null;
+    }
+    return { press, delta, wind, dirDeg, src:'sensor' };
+  }
+
+  // ── Futur ─────────────────────────────────────────────────────────────────
+  if (dd > SCORING.horizonDays) return null;
+  const f = DATA.forecast && DATA.forecast[key];
+  if (!f) return null;
+  return { press:f.press, delta:forecastDelta(c), wind:f.wind, dirDeg:f.dirDeg, src:'forecast' };
+}
+function forecastDelta(c){
+  const f = DATA.forecast && DATA.forecast[civKey(c)];
+  const p = DATA.forecast && DATA.forecast[civKey(civAdd(c, -1))];
+  if (f && p && f.press != null && p.press != null) return f.press - p.press;
+  // Veille hors du jeu de prévision (1er jour) → on tente /daily
+  const b = DATA.daily && DATA.daily[dailyKeyOf(civAdd(c, -1))];
+  if (f && b && f.press != null && b.press != null) return f.press - b.press;
+  return null;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   7. Modèle de cote (spec §2)
+   ══════════════════════════════════════════════════════════════════════════ */
+const STATE = { mode:'fish', gran:'month', sel:civToday(), settings:false };
+const isFish = () => STATE.mode === 'fish';
+const modeKey = () => STATE.mode;
+
+function moonScore(phase){
+  const th = SCORING.moon[modeKey()];
+  const d = isFish() ? Math.min(phase, 1 - phase, Math.abs(phase - .5)) : Math.min(phase, 1 - phase);
+  return d < th[0] ? 4 : d < th[1] ? 3 : d < th[2] ? 2 : 1;
+}
+function moonLevel(phase){
+  const th = SCORING.moon[modeKey()];
+  const d = isFish() ? Math.min(phase, 1 - phase, Math.abs(phase - .5)) : Math.min(phase, 1 - phase);
+  return d < th[1] ? 0 : d < th[2] ? 1 : 2;             // fort / moyen / faible
+}
+function pressScore(delta){
+  const p = SCORING.press;
+  return delta <= p.d4 ? 4 : delta <= p.d3 ? 3 : delta < p.d2 ? 2 : 1;
+}
+function windScore(spd){
+  const w = SCORING.wind[modeKey()];
+  if (spd >= w[0] && spd <= w[1]) return 4;
+  if (spd >= w[2] && spd <  w[3]) return 3;
+  if (spd <  w[4]) return 2;
+  return 1;
+}
+/** Index de lecture du vent : 0 trop calme · 1 idéal · 2 soutenu · 3 trop fort */
+function windReadIdx(spd){
+  const w = SCORING.wind[modeKey()];
+  if (spd < w[2]) return 0;
+  if (spd <= w[1]) return 1;
+  if (spd < w[4]) return 2;
+  return 3;
+}
+const dirScore = sector => SCORING.dir[modeKey()][sector] ?? 2;
+
+const _bdCache = new Map();
+/**
+ * Décomposition d'un jour : sous-scores, poids effectifs (renormalisés si un
+ * facteur manque, §3.2) et total continu 1.0–4.0.
+ */
+function breakdown(c){
+  const ck = modeKey() + '|' + civKey(c);
+  if (_bdCache.has(ck)) return _bdCache.get(ck);
+
+  const s = solunar(c);
+  const w = dayWeather(c);
+  const moon = moonScore(s.phase);
+  const parts = [{ k:'moon', score:moon, w:SCORING.weights.moon }];
+
+  let press = null, wind = null, dir = null, sector = null;
+  if (w) {
+    if (w.delta != null) { press = pressScore(w.delta); parts.push({ k:'press', score:press, w:SCORING.weights.press }); }
+    if (w.wind  != null) { wind  = windScore(w.wind);   parts.push({ k:'wind',  score:wind,  w:SCORING.weights.wind  }); }
+    if (w.dirDeg != null) { sector = degToSector(w.dirDeg); dir = dirScore(sector); parts.push({ k:'dir', score:dir, w:SCORING.weights.dir }); }
+  }
+  const sumW = parts.reduce((a,p)=>a+p.w, 0);
+  const total = sumW > 0 ? parts.reduce((a,p)=>a + p.score * p.w, 0) / sumW : moon;
+  const eff = {};
+  for (const p of parts) eff[p.k] = p.w / sumW;         // poids effectifs affichés
+
+  const out = {
+    c, s, w, moon, press, wind, dir, sector, total, eff,
+    src: parts.length === 1 ? 'moon' : (w ? w.src : 'moon'),
+    partial: !!w && parts.length > 1 && parts.length < 4
+  };
+  _bdCache.set(ck, out);
+  return out;
+}
+const scoreOf = c => Math.max(1, Math.min(4, Math.round(breakdown(c).total)));
+const clearScores = () => _bdCache.clear();
+
+/* ══════════════════════════════════════════════════════════════════════════
+   8. Formatage
+   ══════════════════════════════════════════════════════════════════════════ */
+const fmtTime = ms => ms == null ? '—' :
+  new Date(ms).toLocaleTimeString(locale(), { timeZone:TZ, hour:'2-digit', minute:'2-digit', hour12:false });
+function fmtLongDate(c){
+  const d = new Date(zonedMidnight(c) + 12 * 3600e3);
+  return d.toLocaleDateString(locale(), { timeZone:TZ, weekday:'long', day:'numeric', month:'long', year:'numeric' });
+}
+function fmtMonth(c){
+  const d = new Date(zonedMidnight(c) + 12 * 3600e3);
+  return d.toLocaleDateString(locale(), { timeZone:TZ, month:'long', year:'numeric' });
+}
+function fmtShortDate(c){
+  const d = new Date(zonedMidnight(c) + 12 * 3600e3);
+  return d.toLocaleDateString(locale(), { timeZone:TZ, day:'numeric', month:'short' });
+}
+function fmtWeekday(c, style){
+  const d = new Date(zonedMidnight(c) + 12 * 3600e3);
+  return d.toLocaleDateString(locale(), { timeZone:TZ, weekday:style });
+}
+const dowLabels = () => { const base = civFromKey('2026-01-04'); // un dimanche
+  return Array.from({length:7}, (_,i) => fmtWeekday(civAdd(base, i), 'short').replace('.', '').toUpperCase()); };
+const esc = s => String(s).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+const capFirst = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+
+function ratingHTML(n, cls){
+  const ic = ICON[isFish() ? 'fish' : 'deer'];
+  let s = '<span class="rating ' + (cls || '') + '">';
+  for (let i = 0; i < 4; i++) s += ic.replace('<svg', '<svg class="' + (i < n ? '' : 'off') + '"');
+  return s + '</span>';
+}
+function dotsHTML(n){
+  if (n == null) return '<span class="dots na">— —</span>';
+  let s = '<span class="dots">';
+  for (let i = 0; i < 4; i++) s += '<i class="' + (i < n ? 'on' : '') + '"></i>';
+  return s + '</span>';
+}
+const pct = v => Math.round(v * 100) + '%';
+const verdict = n => T().verdicts[modeKey()][n - 1];
+
+/* ══════════════════════════════════════════════════════════════════════════
+   9. Rendu
+   ══════════════════════════════════════════════════════════════════════════ */
+function timelineHTML(c, slim){
+  const s = solunar(c), span = s.end - s.start;
+  const at = ms => Math.max(0, Math.min(100, (ms - s.start) / span * 100));
+  const width = (a, b) => Math.max(0, Math.min(100 - at(a), (b - a) / span * 100));
+  // Uniquement des <span> : la barre est imbriquée dans les <button> de la vue
+  // Semaine, dont le modèle de contenu n'accepte pas d'élément de flux.
+  let b = '';
+  if (s.sunrise) b += `<span class="night" style="left:0;width:${at(s.sunrise)}%"></span>`;
+  if (s.sunset)  b += `<span class="night" style="left:${at(s.sunset)}%;right:0"></span>`;
+  for (const m of s.majors) b += `<span class="band maj" style="left:${at(m[0])}%;width:${width(m[0],m[1])}%"></span>`;
+  for (const m of s.minors) b += `<span class="band min" style="left:${at(m[0])}%;width:${width(m[0],m[1])}%"></span>`;
+  const now = Date.now();
+  if (now >= s.start && now < s.end) b += `<span class="now" style="left:${at(now)}%"></span>`;
+  return `<span class="tl ${slim ? 'slim' : ''}">${b}</span>` + (slim ? '' :
+    `<span class="tl-scale"><span>0 h</span><span>6 h</span><span>12 h</span><span>18 h</span><span>24 h</span></span>`);
+}
+
+function factorsHTML(c){
+  const t = T(), b = breakdown(c);
+  // Un facteur absent ne veut pas dire la même chose selon le sens du temps :
+  // dans le futur c'est « hors horizon », dans le passé c'est « non mesuré ».
+  const future = civDiff(c, civToday()) > 0;
+  const gap = future ? t.beyond : t.unavail;
+  const row = (icon, name, score, read, weight, muted) =>
+    `<div class="fx-row ${muted ? 'muted' : ''}"><span class="fx-lead">${icon}<b>${name}</b></span>` +
+    `${dotsHTML(score)}<span class="fx-read">${read}</span>` +
+    `<span class="fx-wt">${weight == null ? '—' : pct(weight)}</span></div>`;
+
+  const moonTxt = t.moonLvl[moonLevel(b.s.phase)] + ' · ' + t.phases[phaseIndex(b.s.phase)].toLowerCase();
+  let html = row(ICON.moon, t.moon, b.moon, esc(moonTxt), b.eff.moon, false);
+
+  if (b.press != null) {
+    const r = t.pressRead[b.press];
+    html += row(ICON.gauge, t.press, b.press,
+      `${r[0]} ${esc(r[1])}${b.w.press != null ? ' · ' + Math.round(b.w.press) + ' hPa' : ''}`, b.eff.press, false);
+  } else html += row(ICON.gauge, t.press, null, gap, null, true);
+
+  if (b.wind != null) {
+    html += row(ICON.wind, t.wind, b.wind,
+      `${esc(t.windRead[modeKey()][windReadIdx(b.w.wind)])} · ${Math.round(b.w.wind)} km/h`, b.eff.wind, false);
+  } else html += row(ICON.wind, t.wind, null, gap, null, true);
+
+  if (b.dir != null) {
+    const idx = b.dir >= 4 ? 0 : b.dir >= 3 ? 1 : b.dir >= 2 ? 2 : 3;
+    html += row(ICON.compass, t.dir, b.dir,
+      `${esc(t.dirRead[modeKey()][idx])} · ${t.sectors[b.sector]}`, b.eff.dir, false);
+  } else html += row(ICON.compass, t.dir, null, gap, null, true);
+
+  let note = '';
+  if (b.src === 'moon') note = `<div class="fx-note">${future ? t.beyondNote : t.pastNote}</div>`;
+  else if (b.partial)   note = `<div class="fx-note">${t.partialNote}</div>`;
+
+  const tot = scoreOf(c);
+  return `<div class="factors">
+    <div class="fx-head"><span>${t.factors} · ${isFish() ? t.ofFish : t.ofDeer}</span><span class="fx-src">${t.src[b.src]}</span></div>
+    ${html}${note}
+    <div class="fx-total"><span class="ft-lab">${t.total}</span>${ratingHTML(tot,'lg')}<span class="fx-verdict">${verdict(tot)}</span></div>
+  </div>`;
+}
+
+function detailHTML(c){
+  const t = T(), s = solunar(c);
+  const isToday = civEq(c, civToday());
+  const win = (cls, lab, w) => `<div class="win ${cls}"><div class="wl">${lab}</div><div class="wt">${fmtTime(w[0])}–${fmtTime(w[1])}</div></div>`;
+  const wins =
+    (s.majors[0] ? win('major', t.major + ' 1', s.majors[0]) : '') +
+    (s.majors[1] ? win('major', t.major + ' 2', s.majors[1]) : '') +
+    (s.minors[0] ? win('minor', t.minor + ' 1', s.minors[0]) : '') +
+    (s.minors[1] ? win('minor', t.minor + ' 2', s.minors[1]) : '');
+  const litPct = Math.round(s.fraction * 100);
+  const tip = isFish() ? t.tipFish
+    : `<b>${t.tipDeerLead}</b> ${litPct < 25 ? t.tipDeerDark : litPct > 75 ? t.tipDeerBright : t.tipDeerMid} ${t.tipDeerTail}`;
+
+  return `<div class="detail">
+    <div class="detail-head">
+      <div>
+        <div class="dh-date">${esc(capFirst(fmtLongDate(c)))}</div>
+        <div class="dh-phase">${moonPhaseSVG(s.phase)} ${esc(t.phases[phaseIndex(s.phase)])} · ${litPct}${t.lit}</div>
+      </div>
+      <div class="day-step">
+        ${isToday ? '' : `<button class="today-reset" data-step="today">${ICON.clock} ${t.today}</button>`}
+        <button data-step="-1" aria-label="${t.prevDay}">${ICON.chevL}</button>
+        <button data-step="1" aria-label="${t.nextDay}">${ICON.chevR}</button>
+      </div>
+    </div>
+    ${factorsHTML(c)}
+    ${timelineHTML(c)}
+    <div class="win-grid">${wins}</div>
+    <div class="astro">
+      <span style="color:var(--warn)">${ICON.sunrise} ${t.sunrise} ${fmtTime(s.sunrise)}</span>
+      <span style="color:#fb923c">${ICON.sunset} ${t.sunset} ${fmtTime(s.sunset)}</span>
+      <span style="color:var(--moon)">${ICON.moon} ${t.moonrise} ${fmtTime(s.moonrise)} / ${fmtTime(s.moonset)}</span>
+    </div>
+    <div class="tip">${tip}</div>
+  </div>`;
+}
+
+function monthHTML(){
+  const t = T(), sel = STATE.sel, today = civToday();
+  const first = { y:sel.y, m:sel.m, d:1 };
+  const lead = civDow(first);
+  const dim = new Date(Date.UTC(sel.y, sel.m, 0)).getUTCDate();
+  let cells = '';
+  for (let i = 0; i < lead; i++) cells += '<div class="cell blank"></div>';
+  for (let d = 1; d <= dim; d++) {
+    const c = { y:sel.y, m:sel.m, d }, n = scoreOf(c), b = breakdown(c);
+    cells += `<button type="button" class="cell ${civEq(c,today)?'today':''} ${civEq(c,sel)?'sel':''} ${b.src==='moon'?'nohorizon':''}"
+      style="--sc:${n}" data-day="${d}" aria-label="${esc(fmtLongDate(c))} — ${n}/4">
+      <span class="glow"></span><span class="mn">${moonPhaseSVG(b.s.phase)}</span>
+      <span class="dnum">${d}</span>${ratingHTML(n,'sm')}<span class="cell-sc">${n}</span></button>`;
+  }
+  return `<div class="cal-legend"><span><b>${esc(capFirst(fmtMonth(sel)))}</b></span>
+      <span style="margin-left:auto">${ratingHTML(4,'sm')} ${t.excellent} · ${ratingHTML(1,'sm')} ${t.poor} · <span style="color:var(--dim)">•</span> ${t.noHorizon}</span></div>
+    <div class="dow">${dowLabels().map(d=>`<span>${esc(d)}</span>`).join('')}</div>
+    <div class="cal" data-role="cal">${cells}</div>`;
+}
+
+function weekHTML(){
+  const t = T(), sel = STATE.sel;
+  const ws = civAdd(sel, -civDow(sel));
+  let rows = '';
+  for (let i = 0; i < 7; i++) {
+    const c = civAdd(ws, i), n = scoreOf(c);
+    rows += `<button type="button" class="wk-row ${civEq(c,sel)?'sel':''}" data-key="${civKey(c)}">
+      <span class="wk-day"><b>${esc(fmtWeekday(c,'short').replace('.',''))}</b><span>${esc(fmtShortDate(c))}</span></span>
+      ${ratingHTML(n)}<span class="wkt">${timelineHTML(c, true)}</span></button>`;
+  }
+  return `<div class="cal-legend"><span><b>${t.weekOf} ${esc(fmtShortDate(ws))}</b></span></div><div class="wk">${rows}</div>`;
+}
+
+function settingsHTML(){
+  const t = T();
+  const rows = [['moon',t.moon],['press',t.press],['wind',t.wind],['dir',t.dir]].map(([k,lab]) =>
+    `<label class="wrow"><span>${lab}</span>
+      <input type="range" min="0" max="100" step="1" value="${Math.round(SCORING.weights[k]*100)}" data-w="${k}">
+      <output data-out="${k}">${pct(SCORING.weights[k])}</output></label>`).join('');
+  return `<section class="settings" ${STATE.settings ? '' : 'hidden'} data-role="settings">
+    <h2>${t.weightsTitle}</h2>${rows}
+    <div class="settings-foot"><span>${t.weightsHint}</span><button type="button" data-role="reset">${t.reset}</button></div>
+  </section>`;
+}
+
+function headHTML(){
+  const t = T();
+  return `<div class="app-head">
+    <div class="app-title">
+      <a class="back-lmt" href="/" title="${t.backTitle}">${ICON.chevL}<span>${t.back}</span></a>
+      <span class="ic">${ICON[isFish()?'fish':'deer']}</span>
+      <div>${t.title}<small>${isFish()?t.subFish:t.subDeer}</small></div>
+    </div>
+    <div class="head-tools">
+      <div class="mode-toggle" data-role="mode">
+        <button data-m="fish" class="${isFish()?'on':''}" aria-pressed="${isFish()}">${ICON.fish} ${t.modeFish}</button>
+        <button data-m="deer" class="${!isFish()?'on':''}" aria-pressed="${!isFish()}">${ICON.deer} ${t.modeDeer}</button>
+      </div>
+      <button type="button" class="icon-btn ${STATE.settings?'on':''}" data-role="gear" title="${t.settings}" aria-label="${t.settings}">${ICON.sliders}</button>
+      <button type="button" class="icon-btn" data-role="lang" title="FR / EN">${lang === 'fr' ? 'EN' : 'FR'}</button>
+    </div>
+  </div>`;
+}
+
+function render(){
+  const t = T();
+  document.body.dataset.mode = STATE.mode;
+  document.documentElement.style.setProperty('--accent', isFish() ? 'var(--fish)' : 'var(--deer)');
+  document.documentElement.lang = lang;
+
+  let body;
+  if (!DATA.ready) body = `<p style="color:var(--muted);padding:2rem 0;text-align:center">${t.loading}</p>`;
+  else if (STATE.gran === 'month') body = monthHTML();
+  else if (STATE.gran === 'week')  body = weekHTML();
+  else body = '';
+
+  const detail = DATA.ready ? detailHTML(STATE.sel) : '';
+  document.getElementById('app').innerHTML =
+    headHTML() + settingsHTML() +
+    `<div style="display:flex;justify-content:center;margin-bottom:1rem" class="seg-scroll">
+      <div class="seg" data-role="gran">
+        <button data-g="day"   class="${STATE.gran==='day'?'on':''}">${t.day}</button>
+        <button data-g="week"  class="${STATE.gran==='week'?'on':''}">${t.week}</button>
+        <button data-g="month" class="${STATE.gran==='month'?'on':''}">${t.month}</button>
+      </div></div>` +
+    body + detail;
+  document.getElementById('foot').textContent = t.footNote;
+  document.title = t.title + ' — Lac Manitou';
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   10. Interactions (§4)
+   ══════════════════════════════════════════════════════════════════════════ */
+document.getElementById('app').addEventListener('click', e => {
+  const mode = e.target.closest('[data-role=mode] button');
+  if (mode) { STATE.mode = mode.dataset.m; render(); return; }
+
+  const gran = e.target.closest('[data-role=gran] button');
+  if (gran) { STATE.gran = gran.dataset.g; render(); return; }   // la position est conservée
+
+  const gear = e.target.closest('[data-role=gear]');
+  if (gear) { STATE.settings = !STATE.settings; render(); return; }
+
+  const lg = e.target.closest('[data-role=lang]');
+  if (lg) { lang = lang === 'fr' ? 'en' : 'fr'; LS.rawSet('lm_lang', lang); render(); return; }
+
+  const reset = e.target.closest('[data-role=reset]');
+  if (reset) { SCORING.weights = { moon:.35, press:.35, wind:.10, dir:.20 }; LS.del(WEIGHTS_KEY); clearScores(); render(); return; }
+
+  const step = e.target.closest('.day-step button[data-step]');
+  if (step) {
+    STATE.sel = step.dataset.step === 'today' ? civToday() : civAdd(STATE.sel, Number(step.dataset.step));
+    render(); return;                                            // la grille Mois suit (§11)
+  }
+
+  const cell = e.target.closest('[data-role=cal] .cell[data-day]');
+  if (cell) { STATE.sel = { y:STATE.sel.y, m:STATE.sel.m, d:Number(cell.dataset.day) }; STATE.gran = 'day'; render(); return; }
+
+  const wk = e.target.closest('.wk-row[data-key]');
+  if (wk) { STATE.sel = civFromKey(wk.dataset.key); STATE.gran = 'day'; render(); return; }
+});
+
+// Sliders de poids : normalisation à 100 %, persistance immédiate
+document.getElementById('app').addEventListener('input', e => {
+  const sl = e.target.closest('input[data-w]');
+  if (!sl) return;
+  const panel = sl.closest('[data-role=settings]');
+  const raw = {}; let sum = 0;
+  for (const i of panel.querySelectorAll('input[data-w]')) { raw[i.dataset.w] = Number(i.value); sum += Number(i.value); }
+  if (sum <= 0) return;
+  for (const k in raw) {
+    SCORING.weights[k] = raw[k] / sum;
+    panel.querySelector('[data-out="' + k + '"]').textContent = pct(SCORING.weights[k]);
+  }
+  saveWeights();
+  clearScores();
+  // Rerendu différé : on ne touche pas au panneau pendant que le doigt glisse
+  clearTimeout(document._wt);
+  document._wt = setTimeout(() => { const v = STATE.settings; render(); STATE.settings = v; }, 220);
+});
+
+document.addEventListener('keydown', e => {
+  if (STATE.gran !== 'day') return;
+  if (e.target.matches('input, textarea')) return;
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+    STATE.sel = civAdd(STATE.sel, e.key === 'ArrowRight' ? 1 : -1);
+    render(); e.preventDefault();
+  }
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   11. Démarrage + auto-refresh (n'affecte qu'aujourd'hui, ne re-ancre jamais)
+   ══════════════════════════════════════════════════════════════════════════ */
+render();
+loadData().then(() => { clearScores(); render(); });
+setInterval(() => {
+  fetchToday().then(rows => {
+    DATA.today = rows;
+    _bdCache.delete('fish|' + civKey(civToday()));
+    _bdCache.delete('deer|' + civKey(civToday()));
+    render();
+  });
+}, 5 * 60 * 1000);
+
+// Accès direct à la config depuis la console pour l'ajustement des seuils
+window.SCORING = SCORING;
+window.saveThresholds = () => LS.set(THRESH_KEY, { moon:SCORING.moon, press:SCORING.press, wind:SCORING.wind, dir:SCORING.dir });
+})();
+</script>
+</body>
+</html>
