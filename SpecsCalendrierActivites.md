@@ -33,6 +33,26 @@
 | Tendance de pression 24 h, refresh incrémental | `1cb3b6c` | remplace les 6 h du §3 |
 | `.git` exclu du déploiement Hosting | `8ff5921` | le dépôt entier était servi publiquement |
 | Cache HTML ramené de 1 h à 60 s | `86ad541` | les déploiements mettaient 1 h à se propager |
+| Spec v2 complète (§15 à §20) | `f80e570` | modèle, multi-lacs, journal, mesures |
+| Sonde de vent : diagnostic et protocole | [`PLAN.md`](PLAN.md) | `1d3f0d4`, `6d2bb42`, `4f1c8cd` |
+| Journal — 1ʳᵉ entrée + correctif classificateur | `2423fed`, `dd82420` | Phase 0 close, voir §17.5 |
+| **Carte Vent fusionnée** dans `index.html` | `a832b4d` | vent au large + sonde locale |
+| `journal/` exclu du déploiement | `6a39f6f` | les entrées portent le secteur de pêche |
+
+### Carte Vent de `index.html` (2026-07-22)
+
+Valeur principale = **vent au large** (modèle GEM d'Environnement Canada,
+`gem_seamless` via Open-Meteo, cache 10 min) ; pied de carte = **sonde locale**,
+libellée « île McCall ». La direction de la sonde n'est **pas** affichée : elle
+est canalisée et prêterait à confusion (§18.5).
+
+Motif : le 2026-07-22 à 14 h, la page annonçait **1 km/h** pendant que 22 stations
+METAR mesuraient **20 km/h avec des rafales à 41** et des averses — information
+dangereusement rassurante pour qui décide de sortir en chaloupe.
+
+Repli à trois niveaux, testé : modèle injoignable → la sonde reprend la vedette
+sous le libellé « Vent (île McCall) » ; ni modèle ni sonde → carte vide proprement.
+Le vent au large ne venant pas du RTDB, la carte reste alimentée si la sonde se tait.
 
 Critères d'acceptation du §13 : **tous satisfaits**, sauf la validation responsive
 sur appareil réel (vérifiée par simulation à 320 / 360 / 480 px, sans débordement).
@@ -1117,22 +1137,69 @@ exploitable — d'où les cases « sans données météo » de la grille.
 
 ## 19. Plan d'implémentation v2
 
-### Phase 0 — Valider le classificateur *(avant de construire dessus)*
+### Phase 0 — ✅ FAITE (2026-07-22)
 
-Écrire les règles du §15.3, les passer sur l'historique Open-Meteo heure par heure
-et produire un tableau lisible (une bande de 24 caractères par jour). Ben confronte
-à son souvenir du temps qu'il faisait. **Corriger ici coûte des minutes ; corriger
-après la Phase 2 coûte une refonte.**
+Le classificateur a été écrit, passé sur l'historique Open-Meteo heure par heure,
+puis **corrigé deux fois** par confrontation aux données réelles :
 
-Livrable : tableau des régimes sur 14 jours pour les deux lacs.
+1. **Détection du postfrontal par la température : abandonnée.** Le réchauffement
+   diurne masque le refroidissement postfrontal (§15.3). Remplacée par une règle
+   structurelle fondée sur la remontée depuis un creux de pression. Passage de
+   4/19 à **16/17 heures** correctement classées sur le 19 juillet, sans
+   surdéclenchement (24 % du temps sur 14 jours).
+2. **Persistance des régimes ajoutée** (§15.3b) — une heure sortait du régime pour
+   0,1 hPa d'écart au milieu de 17 heures continues.
 
-### Phase 1 — Moteur horaire
+Validé contre la première sortie du journal (§17.5, Devenyns 19 juillet, pêche
+médiocre → postfrontal froid correctement identifié).
 
-- Objet `MODEL` remplaçant `SCORING` (§15.10).
-- Classificateur de régime, scores des cinq facteurs, règle anti-double-comptage.
-- Couche Open-Meteo étendue : `past_days=92`, nouvelles variables (§15.2), cache par lac.
-- Agrégation journalière par meilleure fenêtre de 2 h (§15.9).
-- Retrait du mode Chasseur.
+### Phase 1 — Moteur horaire ⬅️ **PROCHAINE ÉTAPE**
+
+**Point de départ.** Tout se passe dans [`cp.html`](cp.html) (~1 100 lignes,
+vanilla JS, sans build). Les règles à implémenter sont aux §15.1 à §15.9, la
+config au §15.10, les décisions produit au §14.1.
+
+**À conserver tel quel** — cette couche est éprouvée et indépendante du modèle :
+
+| Bloc | Rôle |
+|---|---|
+| §2 « Dates civiles en America/Toronto » | `civOf`, `zonedMidnight`, `civSpan`, `civAdd`… — arithmétique DST-safe |
+| §5 Astronomie | `solunar()`, `moonPhaseSVG()`, `phaseIndex()` |
+| §6 `fetchForecast` / cache localStorage | à étendre, pas à réécrire |
+| §8 Formatage, §9 Rendu, §10 Interactions | vues Jour/Semaine/Mois, stepper, clavier |
+| i18n FR/EN | table `I18N`, ajouter les clés v2 |
+| Panneau de réglages | remplacer les 4 sliders de poids par l'édition de `MODEL` |
+
+**À remplacer** :
+
+| Existant v1 | Devient |
+|---|---|
+| `const SCORING` | `const MODEL` (§15.10), clé `lm_cp_model` |
+| `breakdown(c)` — un score 1-4 par jour | `indexAt(lake, t)` — un indice 0-100 par **heure** |
+| `moonScore` / `pressScore` / `windScore` / `dirScore` | les cinq facteurs du §15.4 à §15.7 |
+| `dayWeather(c)` — capteur/`/daily`/Open-Meteo | Open-Meteo seul pour le régime (§16.3) |
+| `scoreOf(c)` | `dayIndex(lake, c)` = meilleure fenêtre de 2 h (§15.9) |
+| Toggle Pêcheur/Chasseur | **retiré** (§14.1 décision 6) |
+
+**Changements de la couche données** :
+
+- `past_days=92`, `models=gem_seamless`, variables du §15.2 (ajouter
+  `temperature_2m`, `cloud_cover`, `precipitation`).
+- Cache `localStorage` **par lac** (`lm_cp_forecast_<lac>`), TTL 1 h.
+- Registre `LAKES` remplaçant `const LAKE` (§16.1), sélection dans `lm_cp_lake`.
+
+**Ordre suggéré** : `MODEL` et le classificateur d'abord, testables en console
+sans toucher à l'interface ; puis `indexAt()` ; puis `dayIndex()` ; puis brancher
+les vues existantes dessus. L'interface (Phase 2) ne bouge qu'ensuite.
+
+**Réétalonnage** : après le premier calcul complet, vérifier que le 99ᵉ centile de
+l'indice historique tombe vers 92 (§20.3) et ajuster l'échelle globale en
+conséquence. Les scores du §15 sont des valeurs de départ, pas un étalonnage.
+
+**Deux questions ouvertes bloquent partiellement** : §20.1 (échelle des vitesses de
+vent) et §20.2 (table de direction). Les recommandations y sont documentées avec
+les preuves ; il manque la confirmation de Ben. En attendant, implémenter avec les
+recommandations et garder les valeurs dans `MODEL` pour les changer d'une ligne.
 
 ### Phase 2 — Interface
 
@@ -1158,21 +1225,74 @@ attendus vers 30-50 sorties.
 
 ## 20. Questions en suspens
 
-### 20.1 Échelle de référence des vitesses de vent
+### 20.1 ⏳ Échelle de référence des vitesses de vent — OUVERTE
 
-Les plages du §15.5 (0-4 calme, 5-9 léger, 10-18 modéré…) proviennent du PDF. Mais
-le capteur lit **7,3 km/h de moins** qu'Open-Meteo (§18.5), et la v2 note sur
-Open-Meteo. Si ces plages ont été écrites d'après les valeurs affichées par la
-station, elles doivent être décalées d'environ +7 km/h avant d'être appliquées.
+Les plages du §15.5 (0-4 calme, 5-9 léger, 10-18 modéré…) proviennent du PDF.
+La v2 note sur Open-Meteo, or le capteur lit **7,3 km/h de moins** (§18.5).
 
-### 20.2 Origine de la table de direction
+**Réponse de Ben (2026-07-22)** : « de ce qu'affichait ma station ».
 
-La table Manitou (N −15 … SO +10) est-elle issue de la **direction affichée par la
-station** — auquel cas elle encode la distorsion du §18.5 et doit être réinterprétée
-— ou d'une **observation directe du vent** (vagues, drapeau, ressenti), auquel cas
-elle est valide telle quelle et c'est le capteur seul qui est en cause ?
+**⚠️ Contredit par les données.** Si les plages étaient à l'échelle du capteur :
 
-### 20.3 Ce que doit signifier 100
+| Plage du modèle | % des lectures capteur sur 14 j |
+|---|---|
+| 0-4 « presque calme » | **75,6 %** |
+| 5-9 « léger » | 13,7 % |
+| 10-18 « modéré, meilleures conditions » | **4,8 %** |
+| 19-28 « soutenu » | 0,2 % |
+| 29-39 « fort » | **0 %** |
+| 40+ « très fort » | **0 %** |
 
-Le réétalonnage du §18.4 dépend de la réponse : 100 doit-il désigner une journée
-exceptionnelle rare, ou une très bonne journée courante ?
+Le capteur n'a jamais dépassé **29,5 km/h** en vent moyen : les deux dernières
+plages sont physiquement inatteignables et trois quarts du temps tomberait dans
+« presque calme ». Un découpage dont la meilleure plage ne survient que 4,8 % du
+temps et dont deux catégories n'existent pas ne peut pas être celui qui a été
+conçu.
+
+**Recommandation** : garder les plages telles quelles et les appliquer à
+Open-Meteo, à l'échelle « terrain dégagé » à laquelle elles correspondent
+manifestement. **En attente de confirmation de Ben.**
+
+### 20.2 ⏳ Origine de la table de direction — OUVERTE
+
+**Réponse de Ben (2026-07-22)** : « sur ce qu'affichait la station ».
+
+**⚠️ La table devient alors auto-contradictoire.** Correspondance mesurée entre
+affichage et réalité (§18.5) :
+
+| Station affiche | n | Vent réel |
+|---|---|---|
+| **N** | 81 | **SO 48 · O 24** · NO 7 (moyenne 245° = SO) |
+| **NO** | 124 | **O 57 · SO 44** · NO 23 (moyenne 265° = O) |
+| SE | 17 | SE 10 · S 4 |
+| SO | **1** | O 1 |
+
+La table donne **N = −15** (le pire) et **SO = +10** (le meilleur) — or c'est
+physiquement le même vent. Et la station n'a affiché « SO » qu'**une seule fois**
+en 14 jours : le +10 pour le sud-ouest ne peut pas en venir, il vient du dicton
+*« wind from the west, fish bite the best »*.
+
+La table est donc **d'origine mixte** — le dicton pour le quadrant ouest,
+l'expérience réelle pour le nord — et n'est pas inversible proprement.
+
+**Recommandation** : repartir d'une **table neutre pour Manitou aussi**, et
+laisser le journal la reconstruire. **En attente de confirmation de Ben.**
+
+> 💡 **L'hypothèse la plus intéressante en sort.** Si l'observation « vent du nord
+> = mauvaise pêche » est réelle et vient de l'expérience, alors au Lac Manitou
+> **c'est le vent de sud-ouest à ouest qui déçoit** — l'inverse du dicton. Le §12
+> se reformule : non plus « le nord est-il cause ou indicateur », mais « pourquoi
+> l'ouest déçoit-il ici alors qu'il devrait être favorable ». Piste probable : le
+> quai est **abrité du vent d'ouest** par la crête (§18.5), donc l'eau accessible
+> reste calme quand souffle le vent dominant — la bonne rive serait à l'est du
+> lac. Testable dès la prochaine sortie par vent d'ouest établi.
+
+### 20.3 ✅ Ce que doit signifier 100 — RÉSOLUE
+
+**Réponse de Ben (2026-07-22)** : une **journée exceptionnelle, quelques-unes par
+saison**.
+
+**Méthode retenue** : réétalonner empiriquement pour que le **99ᵉ centile de
+l'indice sur l'historique tombe vers 92**, ce qui laisse le 100 aux journées
+vraiment rares et préserve la discrimination entre 65 et 90 — la zone où se
+décident les sorties.
