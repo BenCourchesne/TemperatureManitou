@@ -9,7 +9,7 @@
  "resultat": "mediocre",
  "source": "open-meteo gem_seamless",
  "fige_le": "2026-07-22",
- "note": "Premiere entree du journal. Heures de sortie, espece et captures a completer.",
+ "note": "Premiere entree du journal. Heures de sortie, espece et captures a completer. Ben etait present sur place le 19 juillet.",
  "conditions_horaires": [
   {
    "t": "2026-07-19T04:00",
@@ -220,5 +220,18 @@
    "D": 306,
    "regime": "F"
   }
- ]
+ ],
+ "observations_terrain": [
+  {
+   "quoi": "direction du vent",
+   "valeur": "nord (quadrant nord)",
+   "confiance": "faible",
+   "methode": "estimation visuelle sans instrument, depuis le lac",
+   "observateur": "Ben, present sur place",
+   "modele_meme_jour": "313 deg (NO), moyenne vectorielle, R=0.994",
+   "ecart": "~47 deg — dans la marge normale d une estimation a l oeil (±30-45 deg)",
+   "verdict": "coherent avec le modele, ne le contredit pas ; valeur probante faible"
+  }
+ ],
+ "resultat_confiance": "rapporte de memoire, sans comptage"
 }

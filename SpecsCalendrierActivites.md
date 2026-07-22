@@ -937,6 +937,23 @@ les sorties passées**. C'est ce qui rend la calibration cumulative.
 les fenêtres de tendance 3/6/12/24 h soient reconstituables sans dépendre de la
 disponibilité future de l'API.
 
+### 17.2b Champs de confiance — obligatoires
+
+Toute donnée rapportée porte un **niveau de confiance**. Sans lui, un souvenir
+vague finit pondéré comme une mesure, et la calibration se corrompt d'autant plus
+sournoisement qu'on n'en garde aucune trace.
+
+- `resultat_confiance` — `compte` (captures dénombrées à la sortie) ·
+  `estime` (ordre de grandeur) · `memoire` (rapporté après coup, sans comptage)
+- `observations_terrain[].confiance` — `mesure` (instrument) · `bonne`
+  (référence visuelle fiable : vagues franches, drapeau, ruban) · `faible`
+  (estimation à l'œil, ressenti)
+
+Repère pour juger une direction estimée à l'œil : l'erreur courante est de
+**±30 à 45°**. Un écart de cet ordre entre observation et modèle ne constitue
+donc **ni une confirmation ni une contradiction** — il faut le consigner comme
+tel plutôt que de l'interpréter.
+
 ### 17.3 Authentification
 
 Compte Firebase dédié (email/mot de passe), créé dans la console par Ben,
@@ -966,8 +983,15 @@ Première entrée du journal, saisie rétroactivement le 2026-07-22. Conditions
 horaires figées dans [`journal/2026-07-19-devenyns.json`](journal/2026-07-19-devenyns.json)
 avant expiration de la fenêtre de 92 jours d'Open-Meteo.
 
-**Résultat rapporté : pêche médiocre.**
+**Résultat rapporté : pêche médiocre** — confiance `memoire`, sans comptage.
 *(Heures de sortie, espèce ciblée, captures et secteur restent à compléter.)*
+
+**Observation terrain** — Ben était présent sur place. Vent perçu « du nord »,
+confiance `faible` (estimation à l'œil depuis le lac, sans instrument). Le modèle
+donne **313° (NO)**, moyenne vectorielle avec R = 0,994. L'écart de ~47° tombe
+dans la marge normale d'une estimation visuelle : l'observation est **cohérente
+avec le modèle sans le confirmer** — quadrant nord dans les deux cas, précision
+insuffisante pour trancher davantage.
 
 Conditions (Open-Meteo `gem_seamless`, coordonnées de Devenyns) :
 
