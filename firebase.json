@@ -25,6 +25,21 @@
     ],
     "rewrites": [
       { "source": "/cp", "destination": "/cp.html" }
+    ],
+    "headers": [
+      {
+        "comment": "Le defaut de Firebase Hosting est max-age=3600 : un deploiement mettait jusqu'a une heure a atteindre un visiteur recent. On descend a 60 s plutot qu'a `no-cache`, car Hosting NE REPOND JAMAIS 304 (verifie avec If-None-Match en identity, gzip et brotli : toujours 200 + corps complet). `no-cache` ferait donc retelecharger 94 Ko brotli a chaque ouverture de /, dont le logo PNG en base64 qui ne compresse pas. A 60 s le deploiement est visible tout de suite a l'echelle humaine et les rechargements rapproches restent gratuits. Les regles matchent le CHEMIN de la requete, pas le fichier de destination, d'ou l'entree explicite pour /cp (reecrit vers cp.html).",
+        "source": "**/*.@(html|json)",
+        "headers": [{ "key": "Cache-Control", "value": "public, max-age=60" }]
+      },
+      {
+        "source": "/cp",
+        "headers": [{ "key": "Cache-Control", "value": "public, max-age=60" }]
+      },
+      {
+        "source": "/",
+        "headers": [{ "key": "Cache-Control", "value": "public, max-age=60" }]
+      }
     ]
   }
 }
