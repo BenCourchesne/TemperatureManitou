@@ -360,6 +360,21 @@ prioriser avant de commencer.
   - Auto-refresh 5 min ignore le fetch du graphique quand on visite une
     fenêtre passée (ne ramène jamais au présent).
 
+- [ ] **Calendrier d'activité chasse-pêche** (nouvelle page cachée) — spec de dev
+      complète dans [`SpecsCalendrierActivites.md`](SpecsCalendrierActivites.md),
+      mockup interactif dans [`mockups/calendrier-activite.html`](mockups/calendrier-activite.html).
+      Pas encore implémenté. Résumé : **page séparée `cp.html`** servie à la route
+      cachée `/cp` (rewrite Firebase, même site — pas de sous-domaine), accès par
+      **appui long 1,2 s sur la tuile Lune** (+ lien footer après déverrouillage).
+      Le **panneau lunaire actuel reste mais perd sa cote ★** (redevient
+      informatif). La page : bascule Pêcheur/Chasseur (recalcule la cote), cote =
+      moyenne pondérée de **4 facteurs** (Lune · Pression · Vent · Direction, poids
+      **configurables/persistés** défaut .35/.35/.10/.20), étoiles → icônes
+      poisson/cerf (total seulement), vues Jour/Semaine/Mois, clic + flèches ‹ ›
+      (avance libre, la grille Mois suit). Météo hybride : capteur+EC aujourd'hui,
+      Open-Meteo (nouvelle dépendance) pour le futur ≤14 j, `/daily` pour le passé,
+      Lune seule au-delà. Décisions produit tranchées (§14) ; restent à valider les
+      seuils + le trou « direction passée » dans `/daily` (§3.2).
 - [ ] **Navigation temporelle — polish : séries absentes d'une fenêtre passée**
       — pas encore fait. Actuellement le bloc de stats est **omis entièrement**
       quand une série n'a pas de données dans la fenêtre visitée, au lieu de
