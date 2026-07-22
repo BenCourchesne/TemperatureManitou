@@ -335,6 +335,32 @@ s'allument, et que graphique + `/daily` marchent pour chaque mesure.
   Requête pour retrouver toutes les stations d'un coup :
   `https://aviationweather.gov/api/data/metar?bbox=45.0,-76.5,47.5,-72.5&format=json`
 
+  #### Lac Devenyns (47,0496 N / −73,8241 O, altitude 402 m)
+
+  Relevé le 2026-07-22 : `bbox=45.5,-76.0,49.0,-71.0`
+
+  | Station | Distance | Altitude | Rôle |
+  |---|---|---|---|
+  | **CWPK Parent** | 115 km | **443 m** | **Analogue de terrain — pour la VITESSE.** Même plateau de la Haute-Mauricie, même forêt boréale, 41 m d'écart d'altitude seulement. |
+  | **CWDQ La Tuque** | **88 km** | 174 m | La plus proche — pour la **direction** et le régime. Mais dans la vallée du Saint-Maurice, 228 m plus bas. |
+  | CXSH Shawinigan | 99 km | 106 m | Contrôle du gradient |
+  | CYRQ Trois-Rivières | 116 km | 58 m | Contrôle du gradient |
+
+  > ⚠️ **La direction se transporte, la vitesse non.** Le 2026-07-22 à 20 h Z,
+  > toutes les stations de la région donnaient 210-250° — le flux régional est
+  > uniforme sur 200 km. Mais la vitesse passait de **7 km/h à 443 m** (Parent) à
+  > **46 km/h à 3 m** (Lac Saint-Pierre), soit un facteur **six** sur des stations
+  > distantes de moins de 120 km. C'est le relief et la rugosité, pas la météo.
+  >
+  > Conséquence pratique : valider une **direction** avec n'importe quelle station
+  > voisine est légitime ; valider une **vitesse** exige un analogue d'altitude et
+  > de couvert. D'où Parent plutôt que La Tuque, malgré les 27 km de plus.
+  >
+  > Contrôle de cohérence du modèle au même instant : `gem_seamless` donnait
+  > **17,3 km/h à Devenyns** pour une maille à 402 m — soit exactement l'altitude
+  > du lac —, entre les 7 km/h de Parent et les 20 de La Tuque. Plausible : l'eau
+  > libre oppose moins de résistance que la forêt entourant une piste.
+
   ⚠️ Écarter **CWTA (McTavish)** : station sur un toit au centre-ville de
   Montréal, valeurs aberrantes (180° à 7 km/h quand tout le reste donnait
   240° à 20 km/h).
