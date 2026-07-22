@@ -223,15 +223,27 @@ https://api.open-meteo.com/v1/forecast
 
 - `/readings` porte déjà `press`, `wind`, `gust`, `wdir` → **aujourd'hui** (lecture
   live) a tout, y compris la direction, sans changement.
-- `/daily` porte `press`, `wind`, `gustmax` **mais PAS de direction** (ARCHITECTURE
-  §5.2). Donc pour un **jour passé**, le facteur Direction n'a pas de source directe.
-  Deux options :
-  1. **Ajouter une direction dominante quotidienne à `/daily`** (petit ajout au
-     script d'agrégation HA, comme `gustmax`) — moyenne vectorielle de `wdir` sur
-     le jour → `wdirdom`. *Recommandé* si on veut la direction sur l'historique.
-  2. **Fallback** : direction passée = `—` (facteur exclu, poids renormalisés sur
-     les 3 autres pour ce jour). Aucun changement HA, mais la cote des jours passés
-     ignore la direction. Acceptable en v1 si on préfère ne pas toucher le pipeline.
+- ✅ **RÉSOLU (2026-07-17)** — `wdirdom` a été **ajouté à l'agrégation HA**
+  (`home_assistant.yaml` : payload `firebase_put_daily` + calcul dans
+  `script.manitou_aggregate_daily`). `/daily` porte désormais la **direction
+  dominante du jour en degrés**, calculée en **moyenne vectorielle** (sin/cos puis
+  `atan2` — jamais une moyenne arithmétique, qui donnerait 180° pour 350°+10°).
+  Écrit `null` si la résultante est trop faible (vent variable) plutôt qu'un
+  0°=Nord trompeur. Le front mappe les degrés vers les 8 secteurs (§2.4b).
+- ⚠️ **Le changement du 2026-07-17 n'avait jamais atteint la production.** Il avait
+  été appliqué à la copie de documentation `home_assistant.yaml` (hors dépôt depuis
+  `3431fdb`) mais pas au HA vivant : ni le `data:` du script, ni le `payload` du
+  `rest_command`. Résultat, `wdirdom` était **absent de 100 % des buckets** jusqu'au
+  2026-07-22, sans la moindre erreur — un champ manquant dans le payload ne casse
+  rien. Déployé pour de bon le 2026-07-22.
+- ⚠️ **L'historique n'est pas rétro-rempli automatiquement** : le script saute les
+  jours déjà présents dans `/daily`. **Reconstruit à la main du 12 au 21 juillet 2026**
+  (suppression des 10 buckets puis relance du script). Le **11 juillet et avant reste
+  sans `wdirdom`** — hors de la fenêtre `range(1, 11)` — donc le fallback ci-dessous
+  reste nécessaire en permanence.
+- **Fallback quand `wdirdom` est absent** (jours pré-migration, ou `null` = vent
+  variable) : direction = `—`, facteur exclu, **poids renormalisés** sur les 3
+  autres pour ce jour.
 - **Renormalisation** : si un seul facteur manque (direction passée en fallback),
   renormaliser les poids restants pour qu'ils somment à 1 sur ce jour. Si les
   **quatre facteurs météo** manquent (hors horizon), on retombe sur Lune seule.

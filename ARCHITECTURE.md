@@ -161,9 +161,33 @@ Script `script.manitou_aggregate_daily`, triggered hourly and at HA start.
 from `/daily`, it GETs that day's raw `/readings` and PUTs a bucket keyed by
 UTC-midnight ms.
 
-- Means: `air, surface, depth, airv, hum, wind, uv, solar, press`
+- Means: `air, surface, depth, airv, hum, airb, humb, wind, uv, solar, press`
 - Maxes: `gustmax` (from `gust`), `rday`
+- **Vector mean:** `wdirdom` — dominant wind direction in degrees, from `wdir`.
+  Wind direction is circular, so this is a **vector** mean (sum the sin/cos
+  components, then `atan2`), never an arithmetic one — averaging 350° and 10°
+  arithmetically gives 180°, the exact opposite of the truth. When the resultant
+  magnitude is below 0.2 (wind swung all over the day) it writes `null` rather
+  than the misleading 0°=North that `atan2(0,0)` would return.
 - Count: `n` (number of raw samples that day)
+
+> **Adding a field to `/daily` touches TWO reload domains.** The value is computed
+> in the `data:` block of `script.manitou_aggregate_daily`, but the JSON key lives in
+> `rest_command.firebase_put_daily.payload` (configuration.yaml). *Reload Scripts does
+> not reload REST commands* — reload both, or restart. A field present in one and not
+> the other fails **silently**: a missing key just writes a shorter bucket, and an
+> undefined variable in the payload renders empty, producing invalid JSON that kills
+> the whole write. Use `{{ field | default("null") }}` in the payload so the two can
+> be deployed in either order. This cost a full debugging session on `wdirdom`
+> (added 2026-07-17, actually live 2026-07-22).
+>
+> **Adding a new field to `/daily` does not backfill history.** The script skips
+> any day already present (`dayms not in existing`), so a new field only appears
+> on days aggregated from then on. To rebuild history: temporarily widen
+> `for_each: range(1, 11)` to cover every day since the start of record, delete
+> `/daily`, run the script, then restore the 10-day window. Deleting `/daily`
+> *without* widening the range permanently drops every bucket older than 10 days
+> (the season/year views read `/daily`).
 - "Option A" = **completed days only.** Today never appears in /daily; the 24 h raw
   view covers the current day. Nobody views a yearly chart expecting the last 3 hours,
   so this is sufficient and avoids Cloud Functions entirely.
@@ -192,8 +216,8 @@ only exist from ~Jul 7 2026; `airv`/`hum` from ~Jul 6 2026).
 ### 5.2 `/daily/{utc_midnight_ms}` — daily aggregates
 ```json
 { "air": 19.52, "surface": 24.0, "depth": 24.14, "airv": 20.17, "hum": 86.39,
-  "wind": 0.5, "gustmax": 13.0, "rday": 10.7, "uv": 0.2, "solar": 45,
-  "press": 964.2, "n": 288 }
+  "wind": 0.5, "gustmax": 13.0, "wdirdom": 271, "rday": 10.7, "uv": 0.2,
+  "solar": 45, "press": 964.2, "n": 288 }
 ```
 
 ### 5.3 Security rules — [`database.rules.json`](database.rules.json)
