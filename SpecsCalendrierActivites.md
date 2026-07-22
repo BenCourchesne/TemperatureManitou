@@ -38,6 +38,9 @@
 | Journal — 1ʳᵉ entrée + correctif classificateur | `2423fed`, `dd82420` | Phase 0 close, voir §17.5 |
 | **Carte Vent fusionnée** dans `index.html` | `a832b4d` | vent au large + sonde locale |
 | `journal/` exclu du déploiement | `6a39f6f` | les entrées portent le secteur de pêche |
+| Handoff Phase 1 + §20 documentées | `f86c7a8` | les questions ouvertes portent désormais leurs preuves |
+| Horizon de prévision corrigé, §15.9b | `24cd66f` | `gem_seamless` va à 10 j, pas 16 |
+| **Fondation du moteur v2** | `23f89ac` | `LAKES`, `MODEL`, `V2` — bloc `10b` de `cp.html`, additif |
 
 ### Carte Vent de `index.html` (2026-07-22)
 
@@ -1205,11 +1208,52 @@ puis **corrigé deux fois** par confrontation aux données réelles :
 Validé contre la première sortie du journal (§17.5, Devenyns 19 juillet, pêche
 médiocre → postfrontal froid correctement identifié).
 
-### Phase 1 — Moteur horaire ⬅️ **PROCHAINE ÉTAPE**
+### Phase 1 — Moteur horaire ⬅️ **EN COURS**
 
-**Point de départ.** Tout se passe dans [`cp.html`](cp.html) (~1 100 lignes,
+**Point de départ.** Tout se passe dans [`cp.html`](cp.html) (~1 300 lignes,
 vanilla JS, sans build). Les règles à implémenter sont aux §15.1 à §15.9, la
 config au §15.10, les décisions produit au §14.1.
+
+#### ✅ Fondation déjà en place — bloc `10b` de `cp.html` (commit `23f89ac`)
+
+Ajout **purement additif** : le modèle v1 n'a pas été touché, la page se comporte
+comme avant. Ne pas réimplémenter, mais compléter.
+
+| Livré | Contenu |
+|---|---|
+| `LAKES` | Registre Manitou/Devenyns, coordonnées, table de direction par lac (§16.1, §16.4) |
+| `MODEL` | Config complète du §15.10 — régimes, pression, vent, lune, heure, corrélation, hystérésis. Horizon à 10 j. |
+| `V2.load(lac)` | Série horaire Open-Meteo `gem_seamless` par lac, cache 1 h, variables du §15.2 |
+| `V2.regimeAt(h,i)` | Cascade du §15.3, règle postfrontal structurelle |
+| `V2.classify(lac)` | Régimes de toute la série + persistance du §15.3b |
+| `V2.strip(lac,date)` | Bande de 24 caractères — outil de relecture humaine |
+| `secteurDe(deg)` | Degrés → 8 secteurs |
+
+Testable en console, sans interface :
+
+```js
+await V2.load('devenyns');
+V2.strip('devenyns', '2026-07-19');   // → FFFFFFFFFFFFFFFFFFFFFFFF
+```
+
+Validé le 2026-07-22 : le 19 juillet à Devenyns ressort **24 h sur 24 en
+postfrontal froid**, cohérent avec la pêche médiocre du §17.5 ; et **17 %** de
+postfrontal sur 600 h pour chacun des deux lacs, donc pas de surdéclenchement.
+
+#### ⬜ Reste à faire
+
+1. **Les cinq facteurs de score** — §15.4 pression, §15.5 vent (vitesse et
+   direction), §15.6 lune plafonnée, §15.7 heure du jour. Les barèmes sont dans
+   `MODEL`, il manque les fonctions qui les appliquent.
+2. **Règle anti-double-comptage** (§15.8) — `MODEL.correlation` est prêt.
+3. **`indexAt(lac, i)`** — assemblage du §15.1, indice 0-100 pour une heure.
+4. **`dayIndex(lac, jour)`** — meilleure fenêtre de 2 h (§15.9).
+5. **`meilleuresFenetres(lac)`** — classement transversal (§15.9b).
+6. **Réétalonnage** — ajuster l'échelle pour que le 99ᵉ centile tombe vers 92 (§20.3).
+7. **Basculer les vues** de `breakdown()`/`scoreOf()` vers les nouvelles fonctions,
+   puis retirer `SCORING` et le mode Chasseur (§14.1 décision 6).
+
+Les points 1 à 5 sont testables en console avant de toucher à l'interface.
 
 **À conserver tel quel** — cette couche est éprouvée et indépendante du modèle :
 
