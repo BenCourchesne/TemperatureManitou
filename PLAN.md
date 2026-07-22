@@ -269,10 +269,36 @@ s'allument, et que graphique + `/daily` marchent pour chaque mesure.
       de 50 m au sud-ouest. Mesures détaillées dans
       [`SpecsCalendrierActivites.md`](SpecsCalendrierActivites.md) §18.5.
       Confirmé par 5 sources indépendantes (comparaison sur 14 jours, modèle
-      d'élévation, géométrie du site, METAR de CYMX/CYUL/CYND, observation
-      directe du 2026-07-22 à 14 h).
+      d'élévation, géométrie du site, 22 stations METAR, observation directe du
+      2026-07-22 à 14 h).
       **Doute subsistant : défaut de calibration ou d'installation ?** À trancher
       par le protocole ci-dessous.
+
+  **Matériel** : Ecowitt **WS69** (7-en-1, anémomètre à coupelles + girouette
+  séparée, toutes deux noires) sur passerelle **GW3000**. Installée vers le
+  **2026-07-08**, ce qui correspond au début des données de vent — tout
+  l'échantillon vient donc du même capteur, sans changement en cours de route.
+
+  ### Hypothèses testées et éliminées
+
+  | Hypothèse | Verdict | Preuve |
+  |---|---|---|
+  | Roulements usés, toiles d'araignée, saletés | **Éliminée** | Capteur installé depuis 2 semaines |
+  | Girouette bloquée ou bridée | **Éliminée** | Sur 3 018 lectures, la girouette visite **36/36 secteurs de 10°** (35/36 au-dessus de 5 km/h). Elle tourne librement sur 360°. |
+  | Rotation constante au montage | **Éliminée** | L'écart varie de −5° (SE) à +119° (SO) selon le secteur réel. Surtout, la distribution est **comprimée** et non **décalée** : 90° de directions réelles (SO→NO) s'écrasent dans 30° de lectures (320-350°). Une erreur d'orientation déplacerait toutes les lectures du même angle en conservant leur étalement. |
+  | **Canalisation par le relief** | **Seule debout** | Modèle d'élévation (crête à +14° d'horizon au SO), géométrie du site (chenal étroit + colline de 50 m), ratio de vitesse de 28 %, et pic de direction à 320-340° coïncidant avec l'axe du chenal. Au-dessus de 5 km/h, **80 % des lectures tombent entre 290° et 20°**, alors que le vent régional venait surtout de l'ouest et du sud-ouest. |
+
+  Reste possible : un **décalage d'orientation de 13-14°** superposé, si
+  l'alignement a été fait au nord magnétique (déclinaison locale ~14° ouest).
+  À corriger — c'est gratuit — mais ça n'explique pas le phénomène principal.
+
+  Sur la **vitesse**, le seuil de démarrage des coupelles (de l'ordre de 2 à
+  4 km/h, à confirmer dans la fiche technique) explique une part de la
+  sous-lecture en vent léger. Ce n'est pas un défaut mais la limite du principe
+  mécanique. Il se voit dans le ratio sonde/régional, qui **monte** avec la
+  vitesse : 0,13 entre 5 et 10 km/h, 0,26 entre 10 et 15, 0,37 entre 15 et 20,
+  0,43 entre 20 et 30. Une sonde ultrasonique (WS80/WS90) supprimerait ce seuil
+  — mais pas l'abri, qui reste dominant pour la direction.
 
   > **Protocole d'observation — le point décisif**
   >
@@ -290,8 +316,33 @@ s'allument, et que graphique + `/daily` marchent pour chaque mesure.
   > secteur dégagé (nord-est à est).
   >
   > La comparaison se fait ensuite contre le modèle GEM (Environnement Canada,
-  > `gem_seamless` via Open-Meteo) et les METAR de CYMX, CYUL et CYND, qui
-  > donnent des observations réelles indépendantes.
+  > `gem_seamless` via Open-Meteo) et les METAR listés ci-dessous.
+
+  ### Stations de référence
+
+  ⚠️ **CYFJ (Mont-Tremblant) ne diffuse pas de METAR** — vérifié par balayage
+  d'un rectangle de 2,5° autour du lac : 22 stations remontent, Mont-Tremblant
+  n'en fait pas partie. **Aucune station au nord du lac**, toutes sont au sud,
+  sud-est ou sud-ouest.
+
+  | Station | Distance | Intérêt |
+  |---|---|---|
+  | **CWMJ** Maniwaki | 128 km | **La plus pertinente** — seule en terrain comparable (Laurentides/Gatineau, relief vallonné). Le 2026-07-22 à 18 h Z elle donnait 17 km/h, exactement la valeur du modèle HRDPS au lac. |
+  | CYMX Mirabel | 48 km | La plus proche, mais en basses terres |
+  | CYUL Trudeau | 81 km | Basses terres |
+  | CYND Gatineau | 109 km | Basses terres |
+
+  Requête pour retrouver toutes les stations d'un coup :
+  `https://aviationweather.gov/api/data/metar?bbox=45.0,-76.5,47.5,-72.5&format=json`
+
+  ⚠️ Écarter **CWTA (McTavish)** : station sur un toit au centre-ville de
+  Montréal, valeurs aberrantes (180° à 7 km/h quand tout le reste donnait
+  240° à 20 km/h).
+
+  > **Réserve de fond** : aucune observation réelle en terrain comparable à
+  > moins de 128 km. Pour le lac lui-même, le modèle reste la meilleure
+  > **estimation** disponible — pas une mesure. C'est précisément la valeur du
+  > ruban témoin : ce serait la première mesure réelle dans ce relief.
 
   > **Méthode recommandée : ruban témoin dans le champ de la caméra**
   >
