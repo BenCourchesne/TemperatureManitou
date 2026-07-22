@@ -952,11 +952,17 @@
 
   <div class="section-label"><i class="ti ti-sun"></i><span data-i18n="secSky">Ciel &amp; conditions</span></div>
   <div class="cards cards-5">
+    <!-- Vent : valeur principale = vent au large (modèle EC), pied de carte =
+         sonde locale. La sonde est derrière l'île McCall, dans un chenal abrité
+         sous le vent d'une crête, et ne lit que ~28 % du vent régional — voir
+         PLAN.md. Le libellé est posé par updateWindCard(), pas par data-i18n,
+         car il change selon la disponibilité du modèle. -->
     <div class="card card-wind">
-      <div class="card-label"><i class="ti ti-wind"></i> <span data-i18n="wind">Vent</span></div>
+      <div class="card-label"><i class="ti ti-wind"></i> <span id="wind-label">Vent au large</span></div>
       <div class="card-temp" id="val-wind">—<span class="card-unit">km/h</span></div>
       <div class="card-trend" id="trend-wind"></div>
       <div class="card-winddir" id="wind-dir"></div>
+      <div class="card-sunrow" id="wind-local"></div>
     </div>
     <div class="card card-rain">
       <div class="card-label"><i class="ti ti-cloud-rain"></i> <span data-i18n="rain">Pluie</span></div>
@@ -1165,6 +1171,11 @@
       compass:       ['N','NE','E','SE','S','SO','O','NO'],
       windFrom:      'Vent du secteur',
       calm:          'calme',
+      windOpen:      'Vent au large',
+      windLocalOnly: 'Vent (île McCall)',
+      windLocal:     'Île McCall',
+      windGust:      'rafales',
+      windSrcEC:     'Vent au large : modèle HRDPS d\'Environnement Canada. Sonde locale : île McCall, secteur abrité.',
       forecast7:     'Prévisions 7 jours',
       fcSource:      'Source : Environnement Canada',
       external:      'Autres sources',
@@ -1238,6 +1249,11 @@
       compass:       ['N','NE','E','SE','S','SW','W','NW'],
       windFrom:      'Wind from',
       calm:          'calm',
+      windOpen:      'Open-lake wind',
+      windLocalOnly: 'Wind (McCall Island)',
+      windLocal:     'McCall Island',
+      windGust:      'gusts',
+      windSrcEC:     'Open-lake wind: Environment Canada HRDPS model. Local sensor: McCall Island, sheltered spot.',
       forecast7:     '7-day forecast',
       fcSource:      'Source: Environment Canada',
       external:      'Other sources',
@@ -1967,6 +1983,94 @@
        <span><i class="ti ti-sunset" style="color:#fb923c"></i>${t.sunset} ${fmtT(st.sunset)}</span>`;
   }
 
+  // ── Vent au large (modèle GEM d'Environnement Canada, via Open-Meteo) ────────
+  // La sonde du quai est derrière l'île McCall, dans un chenal abrité sous le
+  // vent d'une crête de 50 m : elle ne lit que ~28 % du vent régional et sa
+  // direction est canalisée de 34 à 119° selon le secteur (mesures dans PLAN.md
+  // et SpecsCalendrierActivites.md §18.5). Afficher cette seule valeur induit en
+  // erreur quiconque décide de sortir en bateau — le 2026-07-22 la page annonçait
+  // 1 km/h pendant que 22 stations mesuraient 20 km/h avec des rafales à 41.
+  // D'où la valeur principale au large et la sonde en pied de carte.
+  // `gem_seamless` = HRDPS 2,5 km aux échéances courtes, puis RDPS/GDPS.
+  let openWind = null, openWindAt = 0;
+  async function fetchOpenWind() {
+    if (openWind && Date.now() - openWindAt < 10 * 60 * 1000) return openWind;
+    const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + LAKE.lat +
+      '&longitude=' + LAKE.lon + '&models=gem_seamless' +
+      '&current=wind_speed_10m,wind_gusts_10m,wind_direction_10m' +
+      '&hourly=wind_speed_10m&past_days=1&forecast_days=1&timezone=America%2FToronto';
+    try {
+      const r = await fetch(url);
+      const j = await r.json();
+      if (!j || !j.current || j.current.wind_speed_10m == null) throw new Error('réponse vide');
+      openWind = j; openWindAt = Date.now();
+    } catch (e) { /* échec réseau : on garde le cache périmé s'il existe */ }
+    return openWind;
+  }
+
+  // Tendance 3 h du vent au large. L'heure courante est repérée via `current.time`
+  // plutôt qu'en reparsant les horodatages : ceux d'Open-Meteo sont en heure
+  // locale du lac, qui n'est pas forcément celle du visiteur.
+  function openWindTrend(j) {
+    const t = i18n[currentLang], h = j && j.hourly;
+    if (!h || !h.time || !j.current || !j.current.time) return '';
+    const key = j.current.time.slice(0, 13);
+    const i = h.time.findIndex(x => x.slice(0, 13) === key);
+    if (i < 3) return '';
+    const a = h.wind_speed_10m[i], b = h.wind_speed_10m[i - 3];
+    if (a == null || b == null) return '';
+    const diff = a - b;
+    if (Math.abs(diff) < 1) return `<span class="trend-flat">${t.stable}</span>`;
+    return `<span class="trend-flat">${diff > 0 ? '↑' : '↓'} ${Math.abs(diff).toFixed(0)} km/h vs 3h</span>`;
+  }
+
+  function updateWindCard(data, last) {
+    const t = i18n[currentLang];
+    const lbl = document.getElementById('wind-label');
+    const valEl = document.getElementById('val-wind');
+    const trEl = document.getElementById('trend-wind');
+    const dirEl = document.getElementById('wind-dir');
+    const locEl = document.getElementById('wind-local');
+    if (!valEl || !lbl) return;
+    const card = lbl.closest('.card');
+
+    const spd = last ? val(last, 'wind') : null;
+    const localTxt = spd == null ? '—'
+      : (spd < CALM_KMH ? '0' : spd.toFixed(METRIC_DEC.wind)) + ' km/h';
+    const c = openWind && openWind.current;
+
+    if (c && c.wind_speed_10m != null) {
+      lbl.textContent = t.windOpen;
+      if (card) card.title = t.windSrcEC;
+      valEl.innerHTML = Math.round(c.wind_speed_10m) + '<span class="card-unit"> km/h</span>';
+      trEl.innerHTML = openWindTrend(openWind);
+      const dir = c.wind_direction_10m;
+      let d = '';
+      if (dir != null) {
+        d = `<i class="ti ti-arrow-up wind-arrow" style="transform:rotate(${Math.round(dir)}deg)"></i>` +
+            compassDir(dir, currentLang);
+      }
+      if (c.wind_gusts_10m != null) d += (d ? ' · ' : '') + t.windGust + ' ' + Math.round(c.wind_gusts_10m);
+      dirEl.innerHTML = d;
+      locEl.innerHTML = `<span><i class="ti ti-anchor"></i>${t.windLocal} · ${localTxt}</span>`;
+    } else {
+      // Repli : modèle injoignable → la sonde reprend la vedette, mais nommée
+      // explicitement, pour qu'on ne prenne pas son abri pour le vent du lac.
+      lbl.textContent = t.windLocalOnly;
+      if (card) card.removeAttribute('title');
+      valEl.innerHTML = (spd == null ? '—' : (spd < CALM_KMH ? '0' : spd.toFixed(METRIC_DEC.wind))) +
+                        '<span class="card-unit"> km/h</span>';
+      trEl.innerHTML = (data && data.length) ? trendLabel(data, 'wind') : '';
+      const dir = last && last.wdir;
+      if (dir == null) dirEl.innerHTML = '';
+      else if (spd != null && spd < CALM_KMH) dirEl.innerHTML = `<span class="trend-flat">${t.calm}</span>`;
+      else dirEl.innerHTML =
+        `<i class="ti ti-arrow-up wind-arrow" style="transform:rotate(${Math.round(dir)}deg)"></i>` +
+        compassDir(dir, currentLang) + ' · ' + Math.round(dir) + '°';
+      locEl.innerHTML = '';
+    }
+  }
+
   // ── Update UI ────────────────────────────────────────────────────────────────
   // Vide les tuiles/graphique quand une fenêtre naviguée n'a aucune donnée —
   // évite d'afficher des chiffres périmés à côté du message « aucune donnée ».
@@ -1989,6 +2093,9 @@
     }
     const wdEl = document.getElementById('wind-dir');
     if (wdEl) { wdEl.innerHTML = ''; wdEl.removeAttribute('title'); }
+    // Le vent au large reste valable même sans lecture de sonde : il ne vient
+    // pas du RTDB. On le réaffiche donc plutôt que de vider la carte.
+    updateWindCard([], null);
     if (chart) {
       SERIES.forEach((key, i) => { chart.data.datasets[i].data = []; });
       SOLO.forEach((m, j) => { chart.data.datasets[3 + j].data = []; });
@@ -1998,10 +2105,15 @@
     if (stats) stats.innerHTML = '';
   }
 
+  // Dernier jeu de lectures affiché — mémorisé pour que le rafraîchissement du
+  // vent au large (cadence indépendante du RTDB) puisse redessiner sa carte.
+  let lastData = [], lastReading = null;
+
   function updateUI(data, animate = false) {
     if (!data.length) { clearCardsAndChart(); return; }
 
     const last = data[data.length - 1];
+    lastData = data; lastReading = last;
 
     // Cards
     const fmt = v => v != null ? v.toFixed(1) : '—';
@@ -2020,37 +2132,18 @@
     cardDisplay('air',     val(last, 'air'));   // véranda (repli quai)
     cardDisplay('surface', last.surface);
     cardDisplay('depth',   last.depth);
-    // Tuiles météo génériques + tendances (humidité, pression, vent, pluie, UV, luminosité)
-    const metricEl = { humidity:'hum', pressure:'press', wind:'wind', rain:'rain', uv:'uv', solar:'solar' };
+    // Tuiles météo génériques + tendances. Le vent est traité à part par
+    // updateWindCard() : sa carte combine deux sources (large + sonde locale).
+    const metricEl = { humidity:'hum', pressure:'press', rain:'rain', uv:'uv', solar:'solar' };
     for (const key in metricEl) {
       const id = metricEl[key], v = val(last, key), u = METRIC_UNIT[key];
-      let disp;
-      if (v == null) disp = '—';
-      else if (key === 'wind' && v < CALM_KMH) disp = '0';   // dead-band : pas de « 1 » trompeur
-      else disp = v.toFixed(METRIC_DEC[key]);
+      const disp = v == null ? '—' : v.toFixed(METRIC_DEC[key]);
       document.getElementById('val-' + id).innerHTML =
         disp + (u ? '<span class="card-unit">' + u + '</span>' : '');
       document.getElementById('trend-' + id).innerHTML = key === 'uv' ? uvTrendLabel(data) : trendLabel(data, key);
     }
 
-    // Direction du vent (tuile Vent) : flèche orientée vers la provenance +
-    // rose des vents + degrés. « calme » si le vent est ~nul (direction sans
-    // objet), rien si wdir absent (lectures pré-Ecowitt).
-    const wdEl = document.getElementById('wind-dir');
-    if (wdEl) {
-      const tr = i18n[currentLang], dir = last.wdir, spd = val(last, 'wind');
-      if (dir == null) {
-        wdEl.innerHTML = '';
-        wdEl.removeAttribute('title');
-      } else if (spd != null && spd < CALM_KMH) {
-        wdEl.innerHTML = `<span class="trend-flat">${tr.calm}</span>`;
-        wdEl.removeAttribute('title');
-      } else {
-        const c = compassDir(dir, currentLang);
-        wdEl.innerHTML = `<i class="ti ti-arrow-up wind-arrow" style="transform:rotate(${Math.round(dir)}deg)"></i>${c} · ${Math.round(dir)}°`;
-        wdEl.title = `${tr.windFrom} ${c}`;
-      }
-    }
+    updateWindCard(data, last);
 
     document.getElementById('trend-air').innerHTML     = trendLabel(data, 'air');
     document.getElementById('trend-surface').innerHTML = trendLabel(data, 'surface');
@@ -2952,6 +3045,11 @@
     }
   })();
   loadForecast();
+  // Vent au large : premier chargement, puis rafraîchissement aux 10 min.
+  // Indépendant du RTDB — la carte reste utile même si la sonde se tait.
+  const refreshOpenWind = () => fetchOpenWind().then(() => updateWindCard(lastData, lastReading));
+  refreshOpenWind();
+  setInterval(refreshOpenWind, 10 * 60 * 1000);
   // Rafraîchit seulement si la fenêtre affichée contient l'instant présent —
   // une navigation vers le passé ne doit jamais être ramenée au présent
   // (section 7 du plan : "auto-refresh must respect time-travel").
