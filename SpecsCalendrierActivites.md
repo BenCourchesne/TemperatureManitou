@@ -1,19 +1,51 @@
 # Calendrier d'activité chasse-pêche — spec d'implémentation
 
-> Document de handoff pour le dev. Décrit une **page dédiée cachée** (route `/cp`
-> sur le site actuel) — un **Calendrier d'activité solunaire + météo** avec bascule
-> **Pêcheur / Chasseur**, cote par facteurs (Lune · Pression · Vent · Direction),
-> vues Jour / Semaine / Mois et navigation jour par jour. Le **panneau « Activité
-> lunaire » actuel reste** sur `lmt` mais **perd sa cote ★** (redevient purement
-> astronomique). Accès à la page cachée par **appui long sur la tuile Lune**.
+> **v1 EN PRODUCTION depuis le 2026-07-22** à [`lmt.bcourchesne.com/cp`](https://lmt.bcourchesne.com/cp).
+> Une **v2** est spécifiée aux §15 à §20 : elle remplace le modèle de cote par un
+> **indice horaire fondé sur le régime météorologique**, ajoute un **sélecteur de
+> lac** et un **journal de sorties** pour la calibration. Le §2 décrit le modèle v1,
+> conservé pour mémoire mais **remplacé** par le §15.
 >
-> **Mockup interactif de référence** : [`mockups/calendrier-activite.html`](mockups/calendrier-activite.html)
-> — ouvrir dans un navigateur, tout est cliquable (toggle, granularité, clic sur
-> une journée, flèches ‹ ›). C'est la source de vérité visuelle ; ce `.md` est la
-> source de vérité pour la **logique, les données et les seuils**.
+> Page dédiée cachée (route `/cp`), vues Jour / Semaine / Mois, navigation jour par
+> jour. Le panneau « Activité lunaire » de `lmt` reste mais **a perdu sa cote ★**
+> (redevenu purement astronomique). Accès par **appui long sur la tuile Lune**.
 >
-> Statut backlog suivi dans [`PLAN.md`](PLAN.md). Contexte système :
-> [`ARCHITECTURE.md`](ARCHITECTURE.md).
+> **Mockup de référence** : [`mockups/calendrier-activite.html`](mockups/calendrier-activite.html)
+> — source de vérité visuelle. Ce `.md` est la source de vérité pour la **logique,
+> les données et les seuils**.
+>
+> Statut backlog dans [`PLAN.md`](PLAN.md). Contexte système :
+> [`ARCHITECTURE.md`](ARCHITECTURE.md). Modèle de référence v2 :
+> `Modèle d'évaluation des conditions de pêche` v1.1 (PDF hors dépôt).
+
+---
+
+## 0. État d'avancement
+
+### Livré en production (2026-07-22)
+
+| Élément | Commit | Note |
+|---|---|---|
+| `cp.html` — calendrier complet, vues Jour/Semaine/Mois | `14ea1dc` | JS vanilla, sans build |
+| Rewrite Firebase `/cp` | `14ea1dc` | `firebase.json` |
+| Cote ★ retirée de `index.html`, entrée par appui long | `ac67fe2` | §10.B et §10.C respectés |
+| `wdirdom` déployé en production + historique reconstruit | `6f753ac` | 12 au 21 juillet 2026 |
+| Tendance de pression 24 h, refresh incrémental | `1cb3b6c` | remplace les 6 h du §3 |
+| `.git` exclu du déploiement Hosting | `8ff5921` | le dépôt entier était servi publiquement |
+| Cache HTML ramené de 1 h à 60 s | `86ad541` | les déploiements mettaient 1 h à se propager |
+
+Critères d'acceptation du §13 : **tous satisfaits**, sauf la validation responsive
+sur appareil réel (vérifiée par simulation à 320 / 360 / 480 px, sans débordement).
+
+### Écarts assumés par rapport au spec d'origine
+
+- **Badge « Capteur » et non « Capteur + EC »** — Environnement Canada n'est pas
+  branché en secours. Si le capteur est muet, la journée retombe sur Open-Meteo.
+- **Tendance de pression du jour sur 24 h et non 6 h** (§3) — justification et
+  mesures au §18.2.
+- **Cases du calendrier à 39 × 45 px** sur 360 px, sous les 44 px du §13. C'est la
+  géométrie inhérente de 7 colonnes, déjà anticipée au §6. Tous les *contrôles*
+  sont à ≥ 44 px.
 
 ---
 
@@ -45,7 +77,16 @@ l'icône animale, chaque facteur a un mini-score neutre (points ●●●○).
 
 ---
 
-## 2. Modèle de cote (le cœur)
+## 2. Modèle de cote v1 — ⚠️ REMPLACÉ PAR LE §15
+
+> Ce modèle est **en production** mais **remplacé** par l'indice horaire du §15.
+> Conservé pour mémoire et parce que la couche de données (§3), l'interaction (§4),
+> la mise en page (§5) et l'i18n (§8) restent valides en v2.
+>
+> Ses trois défauts, établis au §18 : il compte plusieurs fois le même front,
+> il donne 35 % à la lune, et son seuil « chute marquée ≤ −3 hPa/24 h » se
+> déclenche environ **un jour sur trois** — un score maximal aussi fréquent ne
+> discrimine rien.
 
 ### 2.1 Quatre sous-scores, chacun de 1 à 4
 
@@ -573,3 +614,476 @@ Tranché avec Ben (2026-07-14) :
 
 Reste à valider (pas bloquant, ajustable via la config) : les **seuils** de chaque
 facteur (plages de vent, seuil de chute de pression, table de direction chasse).
+
+### 14.1 Décisions v2 (2026-07-22)
+
+6. ✅ **Pêche uniquement.** Le toggle Pêcheur/Chasseur est retiré. La chasse
+   reviendra avec son propre modèle et son propre journal — le journal de pêche ne
+   pourrait de toute façon pas calibrer des scores de chasse.
+7. ✅ **Indice horaire, pas journalier.** Décidé parce que le journal permet de
+   juger « le modèle avait raison ou tort **à telle heure** », ce qu'une note
+   journalière ne permet pas.
+8. ✅ **Open-Meteo comme base uniforme** des deux lacs pour le régime, la pression
+   et la direction. Le capteur Manitou devient une couche *locale* (§16.3).
+9. ✅ **Journal authentifié** par un compte Firebase dédié, session persistante.
+10. ✅ **Sélecteur de lac** : Manitou et Devenyns (§16).
+
+---
+
+# PARTIE II — v2 : indice horaire par régime
+
+---
+
+## 15. Modèle v2 (le nouveau cœur)
+
+Fondé sur `Modèle d'évaluation des conditions de pêche` v1.1. Le principe directeur
+est de **distinguer le régime météorologique de ses manifestations**, pour ne pas
+pénaliser trois fois le même front froid.
+
+### 15.1 Forme générale
+
+```
+indice(t) = 50
+          + score_régime
+          + score_pression   × réduction
+          + score_direction  × réduction
+          + score_vitesse_vent
+          + score_lune       (plafonné à +10)
+          + score_heure
+
+indice affiché = clamp(round(indice), 0, 100)
+```
+
+`t` est une **heure locale** (America/Toronto). L'indice est recalculé pour chaque
+heure de la journée ; la grille mensuelle en dérive une valeur par jour (§15.8).
+
+**Pondérations cibles** — le PDF annonce Régime 30 % · Pression 25 % · Vent 25 % ·
+Lune 10 % · Heure 10 %, mais ses plages de points ne les respectent pas (amplitudes
+réelles : Régime 60, Vent 60, Pression 45, Heure 15, Lune 12). Les valeurs ci-dessous
+sont **réétalonnées** pour que l'amplitude de chaque facteur corresponde à sa
+pondération annoncée, et pour que l'échelle ne sature plus (§18.4).
+
+### 15.2 Entrées horaires
+
+Toutes issues d'Open-Meteo (`hourly`), pour les deux lacs, passé comme futur :
+
+| Symbole | Variable Open-Meteo | Usage |
+|---|---|---|
+| `P` | `pressure_msl` | `dP3`, `dP6`, `dP12`, `dP24` = `P(t) − P(t−n h)` |
+| `W` | `wind_speed_10m` | vitesse ; `dW6` = tendance |
+| `G` | `wind_gusts_10m` | détection du passage de front |
+| `D` | `wind_direction_10m` | direction ; `ΔD3` = écart angulaire sur 3 h |
+| `T` | `temperature_2m` | `dT6` = refroidissement postfrontal |
+| `N` | `cloud_cover` (%) | dégagement postfrontal, `dN6` = tendance |
+| `R` | `precipitation` (mm) | `R3` = cumul sur 3 h |
+
+`relative_humidity_2m` est disponible mais non utilisée en v2 — la couverture
+nuageuse capte le même signal préfrontal plus directement.
+
+### 15.3 Classificateur de régime — 30 %
+
+Cascade à priorité décroissante ; **la première règle vraie l'emporte**.
+
+| # | Régime | Condition | Score |
+|---|---|---|---|
+| 1 | **Passage du front** | `ΔD3 ≥ 60°` ET (`R3 > 0,5 mm` OU `G ≥ 25 km/h`) ET `dP3 > −0,5` ET `dP6 < −1` | `+2` |
+| 2 | **Postfrontal froid** | `dP3 ≥ +1,0` ET `dT6 ≤ −1,0` ET (`dN6 ≤ −20` OU `N < 40`) | `−25` |
+| 2b | *(variante sans nuages)* | `dP3 ≥ +1,5` ET `dP6 ≥ +2,5` ET `dT6 ≤ −0,5` | `−25` |
+| 3 | **Front en approche** | `dP3 ≤ −1,5` ET `dW6 > 0` ET (`N ≥ 70` OU `R3 > 0`) | `+25` |
+| 4 | **Préfrontal** | `−3,5 ≤ dP6 ≤ −0,8` ET `dN6 ≥ +10` | `+22` |
+| 5 | **Retour à la stabilité** | `|dP3| < 1` ET postfrontal dans les 12 h précédentes ET `dW6 < 0` | `+5` |
+| 6 | **Stable** | `|dP3| < 1` ET `|dP12| < 2` | `+8` |
+| 7 | *Indéterminé* | (défaut) | `0` |
+
+Le PDF donne des scores identiques (+20 à +30) aux régimes 3 et 4 ; ils sont
+néanmoins distingués ici parce que la **règle anti-double-comptage** (§15.7) et
+l'affichage en dépendent.
+
+### 15.4 Pression — 25 %
+
+Le PDF utilise plusieurs fenêtres au lieu d'en élire une : la courte détecte les
+extrêmes et le calme, les longues portent les tendances graduelles. Validé sur les
+données réelles au §18.3.
+
+| État | Condition | Score |
+|---|---|---|
+| Chute rapide | `dP3 ≤ −3` OU `dP6 ≤ −5` | `+15` |
+| Baisse lente | `−3 ≤ dP6 ≤ −1` OU `−5 ≤ dP12 ≤ −2` | `+20` |
+| Stable | `|dP3| < 1` ET `|dP12| < 2` | `+7` |
+| Hausse lente | `+1 ≤ dP6 ≤ +3` OU `+2 ≤ dP12 ≤ +5` | `−3` |
+| Hausse rapide | `dP3 ≥ +3` OU `dP6 ≥ +5` | `−15` |
+
+**Interpolation** : plutôt que des paliers, interpoler linéairement entre les
+bornes de chaque état — une chute de 3,8 hPa/6 h ne doit pas valoir exactement le
+même score qu'une chute de 5,2.
+
+**Pression absolue** (§2.6 du PDF) : facteur secondaire, `−3` au-dessus de
+1025 hPa, `0` ailleurs. Volontairement faible — une haute pression stable depuis
+plusieurs jours vaut mieux qu'une pression moyenne qui vient de bondir.
+
+### 15.5 Vent — 25 %
+
+**Vitesse** (voir question ouverte §20.1 sur l'échelle de référence) :
+
+| Plage | Score |
+|---|---|
+| 0-4 km/h — presque calme | `−3` |
+| 5-9 km/h — léger | `+5` |
+| 10-18 km/h — modéré | `+13` |
+| 19-28 km/h — soutenu | `+8` |
+| 29-39 km/h — fort | `0` |
+| ≥ 40 km/h — très fort | `−15` |
+
+**Direction** — table **propre à chaque lac** (§16.4), valeurs de départ Manitou :
+
+| N | NE | E | SE | S | SO | O | NO |
+|---|---|---|---|---|---|---|---|
+| −15 | −10 | 0 | +3 | +5 | +10 | +5 | −10 |
+
+⚠️ Ces valeurs sont à réexaminer : voir §18.5 et la question §20.2.
+
+**Vent du nord** (§3.3 du PDF) — le §3.3 **remplace** la ligne « N » du tableau, il
+ne s'y ajoute pas, sous peine de cumuler jusqu'à −40 :
+
+- nord *isolé* (pression stable, pas de refroidissement, direction constante
+  depuis plusieurs jours) → `−7`
+- nord *postfrontal* (régime 2 actif) → `−20`
+
+### 15.6 Lune — 10 %, plafonné à +10
+
+| Événement | Score |
+|---|---|
+| Nouvelle lune (±1,5 j) | `+4` |
+| Pleine lune, pêche de nuit ou aube | `+4` |
+| Pleine lune, milieu de journée | `0` |
+| Premier / dernier quartier | `+1` |
+| Lever ou coucher de lune ±90 min | `+4` |
+| Transit supérieur ou inférieur ±90 min | `+2` |
+
+Le total lunaire est **plafonné à +10** : une bonne période lunaire ne doit jamais
+transformer une journée postfrontale en excellente journée.
+
+### 15.7 Heure de la journée — 10 %
+
+| Fenêtre | Score |
+|---|---|
+| Aube — de −60 min à +90 min du lever du soleil | `+9` |
+| Matin — de +90 min après le lever jusqu'à 10 h 30 | `+5` |
+| Milieu de journée | `−3` |
+| Fin de journée — 2 h avant le coucher | `+6` |
+| Crépuscule — ±45 min du coucher | `+9` |
+| Nuit | `0` |
+
+La pénalité de milieu de journée est **annulée** si `N ≥ 70 %` et `W ≥ 10 km/h`
+(ciel couvert et vent modéré). La nuit reste à 0 : son effet dépend trop de
+l'espèce recherchée pour un score générique.
+
+### 15.8 Règle anti-double-comptage
+
+C'est l'apport principal du modèle. Lorsque plusieurs facteurs découlent du même
+front, on garde l'intégralité du score de régime et on **réduit de moitié** ceux
+qui ne font que le refléter.
+
+```
+réduction = 0,5  si régime ∈ {passage, postfrontal, approche, préfrontal}
+            1,0  si régime ∈ {stable, retour, indéterminé}
+```
+
+Elle s'applique à **la pression et à la direction du vent**. La **vitesse** du vent
+conserve son plein effet : elle agit sur la pêchabilité concrète, pas sur le régime.
+
+### 15.9 Agrégation journalière
+
+L'indice est horaire, la grille mensuelle est journalière. La cellule d'un jour
+porte **la meilleure fenêtre de 2 h de la journée**, pas la moyenne :
+
+```
+indice_jour   = max sur t de moyenne(indice, [t, t+2h])
+fenêtre_jour  = l'intervalle qui atteint ce maximum
+```
+
+Affichage : « Jeudi · 78 · meilleure fenêtre 19 h 30 – 21 h 00 ». C'est ce qui
+répond à la vraie question — *quand* y aller, pas seulement *quel jour*.
+
+### 15.10 Configuration
+
+Tous les seuils, scores et tables dans un objet `MODEL` unique en tête de fichier,
+remplaçant `SCORING`, hydraté depuis `localStorage` (clé `lm_cp_model`) et
+éditable. Structure : `{ regimes, press, wind, dir, moon, hour, correlation, lakes }`.
+
+---
+
+## 16. Multi-lacs
+
+### 16.1 Registre
+
+`const LAKE` devient un registre. La sélection est persistée (`lm_cp_lake`).
+
+| Clé | Nom | Latitude | Longitude | Altitude | Capteur |
+|---|---|---|---|---|---|
+| `manitou` | Lac Manitou | 46,0471 | −74,3739 | 431 m | oui (Ecowitt) |
+| `devenyns` | Lac Devenyns | 47,0496 | −73,8241 | 402 m | non |
+
+Distance : ~119 km nord-nord-est. **Même fuseau** (America/Toronto), aucun
+traitement particulier. Mais un front traversant à 40 km/h met ~3 h à passer de
+l'un à l'autre : les indices ne seront pas identiques le même jour, et c'est
+correct — chaque lac interroge Open-Meteo à ses propres coordonnées.
+
+SunCalc doit prendre les coordonnées **du lac sélectionné** : 1° de latitude
+décale le lever du soleil de plusieurs minutes.
+
+### 16.2 Source de données
+
+Open-Meteo pour les deux lacs, `past_days=92&forecast_days=16`. Vérifié le
+2026-07-22 sur les deux jeux de coordonnées : 720 heures, **zéro valeur
+manquante**, ~40 Ko par lac. Cache `localStorage` par lac, TTL 1 h.
+
+Au-delà de 92 jours : `archive-api.open-meteo.com` (réanalyse ERA5, ~5 jours de
+latence), même format de réponse.
+
+**Écartés** : *Windy* revend surtout ECMWF et GFS — déjà servis par Open-Meteo —
+mais exige une clé et impose des quotas. *Environnement Canada* a des stations trop
+clairsemées près de Devenyns pour alimenter l'indice ; éventuellement utile pour le
+radar ou les avertissements.
+
+### 16.3 Rôle du capteur Manitou
+
+Le capteur **ne sert plus au régime ni au score**. Il alimente une couche *locale*,
+distincte :
+
+| Usage | Source | Pourquoi |
+|---|---|---|
+| Régime, pression, direction du vent | **Open-Meteo** | c'est le flux **régional** qui définit un front ; identique aux deux lacs et comparable dans le temps |
+| Clapot, contrôle du bateau, rive exposée (§3.4 du PDF) | **capteur** | c'est le vent **local au quai** qui compte pour pêcher, abri compris |
+
+Cette séparation est ce qui rend Manitou et Devenyns notés sur la même échelle.
+Sans elle, la calibration croisée serait faussée dès le départ. Elle donne aussi
+un rôle au `wdirdom` reconstruit : le vent local est exactement l'entrée du
+facteur « rive exposée ».
+
+### 16.4 Table de direction par lac
+
+La table du §15.5 est calibrée sur Manitou. La géométrie des rives de Devenyns
+étant différente, elle ne se transpose pas. Devenyns démarre donc avec une
+**table neutre (tout à 0)**, que son propre journal calibrera.
+
+---
+
+## 17. Journal de sorties et calibration
+
+Le §11 du PDF est la partie la plus précieuse du modèle : sans données de captures,
+tous les poids sont des hypothèses. **Sa valeur croît avec le temps écoulé** — d'où
+son inclusion dès la v2 plutôt qu'après.
+
+### 17.1 Principe fondamental
+
+**Le journal stocke les *entrées* météo, jamais le score.** Sinon, chaque ajustement
+de seuil rendrait tout l'historique de calibration inexploitable. En conservant les
+conditions, n'importe quelle version future du modèle peut être **rejouée sur toutes
+les sorties passées**. C'est ce qui rend la calibration cumulative.
+
+### 17.2 Schéma `/journal/{pushId}`
+
+```json
+{
+  "lac": "manitou",
+  "debut": 1784592000000,
+  "fin": 1784606400000,
+  "espece": "doré",
+  "captures": 3,
+  "touches": 7,
+  "secteur": "baie nord",
+  "technique": "traîne",
+  "note": 4,
+  "commentaire": "…",
+  "conditions": [ { "t": …, "P": …, "W": …, "D": …, "T": …, "N": …, "R": … } ],
+  "cree": 1784606500000
+}
+```
+
+`conditions` = instantané horaire Open-Meteo couvrant `[debut − 24 h, fin]`, pour que
+les fenêtres de tendance 3/6/12/24 h soient reconstituables sans dépendre de la
+disponibilité future de l'API.
+
+### 17.3 Authentification
+
+Compte Firebase dédié (email/mot de passe), créé dans la console par Ben,
+connexion une fois sur `/cp`, session persistante. Règles :
+
+```json
+"journal": {
+  ".read": true,
+  "$id": { ".write": "auth.uid === '<UID_BEN>' " }
+}
+```
+
+Le mot de passe n'est saisi que par Ben dans le formulaire de connexion Firebase.
+
+### 17.4 Vue calibration
+
+Pour chaque sortie : indice prédit sur la fenêtre (rejoué avec le modèle courant)
+en regard de **captures/heure** ou **touches/heure**. Plus un nuage de points
+indice/succès, et le même découpage par régime — c'est lui qui tranchera le §12.
+
+**Attente réaliste** : premières tendances vers 30-50 sorties, ajustement sérieux
+au-delà de 100.
+
+---
+
+## 18. Mesures et constats sur les données
+
+Tout ce qui suit a été mesuré le 2026-07-22 sur les données réelles, pas estimé.
+
+### 18.1 Marée atmosphérique — négligeable ici
+
+Amplitude semi-diurne mesurée sur 350 h : **0,13 hPa**. Contribution maximale à un
+écart de 3 h : 0,19 hPa ; sur 6 h : 0,27 hPa.
+
+Le « ±1-1,5 hPa » du commit `5768c18` est un ordre de grandeur trop élevé — c'est
+une valeur tropicale, pas de 46°N. **La marée n'est donc pas un facteur** dans le
+choix des fenêtres. Ce qui faisait basculer l'ancien indicateur de tuile était bien
+le **bruit d'arrondi** (pression en entiers avant le 2026-07-22 : ±0,5 hPa par point,
+±1 hPa sur l'écart, contre un seuil à 0,3).
+
+### 18.2 Pourquoi 24 h et non 6 h pour la cote v1
+
+Motif retenu : **comparabilité**. Les jours passés se calculent en moyenne du jour
+moins moyenne de la veille ; le jour courant devait partager cette base. Chaque
+extrémité est moyennée sur 3 h pour neutraliser la quantification entière de
+l'historique. *(Le motif « marée » invoqué initialement était erroné — voir §18.1.)*
+
+### 18.3 Distribution des écarts de pression — 350 h
+
+| Fenêtre | médiane \|Δ\| | p90 | min | max |
+|---|---|---|---|---|
+| 3 h | 0,85 | 2,00 | −4,58 | +3,00 |
+| 6 h | 1,50 | 3,33 | −8,58 | +5,17 |
+| 12 h | 2,75 | 5,92 | −13,25 | +10,00 |
+| 24 h | 5,00 | 10,33 | −17,25 | +12,00 |
+
+Les seuils du PDF tiennent : « stable < 1 hPa/3 h » couvre **56 %** du temps,
+« rapide ≥ 3 hPa/3 h » reste un événement rare à **2,4 %**. Bien calibré.
+
+En revanche le seuil v1 « chute marquée ≤ −3 hPa/24 h » se déclenche environ **un
+jour sur trois** — un score maximal aussi fréquent ne discrimine rien.
+
+> ⚠️ **Réserve** : 15 jours d'été seulement, régime convectif. L'hiver synoptique
+> donnera des amplitudes plus grandes. À revalider après une saison complète.
+
+### 18.4 Saturation de l'échelle du PDF
+
+L'exemple 2 du PDF (préfrontal, SO 14 km/h, fin de journée) atteint **107, écrêté à
+100**. Maximum théorique 150, minimum −42 : environ un tiers de l'amplitude est
+perdu à chaque bout, et la discrimination disparaît précisément dans la zone 65-90.
+Les scores du §15 sont réétalonnés en conséquence.
+
+### 18.5 ⚠️ L'anémomètre de Manitou est mal exposé
+
+Comparaison capteur / Open-Meteo sur 14 jours (337 heures appariées) :
+
+| Grandeur | Écart médian capteur − Open-Meteo |
+|---|---|
+| Pression | **−1,22 hPa** (p10 −1,94 / p90 −0,30) |
+| Vitesse du vent | **−7,26 km/h** (p10 −11,75 / p90 −2,59) |
+| Température | **+2,08 °C** (p10 +0,45 / p90 +4,32) |
+| Direction | **76° d'écart absolu médian** (p90 139°) |
+
+L'écart de direction **n'est pas un décalage de montage**. Ventilé par direction
+réelle (Open-Meteo, vent > 5 km/h) :
+
+| Direction réelle | n | Écart du capteur |
+|---|---|---|
+| SE | 10 | −5° |
+| S | 3 | −37° |
+| **SO** | 34 | **+119°** |
+| **O** | 58 | **+51°** |
+| **NO** | 26 | **+34°** |
+
+Lorsque le vent vient réellement du **SO, de l'O ou du NO**, le capteur affiche
+systématiquement **N à NNO** (320-350°). Seuls les vents de sud-est sont lus
+correctement. Un obstacle — relief, ligne d'arbres, bâtiment — canalise tout le
+quadrant ouest vers un axe nord-nord-ouest. Le biais de vitesse de −7,3 km/h
+confirme un capteur abrité.
+
+**Conséquences :**
+
+1. Le **§12 du PDF n'est pas testable** avec la direction du capteur : « nord »
+   y regroupe le vrai nord, le nord-ouest postfrontal (mauvais) *et* le sud-ouest
+   préfrontal (bon).
+2. La table de direction du §15.5, calibrée sur des observations Manitou, encode
+   peut-être cette distorsion — d'où la question §20.2.
+3. C'est la justification première du choix d'Open-Meteo comme base uniforme (§16.3).
+
+> Une vérification physique reste souhaitable : par vent établi, comparer la
+> direction affichée à celle des vagues ou d'un drapeau. Open-Meteo est un modèle,
+> pas une vérité terrain.
+
+### 18.6 Couverture de `/daily`
+
+24 seaux, du 28 juin au 21 juillet 2026. `press` et `wind` seulement depuis le
+8 juillet ; `wdirdom` du 12 au 21 juillet. Les jours antérieurs n'ont pas de météo
+exploitable — d'où les cases « sans données météo » de la grille.
+
+---
+
+## 19. Plan d'implémentation v2
+
+### Phase 0 — Valider le classificateur *(avant de construire dessus)*
+
+Écrire les règles du §15.3, les passer sur l'historique Open-Meteo heure par heure
+et produire un tableau lisible (une bande de 24 caractères par jour). Ben confronte
+à son souvenir du temps qu'il faisait. **Corriger ici coûte des minutes ; corriger
+après la Phase 2 coûte une refonte.**
+
+Livrable : tableau des régimes sur 14 jours pour les deux lacs.
+
+### Phase 1 — Moteur horaire
+
+- Objet `MODEL` remplaçant `SCORING` (§15.10).
+- Classificateur de régime, scores des cinq facteurs, règle anti-double-comptage.
+- Couche Open-Meteo étendue : `past_days=92`, nouvelles variables (§15.2), cache par lac.
+- Agrégation journalière par meilleure fenêtre de 2 h (§15.9).
+- Retrait du mode Chasseur.
+
+### Phase 2 — Interface
+
+- Barre 24 h existante : courbe de l'indice au lieu des seules fenêtres solunaires.
+- Cellule du mois : indice + heure de la meilleure fenêtre.
+- Vue jour : décomposition par facteur, **régime en tête**, avec mention explicite
+  de la réduction anti-double-comptage quand elle s'applique.
+- Sélecteur de lac en haut de page.
+- i18n FR/EN de toutes les nouvelles chaînes.
+
+### Phase 3 — Journal
+
+- Connexion Firebase (§17.3) et règles de sécurité.
+- Formulaire de saisie, écriture dans `/journal` avec instantané des conditions.
+- Vue calibration : indice prédit contre captures/heure, découpage par régime.
+
+### Phase 4 — Calibration continue
+
+Non planifiable : dépend de l'accumulation des sorties. Premiers ajustements
+attendus vers 30-50 sorties.
+
+---
+
+## 20. Questions en suspens
+
+### 20.1 Échelle de référence des vitesses de vent
+
+Les plages du §15.5 (0-4 calme, 5-9 léger, 10-18 modéré…) proviennent du PDF. Mais
+le capteur lit **7,3 km/h de moins** qu'Open-Meteo (§18.5), et la v2 note sur
+Open-Meteo. Si ces plages ont été écrites d'après les valeurs affichées par la
+station, elles doivent être décalées d'environ +7 km/h avant d'être appliquées.
+
+### 20.2 Origine de la table de direction
+
+La table Manitou (N −15 … SO +10) est-elle issue de la **direction affichée par la
+station** — auquel cas elle encode la distorsion du §18.5 et doit être réinterprétée
+— ou d'une **observation directe du vent** (vagues, drapeau, ressenti), auquel cas
+elle est valide telle quelle et c'est le capteur seul qui est en cause ?
+
+### 20.3 Ce que doit signifier 100
+
+Le réétalonnage du §18.4 dépend de la réponse : 100 doit-il désigner une journée
+exceptionnelle rare, ou une très bonne journée courante ?
