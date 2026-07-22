@@ -293,6 +293,28 @@ s'allument, et que graphique + `/daily` marchent pour chaque mesure.
   > `gem_seamless` via Open-Meteo) et les METAR de CYMX, CYUL et CYND, qui
   > donnent des observations réelles indépendantes.
 
+  > **Méthode recommandée : ruban témoin dans le champ de la caméra**
+  >
+  > La caméra Imou du quai voit le mât. Y attacher un **ruban de flagging
+  > d'arpenteur de couleur vive** (orange ou rose) transforme chaque
+  > enregistrement en mesure horodatée de la direction locale, sans avoir à
+  > sortir. La girouette elle-même est **noire et invisible à la caméra** sur
+  > fond de forêt — d'où l'exigence de couleur vive, et de placer le ruban
+  > assez haut pour qu'il se découpe sur le ciel.
+  >
+  > Il suffit ensuite d'enregistrer un clip par temps venteux : le ruban donne
+  > la direction au quai, à comparer à la valeur de la sonde à la seconde près.
+  > Ruban et sonde d'accord → la sonde est bonne, c'est l'exposition. Ruban et
+  > sonde en désaccord → défaut de montage ou d'orientation.
+
+  **Analyse vidéo du 2026-07-22 14 h 18** (clip Imou de 20 s, 590 images) :
+  cimes des conifères oscillantes, parasol replié qui bat, eau lisse près de la
+  rive et texturée au large — motif d'un vent quittant la rive. Cohérent avec
+  les rafales de 11 à 15 km/h enregistrées par la sonde au même moment.
+  **Conclusion : sur la vitesse, à son emplacement, la sonde est crédible.**
+  La direction reste indéterminée — le flux optique sur l'eau est au niveau du
+  bruit et la girouette n'est pas visible.
+
   Relevés :
 
   | Date | Heure | Lieu d'observation | Direction observée | Force observée | Sonde | Modèle | METAR |
