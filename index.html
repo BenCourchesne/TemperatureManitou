@@ -273,6 +273,26 @@
     /* Tuile Lune — cliquable (accordéon vers le panneau solunaire) */
     .card-moon { cursor: pointer; border-color: rgba(45,212,191,.25); }
     .card-moon:hover { border-color: rgba(45,212,191,.4); }
+    /* Porte cachée vers /cp (SpecsCalendrierActivites §10.C) : un maintien souris ne
+       doit pas démarrer une sélection de texte, ni un appui long tactile ouvrir le
+       menu « copier ». `touch-action` reste libre pour qu'un scroll amorcé sur la
+       tuile fonctionne — il émet alors pointercancel, qui annule proprement l'appui. */
+    .card-moon { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+    .card-moon.cp-arming {
+      box-shadow: 0 0 0 1px rgba(45,212,191,.55), 0 0 24px rgba(45,212,191,.45);
+      animation: cp-pulse .4s ease-out;
+    }
+    @keyframes cp-pulse { 0% { transform: scale(1); } 50% { transform: scale(1.03); } 100% { transform: scale(1); } }
+    .cp-toast {
+      position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%);
+      background: rgba(7,19,31,.96); border: 1px solid rgba(45,212,191,.45);
+      color: #e2eaf4; padding: .55rem .95rem; border-radius: 999px;
+      font-size: .85rem; font-weight: 600; z-index: 9999; pointer-events: none;
+      box-shadow: 0 10px 34px rgba(0,0,0,.55);
+    }
+    #cp-footer-link { color: inherit; text-decoration: none; opacity: .75; }
+    #cp-footer-link:hover { opacity: 1; text-decoration: underline; }
+    @media (prefers-reduced-motion: reduce) { .card-moon.cp-arming { animation: none; } }
     .card-radar { cursor: pointer; border-color: rgba(45,212,191,.25); }
     .card-radar:hover { border-color: rgba(45,212,191,.4); }
     /* Rangée Prévisions : tuile radar compacte, prête à accueillir les tuiles
@@ -1046,6 +1066,9 @@
 
   <footer>
     <span data-i18n="footer">Mise à jour toutes les 5 minutes</span> &nbsp;·&nbsp; Lac Manitou
+    <!-- Raccourci vers la page cachée /cp — révélé seulement après un premier
+         appui long sur la tuile Lune (SpecsCalendrierActivites §10.C). -->
+    <a id="cp-footer-link" href="/cp" hidden>&nbsp;·&nbsp;🎣&nbsp;<span data-i18n="cpLink">Chasse-pêche</span></a>
   </footer>
 
 </div>
@@ -1132,6 +1155,8 @@
       statMax:       'Max',
       statTotal:     'Total',
       footer:        'Mise à jour toutes les 5 minutes',
+      cpLink:        'Chasse-pêche',
+      cpToast:       'Chasse-pêche',
       lastUpdate:    'Dernière mise à jour : ',
       loading:       'Chargement…',
       stable:        '→ stable',
@@ -1203,6 +1228,8 @@
       statMax:       'Max',
       statTotal:     'Total',
       footer:        'Updated every 5 minutes',
+      cpLink:        'Hunt & fish',
+      cpToast:       'Hunt & fish',
       lastUpdate:    'Last update: ',
       loading:       'Loading…',
       stable:        '→ stable',
@@ -1891,9 +1918,9 @@
     const minors = [];
     if (mt.rise) minors.push([new Date(+mt.rise - HR / 2), new Date(+mt.rise + HR / 2)]);
     if (mt.set)  minors.push([new Date(+mt.set - HR / 2), new Date(+mt.set + HR / 2)]);
-    const pd = Math.min(ill.phase, Math.abs(ill.phase - 0.5), Math.abs(ill.phase - 1));
-    const stars = pd < 0.06 ? 4 : pd < 0.13 ? 3 : pd < 0.19 ? 2 : 1;
-    const starStr = '★★★★'.slice(0, stars) + '<span style="color:#3a4a5f">' + '★★★★'.slice(stars) + '</span>';
+    // La cote ★ purement lunaire a été retirée (SpecsCalendrierActivites §10.B) :
+    // ce panneau redevient purement astronomique. La cote pondérée (lune + météo,
+    // par activité) vit maintenant sur la page /cp.
     let segs = '';
     majors.forEach(p => segs += segHTML(p[0], p[1], dayStart, true));
     minors.forEach(p => segs += segHTML(p[0], p[1], dayStart, false));
@@ -1909,7 +1936,6 @@
           <div style="font-size:14px;font-weight:600">${phase}</div>
           <div style="font-size:12px;color:#8aa0b8">${pct} % ${currentLang === 'fr' ? 'éclairée' : 'lit'}</div>
         </div>
-        <div style="font-size:15px;letter-spacing:1px;color:#fbbf24">${starStr}</div>
       </div>
       <div class="solunar-bar">${segs}</div>
       <div class="solunar-scale"><span>0 h</span><span>6 h</span><span>12 h</span><span>18 h</span><span>24 h</span></div>
@@ -2739,7 +2765,52 @@
     tile.addEventListener('keydown', e => {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleOpen(); }
     });
+
+    // ── Porte cachée : appui long (1,2 s) sur la tuile Lune → /cp ──────────────
+    // (SpecsCalendrierActivites §10.C). Clic court = accordéon comme d'habitude ;
+    // seul le maintien complet navigue. Les Pointer Events couvrent souris ET
+    // tactile — à la souris, maintenir le bouton gauche ~1,2 s.
+    const HOLD_MS = 1200, PULSE_MS = 1000;
+    let holdTimer = null, pulseTimer = null, longFired = false;
+
+    function cancelHold() {
+      clearTimeout(holdTimer); clearTimeout(pulseTimer);
+      holdTimer = pulseTimer = null;
+      tile.classList.remove('cp-arming');
+    }
+    function openCP() {
+      LS.set('lm_cp_unlocked', '1');
+      revealCpLink();
+      const toast = document.createElement('div');
+      toast.className = 'cp-toast';
+      toast.textContent = '🎣 ' + i18n[currentLang].cpToast;
+      document.body.appendChild(toast);
+      setTimeout(() => { window.location.href = '/cp'; }, 420);
+    }
+
+    tile.addEventListener('pointerdown', e => {
+      // Bouton principal seulement : un clic droit ne doit pas armer la porte.
+      if (!e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
+      longFired = false;
+      pulseTimer = setTimeout(() => tile.classList.add('cp-arming'), PULSE_MS);
+      holdTimer  = setTimeout(() => { longFired = true; cancelHold(); openCP(); }, HOLD_MS);
+    });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => tile.addEventListener(ev, cancelHold));
+    tile.addEventListener('contextmenu', e => { if (holdTimer || longFired) e.preventDefault(); });
+    // Capture : intercepte le clic AVANT toggleOpen, pour qu'un appui long
+    // n'ouvre pas aussi l'accordéon au relâchement.
+    tile.addEventListener('click', e => {
+      if (longFired) { longFired = false; e.preventDefault(); e.stopPropagation(); }
+    }, true);
   })();
+
+  // Lien discret au footer, une fois la page /cp découverte (§10.C).
+  // Réversible : retirer `lm_cp_unlocked` du localStorage re-cache le lien.
+  function revealCpLink() {
+    const el = document.getElementById('cp-footer-link');
+    if (el && LS.get('lm_cp_unlocked', '') === '1') el.hidden = false;
+  }
+  revealCpLink();
 
   // ── Accordéon radar : clic sur la tuile Radar ⇄ carte Windy ───────────────────
   // L'iframe n'est injectée qu'à la première ouverture (économie de bande passante).
