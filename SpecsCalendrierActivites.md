@@ -857,6 +857,45 @@ fenêtre_jour  = l'intervalle qui atteint ce maximum
 Affichage : « Jeudi · 78 · meilleure fenêtre 19 h 30 – 21 h 00 ». C'est ce qui
 répond à la vraie question — *quand* y aller, pas seulement *quel jour*.
 
+### 15.9b Meilleures fenêtres à venir — le classement transversal
+
+Le §15.9 donne la meilleure fenêtre **de chaque journée**. Il en faut un second
+niveau : **classer les fenêtres entre elles** sur tout l'horizon, pour répondre à
+la question qui décide vraiment d'une sortie — *quand y aller dans les dix
+prochains jours*.
+
+```
+1. calculer l'indice horaire sur tout l'horizon
+2. lisser par moyenne glissante de 2 h
+3. retenir les maxima locaux dont l'indice dépasse le seuil (défaut 60)
+4. plafonner à 2 fenêtres par jour, pour que la liste couvre l'horizon
+   au lieu de s'agglutiner sur la meilleure journée
+5. trier par indice décroissant, garder les 6 premières
+```
+
+Affichage proposé, en tête de la vue Mois :
+
+```
+PROCHAINES FENÊTRES
+  jeu 24 juil.  19 h 30 – 21 h 00   84   préfrontal · SO 14 km/h
+  sam 26 juil.  05 h 15 – 07 h 00   79   stable · aube
+  jeu 24 juil.  05 h 00 – 06 h 30   76   préfrontal · aube
+```
+
+Chaque ligne porte le **régime** et le facteur dominant : savoir *pourquoi* une
+fenêtre est bonne vaut autant que le score, et c'est ce qui permet de juger le
+modèle plutôt que de le suivre aveuglément.
+
+**Fiabilité selon l'échéance** — à indiquer visuellement, sans quoi une fenêtre à
+9 jours paraît aussi sûre qu'une à demain :
+
+| Échéance | Fiabilité |
+|---|---|
+| 0-2 j | bonne — HRDPS puis RDPS |
+| 3-5 j | correcte — le régime est fiable, l'heure exacte moins |
+| 6-10 j | indicative — tendance seulement |
+| > 10 j | hors modèle → lune seule |
+
 ### 15.10 Configuration
 
 Tous les seuils, scores et tables dans un objet `MODEL` unique en tête de fichier,
@@ -886,9 +925,22 @@ décale le lever du soleil de plusieurs minutes.
 
 ### 16.2 Source de données
 
-Open-Meteo pour les deux lacs, `past_days=92&forecast_days=16`. Vérifié le
-2026-07-22 sur les deux jeux de coordonnées : 720 heures, **zéro valeur
-manquante**, ~40 Ko par lac. Cache `localStorage` par lac, TTL 1 h.
+Open-Meteo pour les deux lacs, **`models=gem_seamless`** (GEM d'Environnement
+Canada — HRDPS 2,5 km aux échéances courtes, puis RDPS, puis GDPS), avec
+`past_days=92&forecast_days=11`. Cache `localStorage` par lac, TTL 1 h.
+
+⚠️ **Horizon réel de `gem_seamless` : 10,4 jours**, mesuré le 2026-07-22 — et non
+16. Demander davantage renvoie des `null` sur les derniers jours. Horizons des
+autres modèles, pour mémoire : `gem_hrdps_continental` 2,4 j, `gem_regional`
+3,9 j, `gem_global` 10,4 j, `best_match` 16 j.
+
+Le choix de 10 jours plutôt que les 16 de `best_match` est assumé : au-delà d'une
+semaine la classification de régime n'a plus de valeur prédictive réelle, et
+mieux vaut afficher « lune seule » qu'un régime inventé. `gem_seamless` a en
+outre le mérite d'être le **même modèle que la carte Vent** de `index.html`, donc
+cohérent d'une page à l'autre.
+
+`SCORING.horizonDays` de la v1 (15) doit passer à **10**.
 
 Au-delà de 92 jours : `archive-api.open-meteo.com` (réanalyse ERA5, ~5 jours de
 latence), même format de réponse.
@@ -1205,6 +1257,10 @@ recommandations et garder les valeurs dans `MODEL` pour les changer d'une ligne.
 
 - Barre 24 h existante : courbe de l'indice au lieu des seules fenêtres solunaires.
 - Cellule du mois : indice + heure de la meilleure fenêtre.
+- **Bandeau « Prochaines fenêtres »** (§15.9b) en tête de la vue Mois — le
+  classement transversal des meilleures fenêtres de l'horizon, avec régime,
+  facteur dominant et indication de fiabilité selon l'échéance. C'est ce qui
+  répond directement à « quand sortir ».
 - Vue jour : décomposition par facteur, **régime en tête**, avec mention explicite
   de la réduction anti-double-comptage quand elle s'applique.
 - Sélecteur de lac en haut de page.
