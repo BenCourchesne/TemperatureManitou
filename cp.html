@@ -260,10 +260,26 @@ const SCORING = {
   // Lune : bornes de distance à la syzygie (pêche) / à la nouvelle lune (chasse)
   moon: { fish: [.035, .10, .17], deer: [.06, .16, .32] },
 
-  // Pression : delta hPa / 24 h. `todayTrendHours` = fenêtre du calcul « aujourd'hui ».
-  // ⚠ Les seuils sont calibrés sur 24 h mais la spec §3 demande une tendance 6 h
-  //   pour le jour courant — à valider avec Ben, ajustable ici.
-  press: { d4: -3, d3: -1, d2: 2, todayTrendHours: 6 },
+  // Pression : delta hPa / 24 h.
+  //
+  // `trendHours` = 24 et non les 6 h de la spec §3, pour deux raisons.
+  // 1. Comparabilité : c'est la même base de temps que les jours passés (moyenne
+  //    du jour − moyenne de la veille). Une grille de calendrier ne sert qu'à
+  //    comparer des journées entre elles ; aujourd'hui calculé sur une autre
+  //    fenêtre ne serait pas comparable à hier.
+  // 2. Marée atmosphérique : la composante semi-diurne vaut ±1–1,5 hPa ici (voir
+  //    5768c18, qui a corrigé le même piège sur la tuile de index.html). 24 h =
+  //    deux cycles complets, elle s'annule. À 6 h — la demi-période — elle serait
+  //    MAXIMALE, jusqu'à ±2–3 hPa de battement, soit l'échelle des seuils
+  //    ci-dessous : la cote du jour basculerait au rythme de la marée.
+  //
+  // `endpointHours` : chaque extrémité est moyennée sur 3 h. `press` est quantifié
+  // au hPa entier avant le 2026-07-22, donc deux points instantanés donneraient
+  // ±1 hPa d'erreur sur un écart dont le premier seuil est à −1.
+  //
+  // `shortHours` : tendance barométrique courte, affichée à côté pour le jour
+  // courant seulement. Même convention 3 h que index.html.
+  press: { d4: -3, d3: -1, d2: 2, trendHours: 24, endpointHours: 3, shortHours: 3 },
 
   // Vent : [minIdéal, maxIdéal, minBon, maxBon, maxPassable] en km/h
   wind: { fish: [8, 15, 5, 20, 28], deer: [8, 18, 5, 24, 30] },
@@ -351,6 +367,10 @@ const I18N = {
     verdicts:{ fish:['Journée creuse','Activité modérée','Bonne journée','Journée exceptionnelle'],
                deer:['Peu favorable','Passable','Favorable','Très favorable'] },
     pressRead:{ 4:['▼','chute · front qui arrive'], 3:['▼','en baisse'], 2:['→','stable'], 1:['▲','en hausse'] },
+    // Variante sans clause causale : dès qu'on affiche la tendance 3 h à côté,
+    // « front qui arrive » peut contredire les faits (front déjà passé, pression
+    // qui remonte). On qualifie alors la fenêtre au lieu de prédire.
+    pressRead24:{ 4:'chute sur 24 h', 3:'en baisse sur 24 h', 2:'stable sur 24 h', 1:'en hausse sur 24 h' },
     windRead:{ fish:['calme plat','ride idéale','clapot','trop fort'],
                deer:['trop calme',"porte l'odeur",'soutenu','gibier au sol'] },
     dirRead:{ fish:["vent d'ouest favorable",'favorable','neutre',"vent d'est défavorable"],
@@ -389,6 +409,7 @@ const I18N = {
     verdicts:{ fish:['Slow day','Moderate','Good day','Exceptional'],
                deer:['Poor','Fair','Good','Excellent'] },
     pressRead:{ 4:['▼','sharp drop · front'], 3:['▼','falling'], 2:['→','steady'], 1:['▲','rising'] },
+    pressRead24:{ 4:'sharp drop over 24 h', 3:'falling over 24 h', 2:'steady over 24 h', 1:'rising over 24 h' },
     windRead:{ fish:['dead calm','ideal chop','choppy','too rough'],
                deer:['too still','carries scent','gusty','deer bedded'] },
     dirRead:{ fish:['west wind favours','favourable','neutral','east wind against'],
@@ -522,6 +543,19 @@ function vectorMean(degs){
 }
 const mean = arr => arr.length ? arr.reduce((a,b)=>a+b,0) / arr.length : null;
 
+/**
+ * Moyenne de `press` sur [t0, t1[. Renvoie null si la couverture est trop maigre.
+ * Même esprit que refPoint() dans index.html (5768c18) : mieux vaut ne rien
+ * afficher que de comparer à travers un trou de données. Ici on exige la moitié
+ * des échantillons attendus (~1 lecture / 5 min) plutôt qu'un point unique.
+ */
+function pressMean(rows, t0, t1){
+  const v = [];
+  for (const r of rows) if (r.t >= t0 && r.t < t1 && r.press != null) v.push(r.press);
+  const attendus = (t1 - t0) / 3e5;
+  return v.length >= attendus / 2 ? v.reduce((a,b)=>a+b,0) / v.length : null;
+}
+
 const DATA = { daily:null, today:null, forecast:null, ready:false, errors:[] };
 
 async function fetchDaily(){
@@ -534,21 +568,37 @@ async function fetchDaily(){
   } catch(e){ DATA.errors.push('daily'); return {}; }
 }
 
-/** Lectures brutes du jour courant + marge pour la tendance de pression. */
-async function fetchToday(){
-  const now = Date.now();
-  const span = civSpan(civToday());
-  const trendMs = SCORING.press.todayTrendHours * 3600e3;
-  // Fenêtre : début du jour civil, ou now − trend − 1 h si on est tôt le matin.
-  const start = Math.min(span.start, now - trendMs - 3600e3);
+/** Profondeur de la fenêtre glissante à garder en mémoire (couvre la tendance 24 h). */
+const readingsSpanMs = () =>
+  (SCORING.press.trendHours + SCORING.press.endpointHours + 1) * 3600e3;
+
+/** Lectures brutes depuis `startMs`. */
+async function fetchReadings(startMs){
   try {
     const url = RTDB + '/readings.json?orderBy=' + encodeURIComponent('"$key"') +
-                '&startAt=' + encodeURIComponent('"' + start + '"');
+                '&startAt=' + encodeURIComponent('"' + startMs + '"');
     const r = await fetch(url);
     const obj = await r.json();
     if (!obj) return [];
     return Object.keys(obj).map(k => ({ t:Number(k), ...obj[k] })).sort((a,b)=>a.t-b.t);
   } catch(e){ DATA.errors.push('readings'); return []; }
+}
+
+/** Chargement initial : toute la fenêtre glissante (~28 h, ~330 échantillons). */
+const fetchToday = () => fetchReadings(Date.now() - readingsSpanMs());
+
+/**
+ * Rafraîchissement INCRÉMENTAL : on ne redemande que les lectures postérieures à
+ * la dernière connue, puis on purge la queue hors fenêtre. Sans ça, l'auto-refresh
+ * de 5 min retéléchargerait les ~57 Ko de la fenêtre complète douze fois par
+ * heure ; ici chaque passe ne coûte qu'une poignée d'échantillons.
+ */
+async function refreshToday(){
+  const now = Date.now(), spanMs = readingsSpanMs();
+  const prev = DATA.today || [];
+  const since = prev.length ? prev[prev.length - 1].t + 1 : now - spanMs;
+  const fresh = await fetchReadings(since);
+  DATA.today = prev.concat(fresh).filter(r => r.t >= now - spanMs);
 }
 
 const FC_KEY = 'lm_cp_forecast';
@@ -628,22 +678,27 @@ function dayWeather(c){
     const win = rows.filter(r => r.t >= from);
     const wind = mean(win.filter(r => r.wind != null).map(r => r.wind));
     const dirDeg = vectorMean(win.map(r => r.wdir));
-    const withP = rows.filter(r => r.press != null);
-    let press = null, delta = null;
-    if (withP.length) {
-      press = withP[withP.length - 1].press;
-      const target = now - SCORING.press.todayTrendHours * 3600e3;
-      let best = null, bestGap = Infinity;
-      for (const r of withP) { const g = Math.abs(r.t - target); if (g < bestGap) { bestGap = g; best = r; } }
-      if (best && bestGap < 90 * 60000) delta = press - best.press;   // tolérance ±90 min
+    // Pression : écart sur 24 h entre deux moyennes de 3 h (voir SCORING.press).
+    const P = SCORING.press, H = 3600e3;
+    const pNow  = pressMean(rows, now - P.endpointHours * H, now + 1);
+    const pThen = pressMean(rows, now - (P.trendHours + P.endpointHours) * H, now - P.trendHours * H);
+    let press = pNow, delta = (pNow != null && pThen != null) ? pNow - pThen : null;
+    if (press == null) {                      // pas 3 h de couverture → dernier point connu
+      const withP = rows.filter(r => r.press != null);
+      press = withP.length ? withP[withP.length - 1].press : null;
     }
+    // Tendance barométrique courte, affichée seulement (n'entre pas dans la cote).
+    const sNow = pressMean(rows, now - 1 * H, now + 1);
+    const sRef = pressMean(rows, now - (P.shortHours + 1) * H, now - P.shortHours * H);
+    const trendShort = (sNow != null && sRef != null) ? sNow - sRef : null;
+
     if (press == null && wind == null && dirDeg == null) {
       // Capteur muet → on retombe sur la prévision du jour si elle existe (§11)
       const f = DATA.forecast && DATA.forecast[key];
       if (f) return { press:f.press, delta:forecastDelta(c), wind:f.wind, dirDeg:f.dirDeg, src:'forecast' };
       return null;
     }
-    return { press, delta, wind, dirDeg, src:'sensor' };
+    return { press, delta, wind, dirDeg, trendShort, src:'sensor' };
   }
 
   // ── Futur ─────────────────────────────────────────────────────────────────
@@ -812,9 +867,19 @@ function factorsHTML(c){
   let html = row(ICON.moon, t.moon, b.moon, esc(moonTxt), b.eff.moon, false);
 
   if (b.press != null) {
-    const r = t.pressRead[b.press];
-    html += row(ICON.gauge, t.press, b.press,
-      `${r[0]} ${esc(r[1])}${b.w.press != null ? ' · ' + Math.round(b.w.press) + ' hPa' : ''}`, b.eff.press, false);
+    const r = t.pressRead[b.press], ts = b.w.trendShort;
+    // Le score porte sur 24 h. Pour le jour courant on ajoute la tendance
+    // barométrique 3 h — c'est elle qui dit ce que fait la pression MAINTENANT,
+    // et elle peut parfaitement contredire les 24 h (front passé, pression qui
+    // remonte). Dans ce cas on bascule sur le libellé sans clause causale.
+    let read = `${r[0]} ${esc(ts != null ? t.pressRead24[b.press] : r[1])}`;
+    if (b.w.press != null) read += ' · ' + Math.round(b.w.press) + ' hPa';
+    if (ts != null) {
+      const arrow = Math.abs(ts) < 0.5 ? '→' : (ts > 0 ? '▲' : '▼');   // seuil barométrique, cf. 5768c18
+      read += ' · ' + arrow + ' ' + ts.toLocaleString(locale(),
+        { minimumFractionDigits:1, maximumFractionDigits:1, signDisplay:'exceptZero' }) + ' hPa/3 h';
+    }
+    html += row(ICON.gauge, t.press, b.press, read, b.eff.press, false);
   } else html += row(ICON.gauge, t.press, null, gap, null, true);
 
   if (b.wind != null) {
@@ -1033,8 +1098,7 @@ document.addEventListener('keydown', e => {
 render();
 loadData().then(() => { clearScores(); render(); });
 setInterval(() => {
-  fetchToday().then(rows => {
-    DATA.today = rows;
+  refreshToday().then(() => {
     _bdCache.delete('fish|' + civKey(civToday()));
     _bdCache.delete('deer|' + civKey(civToday()));
     render();
