@@ -1138,8 +1138,21 @@ const MODEL = {
   vent: [                                 // §15.5 — [max km/h, score]
     [4,-3], [9,5], [18,13], [28,8], [39,0], [Infinity,-15]
   ],
+  // §15.5 « Vent du nord » (§3.3 du PDF) : REMPLACE la ligne N de la table de
+  // direction du lac, ne s'y ajoute pas. `nordPostfrontal` s'applique quand le
+  // régime F est actif, `nordIsole` sinon.
+  //
+  // `neutraliserPreferences` (§16.4, §20.2) : quand true, les 7 autres secteurs
+  // (NE·E·SE·S·SO·O·NO) valent 0 pour TOUS les lacs — la table de préférence par
+  // secteur est réputée non fiable (Ben l'a calée « sur ce qu'affichait la
+  // station », or la station lit tout le quadrant ouest comme N/NO, §18.5). Le
+  // journal la reconstruira. Passer à false réactive `LAKES[lac].dir` en une
+  // ligne, une fois la table validée. La règle « nord » reste active dans les
+  // deux cas — c'est une règle nommée du modèle, pas une préférence de secteur.
+  dir: { nordIsole:-7, nordPostfrontal:-20, neutraliserPreferences:true },
   lune: { nouvelle:4, pleineNuit:4, pleineJour:0, quartier:1,
-          leverCoucher:4, transit:2, plafond:10 },       // §15.6
+          leverCoucher:4, transit:2, plafond:10,         // §15.6
+          fenetrePhaseJours:1.5, fenetreEvtMin:90 },     // largeurs des fenêtres
   heure: { aube:9, matin:5, midi:-3, finJournee:6, crepuscule:9, nuit:0 },  // §15.7
   correlation: { reduite:0.5, pleine:1.0 },              // §15.8
   // §15.3 — seuils du classificateur postfrontal, validés le 2026-07-22
@@ -1244,6 +1257,193 @@ const V2 = {
                Math.round(h.wind_speed_10m[i]) + 'km/h ' + secteurDe(h.wind_direction_10m[i]));
     }
     return { date: dateISO, bande: out, detail: ctx };
+  },
+
+  /* ── Helpers temps & astronomie, par lac (§15.6, §15.7, §16.1) ────────────
+     La couche v1 (`solunar`) est câblée sur `LAKE` (Manitou) et raisonne par
+     jour civil. Le moteur v2 raisonne par HEURE et doit prendre les
+     coordonnées du lac sélectionné — 1° de latitude décale le lever de soleil
+     de plusieurs minutes (§16.1). On duplique donc ici une astronomie
+     lac-consciente plutôt que de toucher au bloc v1 éprouvé. */
+
+  /** Instant UTC (ms) de « HH:MM local Toronto » un jour donné. Double passe = DST-safe. */
+  localMs(dateISO, hh, mm) {
+    const c = civFromKey(dateISO);
+    const naive = Date.UTC(c.y, c.m - 1, c.d, hh, mm);
+    let ts = naive - tzOffsetMs(naive);
+    return naive - tzOffsetMs(ts);
+  },
+
+  /** Instant UTC (ms) de l'heure horaire `i` (Open-Meteo renvoie l'heure locale). */
+  tsAt(h, i) {
+    const s = h.time[i];                                 // "YYYY-MM-DDTHH:MM"
+    return this.localMs(s.slice(0, 10), +s.slice(11, 13), +s.slice(14, 16));
+  },
+
+  /**
+   * Événements solaires et lunaires d'un jour civil aux coordonnées du lac.
+   * Lever/coucher/transits de lune obtenus en balayant l'altitude sur les
+   * bornes réelles du jour (23/24/25 h) — même méthode que `solunar`, robuste
+   * au fuseau. Cache par lac+date.
+   */
+  astro(lakeKey, dateISO) {
+    const key = lakeKey + '|' + dateISO;
+    this._astro = this._astro || {};
+    if (this._astro[key]) return this._astro[key];
+    const L = LAKES[lakeKey], c = civFromKey(dateISO);
+    const { start, end } = civSpan(c);
+    const noon = start + (end - start) / 2;
+    const STEP = 10 * 60000;
+    let maxA = -Infinity, minA = Infinity, tUp = noon, tDown = noon;
+    let prevA = null, prevT = null, rise = null, set = null;
+    for (let t = start; t <= end; t += STEP) {
+      const a = SunCalc.getMoonPosition(new Date(t), L.lat, L.lon).altitude;
+      if (a > maxA) { maxA = a; tUp = t; }
+      if (a < minA) { minA = a; tDown = t; }
+      if (prevA !== null && (prevA < 0) !== (a < 0)) {
+        const f = -prevA / (a - prevA), z = prevT + f * (t - prevT);
+        if (a > 0 && rise == null) rise = z;
+        if (a < 0 && set == null) set = z;
+      }
+      prevT = t; prevA = a;
+    }
+    const sun = SunCalc.getTimes(new Date(noon), L.lat, L.lon);
+    const ill = SunCalc.getMoonIllumination(new Date(noon));
+    const out = {
+      sunrise: sun.sunrise && !isNaN(sun.sunrise) ? +sun.sunrise : null,
+      sunset:  sun.sunset  && !isNaN(sun.sunset)  ? +sun.sunset  : null,
+      moonrise: rise, moonset: set, transitUp: tUp, transitDown: tDown,
+      phase: ill.phase, fraction: ill.fraction
+    };
+    this._astro[key] = out;
+    return out;
+  },
+
+  /* ── Les cinq facteurs de score (§15.4 à §15.7) ───────────────────────────
+     Chacun rend son score BRUT (avant réduction anti-double-comptage §15.8).
+     Barèmes dans `MODEL`. */
+
+  /**
+   * Pression — §15.4. Le PDF combine plusieurs fenêtres : la courte détecte les
+   * extrêmes, les longues portent les tendances graduelles. On en tire un taux
+   * DOMINANT (hPa/h, la fenêtre 3/6/12 h de plus forte amplitude) puis on
+   * interpole linéairement entre les bornes des états — une chute de 3,8 hPa/6 h
+   * ne vaut pas exactement une chute de 5,2 (§15.4). La baisse LENTE reste le
+   * meilleur score (+20 > +15 de la chute rapide) : une descente régulière bat
+   * un effondrement.
+   */
+  scorePress(h, i) {
+    const P = h.pressure_msl[i];
+    if (P == null) return 0;
+    const p = MODEL.press;
+    const d = n => (i >= n && h.pressure_msl[i - n] != null) ? P - h.pressure_msl[i - n] : null;
+    const taux = [d(3), d(6), d(12)].map((v, k) => v == null ? null : v / [3, 6, 12][k]);
+    let r = 0;
+    for (const x of taux) if (x != null && Math.abs(x) > Math.abs(r)) r = x;
+    // Points (taux hPa/h → score), en taux croissant. Bornes dérivées des seuils
+    // du §15.4 : dP3≤−3 ≈ −1,0 hPa/h et dP6≤−5 ≈ −0,83 → chute rapide ; baisse
+    // lente −3..−1/6 h ≈ −0,5..−0,17 ; hausse lente +1..+3/6 h ≈ +0,17..+0,5.
+    const pts = [
+      [-0.90, p.chuteRapide], [-0.50, p.baisseLente], [-0.17, p.baisseLente],
+      [ 0.00, p.stable], [ 0.17, p.hausseLente], [ 0.50, p.hausseLente],
+      [ 0.85, p.hausseRapide]
+    ];
+    let s;
+    if (r <= pts[0][0]) s = pts[0][1];
+    else if (r >= pts[pts.length - 1][0]) s = pts[pts.length - 1][1];
+    else { s = p.stable;
+      for (let k = 1; k < pts.length; k++) if (r <= pts[k][0]) {
+        const a = pts[k - 1], b = pts[k];
+        s = a[1] + (b[1] - a[1]) * (r - a[0]) / (b[0] - a[0]); break;
+      }
+    }
+    if (P > p.seuilHaute) s += p.hautePression;           // pression absolue haute (§15.4)
+    return s;
+  },
+
+  /** Vent — vitesse (§15.5). Table [maxKmh, score] de `MODEL.vent`, appliquée à
+   *  l'échelle Open-Meteo « terrain dégagé » (§20.1 : recommandation retenue). */
+  scoreVentVitesse(h, i) {
+    const W = h.wind_speed_10m[i];
+    if (W == null) return 0;
+    for (const [maxK, sc] of MODEL.vent) if (W <= maxK) return sc;
+    return 0;
+  },
+
+  /**
+   * Vent — direction (§15.5, §16.4). Le secteur N passe par la règle « vent du
+   * nord » (§3.3, qui REMPLACE la ligne N) ; les autres secteurs viennent de la
+   * table du lac, neutralisée par défaut (§20.2). `regime` sert à distinguer un
+   * nord postfrontal (−20) d'un nord isolé (−7).
+   */
+  scoreDirection(lakeKey, h, i, regime) {
+    const D = h.wind_direction_10m[i];
+    if (D == null) return 0;
+    const sect = secteurDe(D);
+    if (sect === 'N') return regime === 'F' ? MODEL.dir.nordPostfrontal : MODEL.dir.nordIsole;
+    if (MODEL.dir.neutraliserPreferences) return 0;
+    return LAKES[lakeKey].dir[sect] ?? 0;
+  },
+
+  /**
+   * Bande horaire de la journée (§15.7) aux coordonnées du lac. Ordre exclusif,
+   * bornes clampées pour garantir une couverture continue de l'aube au
+   * crépuscule sans trou, même l'hiver (lever tardif).
+   */
+  heureBucket(lakeKey, h, i) {
+    const ts = this.tsAt(h, i), dateISO = h.time[i].slice(0, 10);
+    const a = this.astro(lakeKey, dateISO);
+    if (a.sunrise == null || a.sunset == null) return 'nuit';
+    const MIN = 60000, sr = a.sunrise, ss = a.sunset;
+    const t1030 = this.localMs(dateISO, 10, 30);
+    const aubeFin  = sr + 90 * MIN;
+    const matinFin = Math.max(t1030, aubeFin);
+    const crep0 = ss - 45 * MIN, crep1 = ss + 45 * MIN;
+    const fin0  = Math.min(ss - 120 * MIN, crep0);
+    if (ts < sr - 60 * MIN) return 'nuit';
+    if (ts <= aubeFin)  return 'aube';
+    if (ts <= matinFin) return 'matin';
+    if (ts < fin0)      return 'midi';
+    if (ts < crep0)     return 'finJournee';
+    if (ts <= crep1)    return 'crepuscule';
+    return 'nuit';
+  },
+
+  /** Heure de la journée — §15.7. La pénalité de midi est annulée si le ciel est
+   *  couvert (N ≥ 70 %) ET le vent modéré (W ≥ 10 km/h). */
+  scoreHeure(lakeKey, h, i) {
+    const b = this.heureBucket(lakeKey, h, i);
+    let s = MODEL.heure[b] ?? 0;
+    if (b === 'midi') {
+      const N = h.cloud_cover[i], W = h.wind_speed_10m[i];
+      if (N != null && N >= 70 && W != null && W >= 10) s = 0;
+    }
+    return s;
+  },
+
+  /**
+   * Lune — §15.6, plafonnée à +10. Phase (nouvelle/pleine/quartier) + événements
+   * (lever/coucher ±90 min, transit sup./inf. ±90 min). La pleine lune ne vaut
+   * que la nuit, l'aube ou le crépuscule ; nulle en plein midi.
+   */
+  scoreLune(lakeKey, h, i) {
+    const M = MODEL.lune, ts = this.tsAt(h, i), dateISO = h.time[i].slice(0, 10);
+    const a = this.astro(lakeKey, dateISO);
+    let s = 0;
+    const wPhase = M.fenetrePhaseJours / 29.53;
+    const dNew = Math.min(a.phase, 1 - a.phase), dFull = Math.abs(a.phase - 0.5);
+    if (dNew < wPhase) s += M.nouvelle;
+    else if (dFull < wPhase) {
+      const b = this.heureBucket(lakeKey, h, i);
+      s += b === 'midi' ? M.pleineJour : M.pleineNuit;
+    } else if (Math.abs(a.phase - 0.25) < wPhase || Math.abs(a.phase - 0.75) < wPhase) {
+      s += M.quartier;
+    }
+    const win = M.fenetreEvtMin * 60000;
+    if ((a.moonrise != null && Math.abs(ts - a.moonrise) <= win) ||
+        (a.moonset  != null && Math.abs(ts - a.moonset)  <= win)) s += M.leverCoucher;
+    if (Math.abs(ts - a.transitUp) <= win || Math.abs(ts - a.transitDown) <= win) s += M.transit;
+    return Math.min(s, M.plafond);
   }
 };
 
