@@ -1157,6 +1157,7 @@ const MODEL = {
   heure: { aube:9, matin:5, midi:-3, finJournee:6, crepuscule:9, nuit:0 },  // §15.7
   correlation: { reduite:0.5, pleine:1.0 },              // §15.8
   jour: { fenetreH:2 },                                  // §15.9 — meilleure fenêtre
+  meilleures: { seuil:60, maxParJour:2, top:6 },         // §15.9b — classement transversal
   // §15.3 — seuils du classificateur postfrontal, validés le 2026-07-22
   postfrontal: { fenetreCreux:18, hausseMin:2.0, d3Min:0.3 },
   hysteresis:  { dureeMin:3 }                            // §15.3b
@@ -1523,6 +1524,61 @@ const V2 = {
     }
     if (!best) return null;
     return { date: dateISO, indice: Math.round(best.moy), debut: best.debut, fin: best.fin, i: best.i };
+  },
+
+  /** Fiabilité d'une fenêtre selon l'échéance en jours (§15.9b). */
+  fiabilite(echeanceJours) {
+    if (echeanceJours <= 2)  return 'bonne';
+    if (echeanceJours <= 5)  return 'correcte';
+    if (echeanceJours <= 10) return 'indicative';
+    return 'lune';
+  },
+
+  /**
+   * Meilleures fenêtres à venir, classées entre elles sur tout l'horizon
+   * (§15.9b) — répond à « quand y aller dans les dix prochains jours ». Lisse
+   * par moyenne glissante de 2 h, retient les maxima locaux au-dessus du seuil,
+   * plafonne à `maxParJour` par jour pour couvrir l'horizon plutôt que de
+   * s'agglutiner sur la meilleure journée, puis garde les `top` premiers.
+   * Chaque fenêtre porte son régime, son facteur dominant et sa fiabilité.
+   */
+  meilleuresFenetres(lakeKey) {
+    const h = this.series[lakeKey], n = h.time.length, cfg = MODEL.meilleures;
+    const span = MODEL.jour.fenetreH;
+    const idx = new Array(n);
+    for (let i = 0; i < n; i++) idx[i] = this.indexAt(lakeKey, i);
+    const sm = new Array(n);                              // moyenne glissante 2 h
+    for (let i = 0; i < n; i++) {
+      let sum = 0, k = 0;
+      for (let j = i; j < i + span && j < n; j++) { sum += idx[j]; k++; }
+      sm[i] = sum / k;
+    }
+    const now = Date.now();
+    let i0 = 0; while (i0 < n && this.tsAt(h, i0) < now) i0++;
+    const cands = [];
+    for (let i = Math.max(1, i0); i < n - 1; i++) {
+      // Strict à gauche : sur un plateau de valeurs égales, seul le premier point
+      // (celui qui monte dans le plateau) est retenu — évite deux fenêtres
+      // adjacentes qui se chevauchent (§15.9b : couvrir l'horizon, pas s'agglutiner).
+      if (sm[i] >= cfg.seuil && sm[i] > sm[i - 1] && sm[i] >= sm[i + 1]) {
+        const dec = this.decompose(lakeKey, i);
+        let fk = null, fv = -Infinity;                   // facteur dominant (plus fort apport positif)
+        for (const key in dec.parts) if (dec.parts[key] > fv) { fv = dec.parts[key]; fk = key; }
+        const debut = this.tsAt(h, i);
+        cands.push({
+          i, indice: Math.round(sm[i]), debut, fin: debut + span * 3600e3,
+          jour: h.time[i].slice(0, 10), regime: dec.regime, facteur: fk,
+          echeanceJours: (debut - now) / DAY_MS,
+          fiabilite: this.fiabilite((debut - now) / DAY_MS)
+        });
+      }
+    }
+    const parJour = {};                                  // plafonner maxParJour / jour
+    for (const c of cands) (parJour[c.jour] = parJour[c.jour] || []).push(c);
+    let retenus = [];
+    for (const j in parJour)
+      retenus = retenus.concat(parJour[j].sort((a, b) => b.indice - a.indice).slice(0, cfg.maxParJour));
+    return retenus.sort((a, b) => b.indice - a.indice).slice(0, cfg.top);
   }
 };
 
