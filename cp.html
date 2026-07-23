@@ -213,6 +213,43 @@
     .wk-row .wkt{grid-column:1 / -1}
   }
   @media (prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
+
+  /* ══ v2 — indice horaire par régime (§15, Phase 2) ══ */
+  /* Courbe 24 h */
+  .tl-curve{position:absolute; inset:0; width:100%; height:100%; display:block}
+  .tl-empty{display:flex; align-items:center; justify-content:center; color:var(--dim); font-size:.72rem}
+  /* Cases du mois : indice 0-100 + heure de la meilleure fenêtre */
+  .cell-idx{font-size:1.15rem; font-weight:700; color:var(--accent); line-height:1; font-variant-numeric:tabular-nums}
+  .cell-idx.na{color:var(--dim); font-weight:600}
+  .cell-win{font-size:.58rem; color:var(--muted); font-variant-numeric:tabular-nums; margin-top:1px}
+  /* Vue semaine : indice */
+  .wk-idx{font-size:1.15rem; font-weight:700; color:var(--accent); font-variant-numeric:tabular-nums; min-width:34px; text-align:center}
+  /* Décomposition : contribution signée par facteur, pastille de régime */
+  .fx-pts{font-weight:700; font-variant-numeric:tabular-nums; min-width:34px; text-align:right; font-size:.82rem}
+  .fx-pts.pos{color:var(--live)} .fx-pts.neg{color:#f87171} .fx-pts.zero{color:var(--dim)}
+  .fx-reg{display:inline-block; width:12px; height:12px; border-radius:3px; flex-shrink:0}
+  .fx-big{font-size:1.5rem; font-weight:750; color:var(--accent); font-variant-numeric:tabular-nums; margin-left:.1rem}
+  /* Bandeau « Prochaines fenêtres » */
+  .banner{border:1px solid var(--border); border-radius:14px; background:var(--panel); padding:.7rem .8rem; margin-bottom:1rem}
+  .banner-h{font-size:.62rem; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); font-weight:700; margin-bottom:.55rem}
+  .banner-empty{font-size:.8rem; color:var(--dim); font-style:italic}
+  .bw-row{display:grid; grid-template-columns:auto auto 1fr auto; gap:.75rem; align-items:center; width:100%; text-align:left;
+    font:inherit; color:inherit; cursor:pointer; background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:.5rem .7rem; margin-bottom:6px; transition:.15s; min-height:44px}
+  .bw-row:last-child{margin-bottom:0}
+  .bw-row:hover{border-color:var(--border2); background:var(--hover); transform:translateY(-1px)}
+  .bw-idx{font-size:1.2rem; font-weight:750; color:var(--accent); font-variant-numeric:tabular-nums; min-width:30px; text-align:center}
+  .bw-when b{display:block; font-size:.82rem; font-weight:650; text-transform:capitalize}
+  .bw-when span{font-size:.72rem; color:var(--muted); font-variant-numeric:tabular-nums}
+  .bw-reg{font-size:.74rem; color:var(--muted); display:flex; align-items:center; gap:.4rem; min-width:0}
+  .bw-reg i{width:9px; height:9px; border-radius:50%; flex-shrink:0}
+  .bw-fiab{font-size:.62rem; letter-spacing:.04em; text-transform:uppercase; font-weight:700; color:var(--muted); white-space:nowrap}
+  .bw-fiab.bonne{color:var(--live)} .bw-fiab.correcte{color:var(--warn)}
+  .bw-fiab.indicative,.bw-fiab.lune{color:var(--dim)}
+  @media (max-width:560px){
+    .bw-row{display:flex; flex-wrap:wrap; align-items:center; gap:.2rem .6rem}
+    .bw-idx{min-width:auto} .bw-when{flex:1}
+    .bw-fiab{margin-left:auto} .bw-reg{flex-basis:100%; order:5}
+  }
 </style>
 </head>
 <body data-mode="fish">
@@ -397,8 +434,21 @@ const I18N = {
     phases:['Nouvelle lune','Premier croissant','Premier quartier','Gibbeuse croissante',
             'Pleine lune','Gibbeuse décroissante','Dernier quartier','Dernier croissant'],
     sectors:{ N:'N', NE:'NE', E:'E', SE:'SE', S:'S', SO:'SO', O:'O', NO:'NO' },
-    footNote:'Cote indicative — modèle solunaire + météo. Seuils et poids ajustables dans Réglages.',
-    loading:'Chargement des données…'
+    footNote:'Indice indicatif — modèle de régime météo v2 (§15). Le régime vient d\'Open-Meteo, pas du capteur du lac (§16.3).',
+    loading:'Chargement des données…',
+    v2:{
+      lake:'Lac', lakes:{ manitou:'Manitou', devenyns:'Devenyns' },
+      index:'Indice', bestWindow:'meilleure fenêtre', noData:'sans données météo',
+      upcoming:'Prochaines fenêtres', noWindow:'Aucune fenêtre au-dessus du seuil sur l\'horizon.',
+      verdicts:['Journée creuse','Activité modérée','Bonne journée','Très bonne journée','Journée exceptionnelle'],
+      regimes:{ X:'passage du front', F:'postfrontal froid', A:'front en approche', P:'préfrontal', R:'retour à la stabilité', S:'stable', '?':'indéterminé' },
+      factors:{ regime:'Régime', pression:'Pression', direction:'Direction', vitesse:'Vent', lune:'Lune', heure:'Heure' },
+      fiab:{ bonne:'fiable', correcte:'assez fiable', indicative:'indicative', lune:'lune seule' },
+      reduced:'réduit de moitié — même front que le régime (§15.8)',
+      atWindow:'à la meilleure fenêtre', factorsTitle:'Décomposition de l\'indice',
+      hour:{ aube:'aube', matin:'matin', midi:'milieu de journée', finJournee:'fin de journée', crepuscule:'crépuscule', nuit:'nuit' },
+      tip:'<b>Pêche.</b> L\'indice combine régime météo, pression, vent, lune et heure. Vise les fenêtres au-dessus de 70 ; le régime en tête dit <i>pourquoi</i> — de quoi juger le modèle plutôt que le suivre aveuglément.'
+    }
   },
   en: {
     title:'Solunar activity', modeFish:'Angler', modeDeer:'Hunter',
@@ -436,8 +486,21 @@ const I18N = {
     phases:['New moon','Waxing crescent','First quarter','Waxing gibbous',
             'Full moon','Waning gibbous','Last quarter','Waning crescent'],
     sectors:{ N:'N', NE:'NE', E:'E', SE:'SE', S:'S', SO:'SW', O:'W', NO:'NW' },
-    footNote:'Indicative rating — solunar model + weather. Thresholds and weights adjustable in Settings.',
-    loading:'Loading data…'
+    footNote:'Indicative index — v2 weather-regime model (§15). The regime comes from Open-Meteo, not the lake sensor (§16.3).',
+    loading:'Loading data…',
+    v2:{
+      lake:'Lake', lakes:{ manitou:'Manitou', devenyns:'Devenyns' },
+      index:'Index', bestWindow:'best window', noData:'no weather data',
+      upcoming:'Upcoming windows', noWindow:'No window above threshold over the horizon.',
+      verdicts:['Slow day','Moderate','Good day','Very good day','Exceptional'],
+      regimes:{ X:'front passage', F:'cold postfrontal', A:'front approaching', P:'prefrontal', R:'returning to stable', S:'stable', '?':'undetermined' },
+      factors:{ regime:'Regime', pression:'Pressure', direction:'Direction', vitesse:'Wind', lune:'Moon', heure:'Time' },
+      fiab:{ bonne:'reliable', correcte:'fairly reliable', indicative:'indicative', lune:'moon only' },
+      reduced:'halved — same front as the regime (§15.8)',
+      atWindow:'at the best window', factorsTitle:'Index breakdown',
+      hour:{ aube:'dawn', matin:'morning', midi:'midday', finJournee:'late day', crepuscule:'dusk', nuit:'night' },
+      tip:'<b>Fishing.</b> The index blends weather regime, pressure, wind, moon and time. Aim for windows above 70; the regime shown first tells you <i>why</i> — so you can judge the model rather than follow it blindly.'
+    }
   }
 };
 const T = () => I18N[lang];
@@ -718,78 +781,37 @@ function forecastDelta(c){
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   7. Modèle de cote (spec §2)
+   7. Glu interface ↔ moteur v2 (§15, §16) — remplace le modèle de cote v1
+      L'indice, les régimes, les facteurs et les fenêtres viennent tous de `V2`
+      (bloc 10b). Ici : l'état de l'interface et quelques libellés localisés.
    ══════════════════════════════════════════════════════════════════════════ */
-const STATE = { mode:'fish', gran:'month', sel:civToday(), settings:false };
-const isFish = () => STATE.mode === 'fish';
-const modeKey = () => STATE.mode;
+// `lake` n'est PAS validé contre LAKES ici : LAKES est déclaré plus bas (bloc
+// 10b) et serait dans sa zone morte temporelle. La validation se fait au
+// démarrage (§11), une fois tout le module évalué.
+const STATE = {
+  gran: 'month',
+  sel: civToday(),
+  lake: LS.rawGet('lm_cp_lake', 'manitou')
+};
+const lakeKey = () => STATE.lake;
+/** Série chargée pour le lac courant ? (sinon on affiche le voile de chargement) */
+const lakeReady = () => !!V2.series[STATE.lake];
 
-function moonScore(phase){
-  const th = SCORING.moon[modeKey()];
-  const d = isFish() ? Math.min(phase, 1 - phase, Math.abs(phase - .5)) : Math.min(phase, 1 - phase);
-  return d < th[0] ? 4 : d < th[1] ? 3 : d < th[2] ? 2 : 1;
-}
-function moonLevel(phase){
-  const th = SCORING.moon[modeKey()];
-  const d = isFish() ? Math.min(phase, 1 - phase, Math.abs(phase - .5)) : Math.min(phase, 1 - phase);
-  return d < th[1] ? 0 : d < th[2] ? 1 : 2;             // fort / moyen / faible
-}
-function pressScore(delta){
-  const p = SCORING.press;
-  return delta <= p.d4 ? 4 : delta <= p.d3 ? 3 : delta < p.d2 ? 2 : 1;
-}
-function windScore(spd){
-  const w = SCORING.wind[modeKey()];
-  if (spd >= w[0] && spd <= w[1]) return 4;
-  if (spd >= w[2] && spd <  w[3]) return 3;
-  if (spd <  w[4]) return 2;
-  return 1;
-}
-/** Index de lecture du vent : 0 trop calme · 1 idéal · 2 soutenu · 3 trop fort */
-function windReadIdx(spd){
-  const w = SCORING.wind[modeKey()];
-  if (spd < w[2]) return 0;
-  if (spd <= w[1]) return 1;
-  if (spd < w[4]) return 2;
-  return 3;
-}
-const dirScore = sector => SCORING.dir[modeKey()][sector] ?? 2;
+/** Verdict d'un indice 0-100 → index 0-4 dans T().v2.verdicts. */
+const VERDICT_BANDS = [40, 55, 70, 85];               // <40 · 40-55 · 55-70 · 70-85 · ≥85
+const verdictIdx = n => { let i = 0; while (i < VERDICT_BANDS.length && n >= VERDICT_BANDS[i]) i++; return i; };
+const verdictV2  = n => T().v2.verdicts[verdictIdx(n)];
+/** Classe de teinte 0-4 (réutilise --sc des cases pour la lueur). */
+const heatLevel  = n => Math.max(0, Math.min(4, Math.round(n / 25)));
 
-const _bdCache = new Map();
-/**
- * Décomposition d'un jour : sous-scores, poids effectifs (renormalisés si un
- * facteur manque, §3.2) et total continu 1.0–4.0.
- */
-function breakdown(c){
-  const ck = modeKey() + '|' + civKey(c);
-  if (_bdCache.has(ck)) return _bdCache.get(ck);
+const regimeNom = code => T().v2.regimes[code] || (MODEL.regimes[code] && MODEL.regimes[code].nom) || code;
+const factorNom = key  => T().v2.factors[key] || key;
+const fiabNom   = f    => T().v2.fiab[f] || f;
 
-  const s = solunar(c);
-  const w = dayWeather(c);
-  const moon = moonScore(s.phase);
-  const parts = [{ k:'moon', score:moon, w:SCORING.weights.moon }];
-
-  let press = null, wind = null, dir = null, sector = null;
-  if (w) {
-    if (w.delta != null) { press = pressScore(w.delta); parts.push({ k:'press', score:press, w:SCORING.weights.press }); }
-    if (w.wind  != null) { wind  = windScore(w.wind);   parts.push({ k:'wind',  score:wind,  w:SCORING.weights.wind  }); }
-    if (w.dirDeg != null) { sector = degToSector(w.dirDeg); dir = dirScore(sector); parts.push({ k:'dir', score:dir, w:SCORING.weights.dir }); }
-  }
-  const sumW = parts.reduce((a,p)=>a+p.w, 0);
-  const total = sumW > 0 ? parts.reduce((a,p)=>a + p.score * p.w, 0) / sumW : moon;
-  const eff = {};
-  for (const p of parts) eff[p.k] = p.w / sumW;         // poids effectifs affichés
-
-  const out = {
-    c, s, w, moon, press, wind, dir, sector, total, eff,
-    src: parts.length === 1 ? 'moon' : (w ? w.src : 'moon'),
-    partial: !!w && parts.length > 1 && parts.length < 4
-  };
-  _bdCache.set(ck, out);
-  return out;
+/** Indices horaires (0-100) d'un jour civil, pour la courbe 24 h. */
+function dayCurve(dateISO){
+  return V2.dayHours(STATE.lake, dateISO).map(i => ({ i, t: V2.tsAt(V2.series[STATE.lake], i), v: V2.indexAt(STATE.lake, i) }));
 }
-const scoreOf = c => Math.max(1, Math.min(4, Math.round(breakdown(c).total)));
-const clearScores = () => _bdCache.clear();
 
 /* ══════════════════════════════════════════════════════════════════════════
    8. Formatage
@@ -817,112 +839,92 @@ const dowLabels = () => { const base = civFromKey('2026-01-04'); // un dimanche
 const esc = s => String(s).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
 const capFirst = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 
-function ratingHTML(n, cls){
-  const ic = ICON[isFish() ? 'fish' : 'deer'];
-  let s = '<span class="rating ' + (cls || '') + '">';
-  for (let i = 0; i < 4; i++) s += ic.replace('<svg', '<svg class="' + (i < n ? '' : 'off') + '"');
-  return s + '</span>';
+// Teinte par régime — utilisée dans la décomposition et le bandeau.
+const REGIME_COLOR = { X:'#fbbf24', F:'#60a5fa', A:'#2dd4bf', P:'#34d399', R:'#94a3b8', S:'#94a3b8', '?':'#64748b' };
+
+/** Une ligne de facteur : libellé, contribution signée en points, lecture. */
+function fxRow(icon, name, points, read){
+  const cls = points > 0.5 ? 'pos' : points < -0.5 ? 'neg' : 'zero';
+  const val = (points > 0 ? '+' : points < 0 ? '−' : '') + Math.abs(Math.round(points));
+  return `<div class="fx-row"><span class="fx-lead">${icon}<b>${name}</b></span>` +
+    `<span class="fx-pts ${cls}">${val}</span><span class="fx-read">${read}</span></div>`;
 }
-function dotsHTML(n){
-  if (n == null) return '<span class="dots na">— —</span>';
-  let s = '<span class="dots">';
-  for (let i = 0; i < 4; i++) s += '<i class="' + (i < n ? 'on' : '') + '"></i>';
-  return s + '</span>';
-}
-const pct = v => Math.round(v * 100) + '%';
-const verdict = n => T().verdicts[modeKey()][n - 1];
 
 /* ══════════════════════════════════════════════════════════════════════════
    9. Rendu
    ══════════════════════════════════════════════════════════════════════════ */
-function timelineHTML(c, slim){
-  const s = solunar(c), span = s.end - s.start;
-  const at = ms => Math.max(0, Math.min(100, (ms - s.start) / span * 100));
-  const width = (a, b) => Math.max(0, Math.min(100 - at(a), (b - a) / span * 100));
-  // Uniquement des <span> : la barre est imbriquée dans les <button> de la vue
-  // Semaine, dont le modèle de contenu n'accepte pas d'élément de flux.
-  let b = '';
-  if (s.sunrise) b += `<span class="night" style="left:0;width:${at(s.sunrise)}%"></span>`;
-  if (s.sunset)  b += `<span class="night" style="left:${at(s.sunset)}%;right:0"></span>`;
-  for (const m of s.majors) b += `<span class="band maj" style="left:${at(m[0])}%;width:${width(m[0],m[1])}%"></span>`;
-  for (const m of s.minors) b += `<span class="band min" style="left:${at(m[0])}%;width:${width(m[0],m[1])}%"></span>`;
+/**
+ * Barre 24 h = courbe de l'indice horaire du jour (§Phase 2), avec nuit ombrée,
+ * seuil 70 en pointillé et repère « maintenant ». SVG en viewBox 0-100 étiré à
+ * la largeur du conteneur — trait à épaisseur constante via non-scaling-stroke.
+ */
+function curveHTML(dateISO, slim){
+  const pts = dayCurve(dateISO);
+  const scale = slim ? '' : `<span class="tl-scale"><span>0 h</span><span>6 h</span><span>12 h</span><span>18 h</span><span>24 h</span></span>`;
+  if (!pts.length) return `<span class="tl ${slim ? 'slim' : ''} tl-empty">${T().v2.noData}</span>` + scale;
+  const a = V2.astro(STATE.lake, dateISO), span = civSpan(civFromKey(dateISO));
+  const at = ms => Math.max(0, Math.min(100, (ms - span.start) / (span.end - span.start) * 100));
+  const xy = pts.map(p => [at(p.t), 100 - p.v]);
+  const line = xy.map((q, i) => (i ? 'L' : 'M') + q[0].toFixed(1) + ' ' + q[1].toFixed(1)).join(' ');
+  const area = line + ` L${xy[xy.length-1][0].toFixed(1)} 100 L${xy[0][0].toFixed(1)} 100 Z`;
+  let night = '';
+  if (a.sunrise) night += `<rect x="0" y="0" width="${at(a.sunrise).toFixed(1)}" height="100" fill="rgba(0,0,0,.30)"/>`;
+  if (a.sunset)  night += `<rect x="${at(a.sunset).toFixed(1)}" y="0" width="${(100 - at(a.sunset)).toFixed(1)}" height="100" fill="rgba(0,0,0,.30)"/>`;
   const now = Date.now();
-  if (now >= s.start && now < s.end) b += `<span class="now" style="left:${at(now)}%"></span>`;
-  return `<span class="tl ${slim ? 'slim' : ''}">${b}</span>` + (slim ? '' :
-    `<span class="tl-scale"><span>0 h</span><span>6 h</span><span>12 h</span><span>18 h</span><span>24 h</span></span>`);
+  const nowLine = (now >= span.start && now < span.end)
+    ? `<line x1="${at(now).toFixed(1)}" y1="0" x2="${at(now).toFixed(1)}" y2="100" stroke="var(--live)" stroke-width="1.2" vector-effect="non-scaling-stroke"/>` : '';
+  const svg = `<svg class="tl-curve" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${night}` +
+    `<line x1="0" y1="30" x2="100" y2="30" stroke="var(--border2)" stroke-width="1" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"/>` +
+    `<path d="${area}" fill="color-mix(in srgb,var(--accent) 15%,transparent)"/>` +
+    `<path d="${line}" fill="none" stroke="var(--accent)" stroke-width="1.7" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>${nowLine}</svg>`;
+  return `<span class="tl ${slim ? 'slim' : ''}">${svg}</span>` + scale;
 }
 
+/**
+ * Décomposition de l'indice à la meilleure fenêtre du jour (§Phase 2) : régime
+ * en tête, puis pression, direction, vitesse, lune, heure — chacun avec sa
+ * contribution signée. La réduction anti-double-comptage (§15.8) est mentionnée
+ * sur les lignes concernées quand elle s'applique.
+ */
 function factorsHTML(c){
-  const t = T(), b = breakdown(c);
-  // Un facteur absent ne veut pas dire la même chose selon le sens du temps :
-  // dans le futur c'est « hors horizon », dans le passé c'est « non mesuré ».
-  const future = civDiff(c, civToday()) > 0;
-  const gap = future ? t.beyond : t.unavail;
-  const row = (icon, name, score, read, weight, muted) =>
-    `<div class="fx-row ${muted ? 'muted' : ''}"><span class="fx-lead">${icon}<b>${name}</b></span>` +
-    `${dotsHTML(score)}<span class="fx-read">${read}</span>` +
-    `<span class="fx-wt">${weight == null ? '—' : pct(weight)}</span></div>`;
+  const t = T(), dateISO = civKey(c);
+  const di = V2.dayIndex(STATE.lake, dateISO);
+  if (!di) return `<div class="factors"><div class="fx-head"><span>${t.v2.factorsTitle}</span></div><div class="fx-note">${t.v2.noData}</div></div>`;
 
-  const moonTxt = t.moonLvl[moonLevel(b.s.phase)] + ' · ' + t.phases[phaseIndex(b.s.phase)].toLowerCase();
-  let html = row(ICON.moon, t.moon, b.moon, esc(moonTxt), b.eff.moon, false);
+  const dec = V2.decompose(STATE.lake, di.i), p = dec.parts;
+  const h = V2.series[STATE.lake], W = h.wind_speed_10m[di.i], D = h.wind_direction_10m[di.i];
+  const bucket = V2.heureBucket(STATE.lake, h, di.i);
+  const redNote = dec.red < 1 ? t.v2.reduced : '';
+  const regDot = `<span class="fx-reg" style="background:${REGIME_COLOR[dec.regime] || 'var(--muted)'}"></span>`;
+  const kmh = W != null ? ' · ' + Math.round(W) + ' km/h' : '';
+  const sect = D != null ? ' · ' + (t.sectors[secteurDe(D)] || '') : '';
 
-  if (b.press != null) {
-    const r = t.pressRead[b.press], ts = b.w.trendShort;
-    // Le score porte sur 24 h. Pour le jour courant on ajoute la tendance
-    // barométrique 3 h — c'est elle qui dit ce que fait la pression MAINTENANT,
-    // et elle peut parfaitement contredire les 24 h (front passé, pression qui
-    // remonte). Dans ce cas on bascule sur le libellé sans clause causale.
-    let read = `${r[0]} ${esc(ts != null ? t.pressRead24[b.press] : r[1])}`;
-    if (b.w.press != null) read += ' · ' + Math.round(b.w.press) + ' hPa';
-    if (ts != null) {
-      const arrow = Math.abs(ts) < 0.5 ? '→' : (ts > 0 ? '▲' : '▼');   // seuil barométrique, cf. 5768c18
-      read += ' · ' + arrow + ' ' + ts.toLocaleString(locale(),
-        { minimumFractionDigits:1, maximumFractionDigits:1, signDisplay:'exceptZero' }) + ' hPa/3 h';
-    }
-    html += row(ICON.gauge, t.press, b.press, read, b.eff.press, false);
-  } else html += row(ICON.gauge, t.press, null, gap, null, true);
+  let html = fxRow(regDot,       t.v2.factors.regime,    p.regime,    esc(regimeNom(dec.regime)));
+  html += fxRow(ICON.gauge,      t.v2.factors.pression,  p.pression,  p.pression !== 0 && dec.red < 1 ? redNote : '');
+  html += fxRow(ICON.compass,    t.v2.factors.direction, p.direction, esc((t.sectors[D != null ? secteurDe(D) : ''] || '')) + (p.direction !== 0 && dec.red < 1 ? ' · ' + redNote : ''));
+  html += fxRow(ICON.wind,       t.v2.factors.vitesse,   p.vitesse,   esc((W != null ? Math.round(W) + ' km/h' : '')));
+  html += fxRow(ICON.moon,       t.v2.factors.lune,      p.lune,      '');
+  html += fxRow(ICON.clock,      t.v2.factors.heure,     p.heure,     esc(t.v2.hour[bucket] || ''));
 
-  if (b.wind != null) {
-    html += row(ICON.wind, t.wind, b.wind,
-      `${esc(t.windRead[modeKey()][windReadIdx(b.w.wind)])} · ${Math.round(b.w.wind)} km/h`, b.eff.wind, false);
-  } else html += row(ICON.wind, t.wind, null, gap, null, true);
-
-  if (b.dir != null) {
-    const idx = b.dir >= 4 ? 0 : b.dir >= 3 ? 1 : b.dir >= 2 ? 2 : 3;
-    html += row(ICON.compass, t.dir, b.dir,
-      `${esc(t.dirRead[modeKey()][idx])} · ${t.sectors[b.sector]}`, b.eff.dir, false);
-  } else html += row(ICON.compass, t.dir, null, gap, null, true);
-
-  let note = '';
-  if (b.src === 'moon') note = `<div class="fx-note">${future ? t.beyondNote : t.pastNote}</div>`;
-  else if (b.partial)   note = `<div class="fx-note">${t.partialNote}</div>`;
-
-  const tot = scoreOf(c);
+  const winLbl = fmtTime(di.debut) + '–' + fmtTime(di.fin);
   return `<div class="factors">
-    <div class="fx-head"><span>${t.factors} · ${isFish() ? t.ofFish : t.ofDeer}</span><span class="fx-src">${t.src[b.src]}</span></div>
-    ${html}${note}
-    <div class="fx-total"><span class="ft-lab">${t.total}</span>${ratingHTML(tot,'lg')}<span class="fx-verdict">${verdict(tot)}</span></div>
+    <div class="fx-head"><span>${t.v2.factorsTitle}</span><span class="fx-src">${t.v2.atWindow} ${winLbl}</span></div>
+    ${html}
+    <div class="fx-total"><span class="ft-lab">${t.total}</span><span class="fx-big" style="--sc:${heatLevel(di.indice)}">${di.indice}</span><span class="fx-verdict">${esc(verdictV2(di.indice))}</span></div>
   </div>`;
 }
 
 function detailHTML(c){
-  const t = T(), s = solunar(c);
+  const t = T(), dateISO = civKey(c);
   const isToday = civEq(c, civToday());
-  const win = (cls, lab, w) => `<div class="win ${cls}"><div class="wl">${lab}</div><div class="wt">${fmtTime(w[0])}–${fmtTime(w[1])}</div></div>`;
-  const wins =
-    (s.majors[0] ? win('major', t.major + ' 1', s.majors[0]) : '') +
-    (s.majors[1] ? win('major', t.major + ' 2', s.majors[1]) : '') +
-    (s.minors[0] ? win('minor', t.minor + ' 1', s.minors[0]) : '') +
-    (s.minors[1] ? win('minor', t.minor + ' 2', s.minors[1]) : '');
-  const litPct = Math.round(s.fraction * 100);
-  const tip = isFish() ? t.tipFish
-    : `<b>${t.tipDeerLead}</b> ${litPct < 25 ? t.tipDeerDark : litPct > 75 ? t.tipDeerBright : t.tipDeerMid} ${t.tipDeerTail}`;
+  const a = V2.astro(STATE.lake, dateISO);
+  const litPct = Math.round(a.fraction * 100);
 
   return `<div class="detail">
     <div class="detail-head">
       <div>
         <div class="dh-date">${esc(capFirst(fmtLongDate(c)))}</div>
-        <div class="dh-phase">${moonPhaseSVG(s.phase)} ${esc(t.phases[phaseIndex(s.phase)])} · ${litPct}${t.lit}</div>
+        <div class="dh-phase">${moonPhaseSVG(a.phase)} ${esc(t.phases[phaseIndex(a.phase)])} · ${litPct}${t.lit}</div>
       </div>
       <div class="day-step">
         ${isToday ? '' : `<button class="today-reset" data-step="today">${ICON.clock} ${t.today}</button>`}
@@ -930,16 +932,32 @@ function detailHTML(c){
         <button data-step="1" aria-label="${t.nextDay}">${ICON.chevR}</button>
       </div>
     </div>
+    ${curveHTML(dateISO)}
     ${factorsHTML(c)}
-    ${timelineHTML(c)}
-    <div class="win-grid">${wins}</div>
     <div class="astro">
-      <span style="color:var(--warn)">${ICON.sunrise} ${t.sunrise} ${fmtTime(s.sunrise)}</span>
-      <span style="color:#fb923c">${ICON.sunset} ${t.sunset} ${fmtTime(s.sunset)}</span>
-      <span style="color:var(--moon)">${ICON.moon} ${t.moonrise} ${fmtTime(s.moonrise)} / ${fmtTime(s.moonset)}</span>
+      <span style="color:var(--warn)">${ICON.sunrise} ${t.sunrise} ${fmtTime(a.sunrise)}</span>
+      <span style="color:#fb923c">${ICON.sunset} ${t.sunset} ${fmtTime(a.sunset)}</span>
+      <span style="color:var(--moon)">${ICON.moon} ${t.moonrise} ${fmtTime(a.moonrise)} / ${fmtTime(a.moonset)}</span>
     </div>
-    <div class="tip">${tip}</div>
+    <div class="tip">${t.v2.tip}</div>
   </div>`;
+}
+
+/** Bandeau « Prochaines fenêtres » (§15.9b) en tête de la vue Mois. */
+function bannerHTML(){
+  const t = T(), w = V2.meilleuresFenetres(STATE.lake);
+  if (!w.length) return `<div class="banner"><div class="banner-h">${t.v2.upcoming}</div><div class="banner-empty">${t.v2.noWindow}</div></div>`;
+  const rows = w.map(f => {
+    const c = civOf(f.debut);
+    const jour = esc(fmtWeekday(c, 'short').replace('.', '') + ' ' + fmtShortDate(c));
+    return `<button type="button" class="bw-row" data-key="${civKey(c)}">
+      <span class="bw-idx" style="--sc:${heatLevel(f.indice)}">${f.indice}</span>
+      <span class="bw-when"><b>${jour}</b><span>${fmtTime(f.debut)}–${fmtTime(f.fin)}</span></span>
+      <span class="bw-reg"><i style="background:${REGIME_COLOR[f.regime] || 'var(--muted)'}"></i>${esc(regimeNom(f.regime))} · ${esc(factorNom(f.facteur))}</span>
+      <span class="bw-fiab ${f.fiabilite}">${esc(fiabNom(f.fiabilite))}</span>
+    </button>`;
+  }).join('');
+  return `<div class="banner"><div class="banner-h">${t.v2.upcoming}</div>${rows}</div>`;
 }
 
 function monthHTML(){
@@ -950,14 +968,18 @@ function monthHTML(){
   let cells = '';
   for (let i = 0; i < lead; i++) cells += '<div class="cell blank"></div>';
   for (let d = 1; d <= dim; d++) {
-    const c = { y:sel.y, m:sel.m, d }, n = scoreOf(c), b = breakdown(c);
-    cells += `<button type="button" class="cell ${civEq(c,today)?'today':''} ${civEq(c,sel)?'sel':''} ${b.src==='moon'?'nohorizon':''}"
-      style="--sc:${n}" data-day="${d}" aria-label="${esc(fmtLongDate(c))} — ${n}/4">
-      <span class="glow"></span><span class="mn">${moonPhaseSVG(b.s.phase)}</span>
-      <span class="dnum">${d}</span>${ratingHTML(n,'sm')}<span class="cell-sc">${n}</span></button>`;
+    const c = { y:sel.y, m:sel.m, d }, dateISO = civKey(c);
+    const di = V2.dayIndex(STATE.lake, dateISO), a = V2.astro(STATE.lake, dateISO);
+    const has = !!di;
+    cells += `<button type="button" class="cell ${civEq(c,today)?'today':''} ${civEq(c,sel)?'sel':''} ${has?'':'nohorizon'}"
+      style="--sc:${has?heatLevel(di.indice):0}" data-day="${d}" aria-label="${esc(fmtLongDate(c))}${has?' — '+di.indice:''}">
+      <span class="glow"></span><span class="mn">${moonPhaseSVG(a.phase)}</span>
+      <span class="dnum">${d}</span>
+      ${has ? `<span class="cell-idx">${di.indice}</span><span class="cell-win">${fmtTime(di.debut)}</span>`
+            : `<span class="cell-idx na">—</span>`}</button>`;
   }
   return `<div class="cal-legend"><span><b>${esc(capFirst(fmtMonth(sel)))}</b></span>
-      <span style="margin-left:auto">${ratingHTML(4,'sm')} ${t.excellent} · ${ratingHTML(1,'sm')} ${t.poor} · <span style="color:var(--dim)">•</span> ${t.noHorizon}</span></div>
+      <span style="margin-left:auto">${t.v2.index} 0–100 · <span style="color:var(--dim)">•</span> ${t.v2.noData}</span></div>
     <div class="dow">${dowLabels().map(d=>`<span>${esc(d)}</span>`).join('')}</div>
     <div class="cal" data-role="cal">${cells}</div>`;
 }
@@ -967,24 +989,14 @@ function weekHTML(){
   const ws = civAdd(sel, -civDow(sel));
   let rows = '';
   for (let i = 0; i < 7; i++) {
-    const c = civAdd(ws, i), n = scoreOf(c);
-    rows += `<button type="button" class="wk-row ${civEq(c,sel)?'sel':''}" data-key="${civKey(c)}">
+    const c = civAdd(ws, i), dateISO = civKey(c);
+    const di = V2.dayIndex(STATE.lake, dateISO);
+    rows += `<button type="button" class="wk-row ${civEq(c,sel)?'sel':''}" data-key="${dateISO}">
       <span class="wk-day"><b>${esc(fmtWeekday(c,'short').replace('.',''))}</b><span>${esc(fmtShortDate(c))}</span></span>
-      ${ratingHTML(n)}<span class="wkt">${timelineHTML(c, true)}</span></button>`;
+      <span class="wk-idx" style="--sc:${di?heatLevel(di.indice):0}">${di?di.indice:'—'}</span>
+      <span class="wkt">${curveHTML(dateISO, true)}</span></button>`;
   }
   return `<div class="cal-legend"><span><b>${t.weekOf} ${esc(fmtShortDate(ws))}</b></span></div><div class="wk">${rows}</div>`;
-}
-
-function settingsHTML(){
-  const t = T();
-  const rows = [['moon',t.moon],['press',t.press],['wind',t.wind],['dir',t.dir]].map(([k,lab]) =>
-    `<label class="wrow"><span>${lab}</span>
-      <input type="range" min="0" max="100" step="1" value="${Math.round(SCORING.weights[k]*100)}" data-w="${k}">
-      <output data-out="${k}">${pct(SCORING.weights[k])}</output></label>`).join('');
-  return `<section class="settings" ${STATE.settings ? '' : 'hidden'} data-role="settings">
-    <h2>${t.weightsTitle}</h2>${rows}
-    <div class="settings-foot"><span>${t.weightsHint}</span><button type="button" data-role="reset">${t.reset}</button></div>
-  </section>`;
 }
 
 function headHTML(){
@@ -992,15 +1004,13 @@ function headHTML(){
   return `<div class="app-head">
     <div class="app-title">
       <a class="back-lmt" href="/" title="${t.backTitle}">${ICON.chevL}<span>${t.back}</span></a>
-      <span class="ic">${ICON[isFish()?'fish':'deer']}</span>
-      <div>${t.title}<small>${isFish()?t.subFish:t.subDeer}</small></div>
+      <span class="ic">${ICON.fish}</span>
+      <div>${t.title}<small>${t.subFish}</small></div>
     </div>
     <div class="head-tools">
-      <div class="mode-toggle" data-role="mode">
-        <button data-m="fish" class="${isFish()?'on':''}" aria-pressed="${isFish()}">${ICON.fish} ${t.modeFish}</button>
-        <button data-m="deer" class="${!isFish()?'on':''}" aria-pressed="${!isFish()}">${ICON.deer} ${t.modeDeer}</button>
+      <div class="seg lake-sel" data-role="lake">
+        ${Object.keys(LAKES).map(k => `<button data-lake="${k}" class="${STATE.lake===k?'on':''}">${esc(t.v2.lakes[k] || LAKES[k].nom)}</button>`).join('')}
       </div>
-      <button type="button" class="icon-btn ${STATE.settings?'on':''}" data-role="gear" title="${t.settings}" aria-label="${t.settings}">${ICON.sliders}</button>
       <button type="button" class="icon-btn" data-role="lang" title="FR / EN">${lang === 'fr' ? 'EN' : 'FR'}</button>
     </div>
   </div>`;
@@ -1008,19 +1018,19 @@ function headHTML(){
 
 function render(){
   const t = T();
-  document.body.dataset.mode = STATE.mode;
-  document.documentElement.style.setProperty('--accent', isFish() ? 'var(--fish)' : 'var(--deer)');
+  document.body.dataset.mode = 'fish';
+  document.documentElement.style.setProperty('--accent', 'var(--fish)');
   document.documentElement.lang = lang;
 
   let body;
-  if (!DATA.ready) body = `<p style="color:var(--muted);padding:2rem 0;text-align:center">${t.loading}</p>`;
-  else if (STATE.gran === 'month') body = monthHTML();
+  if (!lakeReady()) body = `<p style="color:var(--muted);padding:2rem 0;text-align:center">${t.loading}</p>`;
+  else if (STATE.gran === 'month') body = bannerHTML() + monthHTML();
   else if (STATE.gran === 'week')  body = weekHTML();
   else body = '';
 
-  const detail = DATA.ready ? detailHTML(STATE.sel) : '';
+  const detail = lakeReady() ? detailHTML(STATE.sel) : '';
   document.getElementById('app').innerHTML =
-    headHTML() + settingsHTML() +
+    headHTML() +
     `<div style="display:flex;justify-content:center;margin-bottom:1rem" class="seg-scroll">
       <div class="seg" data-role="gran">
         <button data-g="day"   class="${STATE.gran==='day'?'on':''}">${t.day}</button>
@@ -1029,27 +1039,21 @@ function render(){
       </div></div>` +
     body + detail;
   document.getElementById('foot').textContent = t.footNote;
-  document.title = t.title + ' — Lac Manitou';
+  document.title = t.title + ' — ' + (t.v2.lakes[STATE.lake] || LAKES[STATE.lake].nom);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
    10. Interactions (§4)
    ══════════════════════════════════════════════════════════════════════════ */
 document.getElementById('app').addEventListener('click', e => {
-  const mode = e.target.closest('[data-role=mode] button');
-  if (mode) { STATE.mode = mode.dataset.m; render(); return; }
+  const lakeBtn = e.target.closest('[data-role=lake] button');
+  if (lakeBtn) { switchLake(lakeBtn.dataset.lake); return; }
 
   const gran = e.target.closest('[data-role=gran] button');
   if (gran) { STATE.gran = gran.dataset.g; render(); return; }   // la position est conservée
 
-  const gear = e.target.closest('[data-role=gear]');
-  if (gear) { STATE.settings = !STATE.settings; render(); return; }
-
   const lg = e.target.closest('[data-role=lang]');
   if (lg) { lang = lang === 'fr' ? 'en' : 'fr'; LS.rawSet('lm_lang', lang); render(); return; }
-
-  const reset = e.target.closest('[data-role=reset]');
-  if (reset) { SCORING.weights = { moon:.35, press:.35, wind:.10, dir:.20 }; LS.del(WEIGHTS_KEY); clearScores(); render(); return; }
 
   const step = e.target.closest('.day-step button[data-step]');
   if (step) {
@@ -1060,27 +1064,9 @@ document.getElementById('app').addEventListener('click', e => {
   const cell = e.target.closest('[data-role=cal] .cell[data-day]');
   if (cell) { STATE.sel = { y:STATE.sel.y, m:STATE.sel.m, d:Number(cell.dataset.day) }; STATE.gran = 'day'; render(); return; }
 
-  const wk = e.target.closest('.wk-row[data-key]');
-  if (wk) { STATE.sel = civFromKey(wk.dataset.key); STATE.gran = 'day'; render(); return; }
-});
-
-// Sliders de poids : normalisation à 100 %, persistance immédiate
-document.getElementById('app').addEventListener('input', e => {
-  const sl = e.target.closest('input[data-w]');
-  if (!sl) return;
-  const panel = sl.closest('[data-role=settings]');
-  const raw = {}; let sum = 0;
-  for (const i of panel.querySelectorAll('input[data-w]')) { raw[i.dataset.w] = Number(i.value); sum += Number(i.value); }
-  if (sum <= 0) return;
-  for (const k in raw) {
-    SCORING.weights[k] = raw[k] / sum;
-    panel.querySelector('[data-out="' + k + '"]').textContent = pct(SCORING.weights[k]);
-  }
-  saveWeights();
-  clearScores();
-  // Rerendu différé : on ne touche pas au panneau pendant que le doigt glisse
-  clearTimeout(document._wt);
-  document._wt = setTimeout(() => { const v = STATE.settings; render(); STATE.settings = v; }, 220);
+  // Vue Semaine et bandeau « Prochaines fenêtres » : saut vers le jour visé.
+  const key = e.target.closest('.wk-row[data-key], .bw-row[data-key]');
+  if (key) { STATE.sel = civFromKey(key.dataset.key); STATE.gran = 'day'; render(); return; }
 });
 
 document.addEventListener('keydown', e => {
@@ -1203,9 +1189,25 @@ const V2 = {
     const j = await r.json();
     if (!j || !j.hourly || !j.hourly.time) throw new Error('réponse Open-Meteo vide');
     V2.series[lakeKey] = j.hourly;
-    if (V2._reg) V2._reg[lakeKey] = null;                 // invalide le cache de régimes
+    if (V2._reg)  V2._reg[lakeKey]  = null;               // invalide le cache de régimes
+    if (V2._days) V2._days[lakeKey] = null;               // et l'index jour → heures
     LS.set(ck, { ts: Date.now(), h: j.hourly });
     return j.hourly;
+  },
+
+  /** Index { dateISO → [indices horaires] } d'un lac, construit et caché à la volée. */
+  dayHours(lakeKey, dateISO) {
+    const h = this.series[lakeKey];
+    this._days = this._days || {};
+    let map = this._days[lakeKey];
+    if (!map) {
+      map = this._days[lakeKey] = {};
+      for (let i = 0; i < h.time.length; i++) {
+        const dk = h.time[i].slice(0, 10);
+        (map[dk] = map[dk] || []).push(i);
+      }
+    }
+    return map[dateISO] || [];
   },
 
   /**
@@ -1526,17 +1528,13 @@ const V2 = {
    * seulement « quel jour ». La fenêtre peut déborder après minuit.
    */
   dayIndex(lakeKey, dateISO) {
-    const h = this.series[lakeKey];
-    const span = MODEL.jour.fenetreH;                    // en points horaires
+    const h = this.series[lakeKey], span = MODEL.jour.fenetreH;
     let best = null;
-    for (let i = 0; i < h.time.length; i++) {
-      if (h.time[i].slice(0, 10) !== dateISO) continue;
+    for (const i of this.dayHours(lakeKey, dateISO)) {
       let sum = 0, k = 0;
       for (let j = i; j < i + span && j < h.time.length; j++) { sum += this.indexAt(lakeKey, j); k++; }
       const moy = sum / k;
-      if (!best || moy > best.moy) best = {
-        moy, i, debut: this.tsAt(h, i), fin: this.tsAt(h, i) + span * 3600e3
-      };
+      if (!best || moy > best.moy) best = { moy, i, debut: this.tsAt(h, i), fin: this.tsAt(h, i) + span * 3600e3 };
     }
     if (!best) return null;
     return { date: dateISO, indice: Math.round(best.moy), debut: best.debut, fin: best.fin, i: best.i };
@@ -1635,21 +1633,35 @@ const V2 = {
 window.LAKES = LAKES; window.MODEL = MODEL; window.V2 = V2;
 
 /* ══════════════════════════════════════════════════════════════════════════
-   11. Démarrage + auto-refresh (n'affecte qu'aujourd'hui, ne re-ancre jamais)
+   11. Démarrage + bascule de lac + auto-refresh
    ══════════════════════════════════════════════════════════════════════════ */
-render();
-loadData().then(() => { clearScores(); render(); });
-setInterval(() => {
-  refreshToday().then(() => {
-    _bdCache.delete('fish|' + civKey(civToday()));
-    _bdCache.delete('deer|' + civKey(civToday()));
-    render();
-  });
-}, 5 * 60 * 1000);
 
-// Accès direct à la config depuis la console pour l'ajustement des seuils
-window.SCORING = SCORING;
-window.saveThresholds = () => LS.set(THRESH_KEY, { moon:SCORING.moon, press:SCORING.press, wind:SCORING.wind, dir:SCORING.dir });
+/** Charge la série d'un lac (voile de chargement pendant l'attente réseau). */
+async function ensureLake(lakeKey){
+  if (V2.series[lakeKey]) return;
+  try { await V2.load(lakeKey); V2.ensureCalibrated(Object.keys(LAKES).filter(k => V2.series[k])); }
+  catch(e){ /* réseau indisponible → la vue reste sur le voile de chargement */ }
+}
+
+/** Change de lac : persiste, charge si besoin, rerend. */
+async function switchLake(lakeKey){
+  if (!LAKES[lakeKey] || lakeKey === STATE.lake) return;
+  STATE.lake = lakeKey;
+  LS.rawSet('lm_cp_lake', lakeKey);
+  render();                                   // voile immédiat si la série n'est pas encore là
+  await ensureLake(lakeKey);
+  render();
+}
+
+if (!LAKES[STATE.lake]) STATE.lake = 'manitou';   // validation différée (cf. STATE)
+render();                                     // voile de chargement
+ensureLake(STATE.lake).then(render);
+
+// Rafraîchissement horaire : le cache Open-Meteo a un TTL de 1 h (V2.load).
+setInterval(() => {
+  V2.series[STATE.lake] = null;               // force le rechargement au-delà du TTL
+  ensureLake(STATE.lake).then(render);
+}, 60 * 60 * 1000);
 })();
 </script>
 </body>
