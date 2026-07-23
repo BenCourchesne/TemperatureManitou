@@ -229,12 +229,15 @@
   .jr-scatter{margin:.5rem 0}
   .jr-scatter svg{width:100%; height:120px; background:linear-gradient(180deg,#0a1524,#0d1c30); border:1px solid var(--border); border-radius:9px}
   .jr-axes{display:flex; justify-content:space-between; font-size:.6rem; color:var(--dim); margin-top:3px}
-  .jr-entry{display:grid; grid-template-columns:auto 1fr auto; gap:.7rem; align-items:center; padding:.55rem .3rem; border-bottom:1px solid var(--border)}
+  .jr-entry{display:grid; grid-template-columns:auto 1fr auto auto; gap:.7rem; align-items:center; padding:.55rem .3rem; border-bottom:1px solid var(--border)}
   .jr-entry:last-child{border-bottom:0}
   .jr-e-idx{font-size:1.1rem; font-weight:750; color:var(--accent); font-variant-numeric:tabular-nums; min-width:28px; text-align:center}
   .jr-e-main b{display:block; font-size:.84rem; font-weight:650}
   .jr-e-main span{font-size:.74rem; color:var(--muted)}
   .jr-e-conf{font-size:.66rem; letter-spacing:.04em; text-transform:uppercase; font-weight:700; color:var(--dim); white-space:nowrap}
+  .jr-del{cursor:pointer; font-family:inherit; font-size:.9rem; line-height:1; color:var(--dim); background:transparent; border:1px solid var(--border);
+    border-radius:8px; width:32px; height:32px; display:flex; align-items:center; justify-content:center; transition:.15s; flex-shrink:0}
+  .jr-del:hover{color:#f87171; border-color:#f87171}
   @media (max-width:560px){ .jr-grid{grid-template-columns:1fr} }
 </style>
 </head>
@@ -364,7 +367,8 @@ const I18N = {
         pasAssez:'Pas encore assez de sorties chiffrées pour calibrer.',
         axeIndice:'Indice prédit →', axeCaptures:'Captures/h ↑',
         sortiesTitre:'Sorties enregistrées', aucuneSortie:'Aucune sortie pour l\'instant.', capt:'capt.', touch:'touches',
-        errConnexion:'Échec de la connexion', errDates:'Vérifie les dates : la fin doit suivre le début.', errEcriture:'Échec de l\'enregistrement'
+        errConnexion:'Échec de la connexion', errDates:'Vérifie les dates : la fin doit suivre le début.', errEcriture:'Échec de l\'enregistrement',
+        supprimer:'Supprimer la sortie', confirmSuppr:'Supprimer cette sortie définitivement ?', errSuppr:'Échec de la suppression'
       }
     }
   },
@@ -412,7 +416,8 @@ const I18N = {
         pasAssez:'Not enough quantified outings to calibrate yet.',
         axeIndice:'Predicted index →', axeCaptures:'Catches/h ↑',
         sortiesTitre:'Logged outings', aucuneSortie:'No outings yet.', capt:'catches', touch:'bites',
-        errConnexion:'Sign-in failed', errDates:'Check the dates: end must be after start.', errEcriture:'Save failed'
+        errConnexion:'Sign-in failed', errDates:'Check the dates: end must be after start.', errEcriture:'Save failed',
+        supprimer:'Delete outing', confirmSuppr:'Delete this outing permanently?', errSuppr:'Delete failed'
       }
     }
   }
@@ -793,6 +798,7 @@ function jrEntriesHTML(){
   const j = T().v2.j, entries = JOURNAL.entries;
   if (entries == null) return `<section class="jr-block"><div class="jr-note">${T().loading}</div></section>`;
   if (!entries.length) return `<section class="jr-block"><div class="jr-h">${j.sortiesTitre}</div><div class="jr-note">${j.aucuneSortie}</div></section>`;
+  const peutSuppr = !!JOURNAL.user;                       // supprimer exige la connexion (règles §17.3)
   const rows = entries.map(e => {
     let cal = null; try { cal = V2.calibrer(e); } catch(err){}
     const reg = cal && cal.regimeDominant;
@@ -804,6 +810,7 @@ function jrEntriesHTML(){
       <span class="jr-e-main"><b>${esc((T().v2.lakes[e.lac] || e.lac || ''))} · ${esc(d)}</b>
         <span>${reg ? `<i class="rp" style="background:${REGIME_COLOR[reg] || 'var(--muted)'}"></i>${esc(regimeNom(reg))} · ` : ''}${cap} ${j.capt} · ${tou} ${j.touch}${e.espece ? ' · ' + esc(e.espece) : ''}</span></span>
       <span class="jr-e-conf">${esc(confLabel(e.resultat_confiance))}</span>
+      ${peutSuppr ? `<button type="button" class="jr-del" data-role="jdel" data-id="${esc(e.id)}" title="${esc(j.supprimer)}" aria-label="${esc(j.supprimer)}">✕</button>` : ''}
     </div>`;
   }).join('');
   return `<section class="jr-block"><div class="jr-h">${j.sortiesTitre}</div>${rows}</section>`;
@@ -903,6 +910,16 @@ document.getElementById('app').addEventListener('click', e => {
 
   const jout = e.target.closest('[data-role=jlogout]');
   if (jout) { STATE.jError = null; JOURNAL.logout(); return; }   // onAuthStateChanged rerend
+
+  const jdel = e.target.closest('[data-role=jdel]');
+  if (jdel) {
+    if (!confirm(T().v2.j.confirmSuppr)) return;
+    STATE.jError = null;
+    JOURNAL.supprimer(jdel.dataset.id)
+      .then(render)
+      .catch(err => { STATE.jError = T().v2.j.errSuppr + ' (' + (err.code || err.message || '') + ')'; render(); });
+    return;
+  }
 
   const step = e.target.closest('.day-step button[data-step]');
   if (step) {
@@ -1649,6 +1666,12 @@ const JOURNAL = {
     await ref.set(entry);
     if (this.entries) this.entries.unshift({ id: ref.key, ...entry });
     return ref.key;
+  },
+
+  /** Supprime une sortie (auth requise, mêmes règles que l'écriture §17.3). */
+  async supprimer(id){
+    await firebase.database().ref('journal/' + id).remove();
+    if (this.entries) this.entries = this.entries.filter(e => e.id !== id);
   },
 
   /** Charge toutes les sorties (lecture publique), triées par début décroissant. */
