@@ -1121,6 +1121,7 @@ const LAKES = {
  */
 const MODEL = {
   base: 50,
+  echelle: 1,                             // réétalonnage global (§20.3) ; 1 = brut
   horizonJours: 10,                       // horizon réel de gem_seamless (§16.2)
   regimes: {                              // §15.3
     X: { nom:'passage du front',   score:  2 },
@@ -1184,6 +1185,7 @@ const V2 = {
     const j = await r.json();
     if (!j || !j.hourly || !j.hourly.time) throw new Error('réponse Open-Meteo vide');
     V2.series[lakeKey] = j.hourly;
+    if (V2._reg) V2._reg[lakeKey] = null;                 // invalide le cache de régimes
     LS.set(ck, { ts: Date.now(), h: j.hourly });
     return j.hourly;
   },
@@ -1455,6 +1457,46 @@ const V2 = {
         (a.moonset  != null && Math.abs(ts - a.moonset)  <= win)) s += M.leverCoucher;
     if (Math.abs(ts - a.transitUp) <= win || Math.abs(ts - a.transitDown) <= win) s += M.transit;
     return Math.min(s, M.plafond);
+  },
+
+  /* ── Assemblage de l'indice (§15.1) ───────────────────────────────────────*/
+
+  /** Régimes du lac, avec cache (classify est O(n)). Invalidé par load(). */
+  regimes(lakeKey) {
+    this._reg = this._reg || {};
+    if (!this._reg[lakeKey]) this._reg[lakeKey] = this.classify(lakeKey);
+    return this._reg[lakeKey];
+  },
+
+  /**
+   * Décomposition de l'indice horaire (§15.1) — sert au calcul comme à la vue
+   * Jour (facteur par facteur, régime en tête, réduction explicite). `brut` est
+   * l'indice avant réétalonnage (§20.3) ; `value` est l'indice affiché 0-100.
+   */
+  decompose(lakeKey, i) {
+    const h = this.series[lakeKey];
+    const reg = this.regimes(lakeKey)[i];
+    const red = this.reduction(reg);
+    const pr = this.scorePress(h, i);
+    const di = this.scoreDirection(lakeKey, h, i, reg);
+    const parts = {
+      regime:    MODEL.regimes[reg] ? MODEL.regimes[reg].score : 0,
+      pression:  pr * red,
+      direction: di * red,
+      vitesse:   this.scoreVentVitesse(h, i),
+      lune:      this.scoreLune(lakeKey, h, i),
+      heure:     this.scoreHeure(lakeKey, h, i)
+    };
+    let brut = MODEL.base;
+    for (const k in parts) brut += parts[k];
+    const value = Math.max(0, Math.min(100,
+      Math.round(MODEL.base + (brut - MODEL.base) * MODEL.echelle)));
+    return { i, t: h.time[i], regime: reg, red, parts, brutFacteurs: { pression: pr, direction: di }, brut, value };
+  },
+
+  /** Indice horaire 0-100 pour l'heure `i` (§15.1). */
+  indexAt(lakeKey, i) {
+    return this.decompose(lakeKey, i).value;
   }
 };
 
