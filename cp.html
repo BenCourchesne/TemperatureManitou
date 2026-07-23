@@ -47,20 +47,9 @@
   .back-lmt svg{width:16px; height:16px}
 
   .head-tools{display:flex; align-items:center; gap:.5rem; flex-wrap:wrap}
-  .mode-toggle{display:inline-flex; background:var(--bg2); border:1px solid var(--border); border-radius:999px; padding:.22rem}
-  .mode-toggle button{
-    display:flex; align-items:center; gap:.4rem; cursor:pointer; font-family:inherit;
-    border:0; background:transparent; color:var(--muted); font-weight:600; font-size:.82rem;
-    padding:.45rem .8rem; border-radius:999px; transition:.18s; min-height:38px;
-  }
-  .mode-toggle button svg{width:17px; height:17px}
-  .mode-toggle button.on{color:#07131f}
-  .mode-toggle button[data-m=fish].on{background:var(--fish)}
-  .mode-toggle button[data-m=deer].on{background:var(--deer); color:#1c1206}
   .icon-btn{width:38px; height:38px; border-radius:10px; border:1px solid var(--border); background:var(--bg2); color:var(--muted);
     cursor:pointer; display:inline-flex; align-items:center; justify-content:center; transition:.15s; font-family:inherit; font-size:.78rem; font-weight:700}
   .icon-btn:hover{color:var(--text); background:var(--hover); border-color:var(--border2)}
-  .icon-btn.on{color:var(--accent); border-color:var(--accent)}
   .icon-btn svg{width:18px; height:18px}
 
   .seg{display:inline-flex; background:var(--bg2); border:1px solid var(--border); border-radius:10px; overflow:hidden}
@@ -69,41 +58,16 @@
     font-weight:600; font-size:.8rem; padding:.5rem .95rem; transition:.15s; min-height:40px;
   }
   .seg button.on{background:var(--accent); color:#07131f}
-  body[data-mode=deer] .seg button.on{color:#1c1206}
-
-  .rating{display:inline-flex; gap:3px; align-items:center}
-  .rating svg{width:var(--rs,17px); height:var(--rs,17px); color:var(--accent); transition:color .3s}
-  .rating svg.off{color:var(--dim)}
-  .rating.lg{--rs:26px}
-  .rating.sm{--rs:13px; gap:2px}
-
-  /* ── Réglages (poids) ── */
-  .settings{border:1px solid var(--border); border-radius:12px; background:var(--panel); padding:.85rem 1rem; margin-bottom:1rem}
-  .settings[hidden]{display:none}
-  .settings h2{font-size:.66rem; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); font-weight:700; margin-bottom:.6rem}
-  .wrow{display:grid; grid-template-columns:88px 1fr 46px; align-items:center; gap:.7rem; padding:.22rem 0; font-size:.82rem}
-  .wrow input[type=range]{width:100%; accent-color:var(--accent); height:24px}
-  .wrow output{font-size:.75rem; color:var(--dim); font-weight:600; font-variant-numeric:tabular-nums; text-align:right}
-  .settings-foot{display:flex; justify-content:space-between; align-items:center; gap:.6rem; margin-top:.6rem; font-size:.72rem; color:var(--dim)}
-  .settings-foot button{cursor:pointer; font-family:inherit; font-size:.75rem; font-weight:600; color:var(--muted);
-    background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:.4rem .7rem; min-height:36px}
-  .settings-foot button:hover{color:var(--text); border-color:var(--border2)}
 
   /* ── Facteurs ── */
   .factors{margin-top:.9rem; border:1px solid var(--border); border-radius:12px; background:var(--panel); padding:.75rem .85rem}
   .fx-head{display:flex; justify-content:space-between; align-items:center; gap:.5rem; font-size:.6rem; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); font-weight:700; margin-bottom:.5rem}
   .fx-src{color:var(--accent); letter-spacing:.03em; transition:color .3s; text-align:right}
   .fx-row{display:flex; align-items:center; gap:.6rem; padding:.32rem 0}
-  .fx-row.muted{opacity:.5}
   .fx-lead{display:flex; align-items:center; gap:.42rem; min-width:96px; font-size:.82rem}
   .fx-lead b{font-weight:600}
   .fx-lead svg{width:14px; height:14px; color:var(--muted); flex-shrink:0}
-  .dots{display:inline-flex; gap:3px; flex-shrink:0; min-width:40px}
-  .dots i{width:7px; height:7px; border-radius:50%; background:var(--dim)}
-  .dots i.on{background:var(--accent); box-shadow:0 0 5px color-mix(in srgb,var(--accent) 55%,transparent)}
-  .dots.na{color:var(--dim); font-weight:700; letter-spacing:3px; font-size:.8rem}
   .fx-read{flex:1; font-size:.78rem; color:var(--muted); min-width:0}
-  .fx-wt{font-size:.72rem; color:var(--dim); font-weight:600; font-variant-numeric:tabular-nums; min-width:34px; text-align:right}
   .fx-note{font-size:.72rem; color:var(--dim); margin:.35rem 0 .1rem; font-style:italic}
   .fx-total{display:flex; align-items:center; gap:.7rem; margin-top:.55rem; padding-top:.6rem; border-top:1px solid var(--border)}
   .ft-lab{font-size:.66rem; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); font-weight:700}
@@ -124,13 +88,10 @@
   .cell.blank{opacity:.2; cursor:default; background:transparent; border-color:transparent}
   .cell.today{border-color:var(--accent)}
   .cell.sel{border-color:var(--accent); background:rgba(45,212,191,.10)}
-  body[data-mode=deer] .cell.sel{background:rgba(224,145,63,.10)}
   .cell.nohorizon::after{content:''; position:absolute; bottom:4px; right:5px; width:4px; height:4px; border-radius:50%; background:var(--dim)}
   .cell .dnum{font-size:.82rem; font-weight:650; align-self:flex-start; font-variant-numeric:tabular-nums}
   .cell .glow{position:absolute; inset:0; opacity:calc(var(--sc,0)/4*.22); background:radial-gradient(circle at 50% 120%, var(--accent), transparent 70%); pointer-events:none}
   .cell .mn{position:absolute; top:.34rem; right:.34rem; width:12px; height:12px; color:var(--moon); opacity:.65}
-  .cell .rating{margin-bottom:.05rem; flex-wrap:wrap; justify-content:center; max-width:100%}
-  .cell-sc{display:none; font-variant-numeric:tabular-nums}
 
   /* ── Vue semaine ── */
   .wk{display:flex; flex-direction:column; gap:8px}
@@ -145,12 +106,6 @@
   /* ── Barre 24 h ── */
   .tl{display:block; position:relative; height:38px; border-radius:9px; background:linear-gradient(90deg,#0a1524,#0d1c30); border:1px solid var(--border); overflow:hidden}
   .tl.slim{height:26px}
-  .tl .night{position:absolute; top:0; bottom:0; background:rgba(0,0,0,.28)}
-  .tl .band{position:absolute; top:0; bottom:0; border-radius:3px}
-  .tl .maj{background:color-mix(in srgb, var(--accent) 78%, transparent); box-shadow:0 0 12px color-mix(in srgb,var(--accent) 60%, transparent)}
-  .tl .min{background:color-mix(in srgb, var(--accent) 32%, transparent)}
-  .tl .now{position:absolute; top:-2px; bottom:-2px; width:2px; background:var(--live); box-shadow:0 0 8px var(--live)}
-  .tl .now::after{content:''; position:absolute; top:-3px; left:-3px; width:8px; height:8px; border-radius:50%; background:var(--live)}
   .tl-scale{display:flex; justify-content:space-between; font-size:.6rem; color:var(--dim); margin-top:3px; font-variant-numeric:tabular-nums}
 
   /* ── Détail ── */
@@ -168,17 +123,10 @@
   .day-step button svg{width:18px; height:18px}
   .day-step .today-reset{width:auto; gap:.35rem; padding:0 .75rem; font-size:.76rem; font-weight:600}
   .day-step .today-reset svg{width:15px; height:15px}
-  .win-grid{display:grid; grid-template-columns:1fr 1fr; gap:.6rem; margin:.9rem 0 .2rem}
-  .win{border:1px solid var(--border); border-radius:11px; padding:.55rem .75rem; background:var(--panel)}
-  .win .wl{font-size:.6rem; letter-spacing:.1em; text-transform:uppercase; font-weight:700; display:flex; align-items:center; gap:.35rem}
-  .win.major .wl{color:var(--accent)}
-  .win.minor .wl{color:color-mix(in srgb,var(--accent) 65%, var(--muted))}
-  .win .wt{font-size:.92rem; font-weight:600; margin-top:.25rem; font-variant-numeric:tabular-nums}
   .astro{display:flex; gap:1.2rem; flex-wrap:wrap; font-size:.78rem; color:var(--muted); margin-top:.7rem}
   .astro span{display:flex; align-items:center; gap:.35rem}
   .astro svg{width:14px; height:14px}
   .tip{margin-top:.9rem; border-left:2px solid var(--accent); background:rgba(45,212,191,.05); padding:.6rem .8rem; border-radius:0 8px 8px 0; font-size:.82rem}
-  body[data-mode=deer] .tip{background:rgba(224,145,63,.06)}
   .tip b{color:var(--text)}
 
   .foot{font-size:.7rem; color:var(--dim); text-align:center; margin-top:1.4rem; line-height:1.6}
@@ -186,29 +134,22 @@
   @media (max-width:560px){
     .wrap{padding:1rem .7rem 2.5rem}
     .app{padding:.9rem}
-    .win-grid{grid-template-columns:1fr}
-    /* Cases calendrier trop petites à 7 colonnes pour 4 icônes → score numérique (§6) */
+    /* Cases calendrier serrées à 7 colonnes → indice compact */
     .cell{aspect-ratio:1/1.15; padding:.3rem .3rem}
-    .cell .rating{display:none}
     .cell .dnum{font-size:.72rem}
-    .cell-sc{display:block; font-size:.9rem; font-weight:700; color:var(--accent); line-height:1}
+    .cell-idx{font-size:.95rem}
+    .cell-win{font-size:.52rem}
     .fx-lead{min-width:82px}
-    /* la lecture contextuelle passe sous les points/poids — sans flex-wrap sur la
-       rangée, flex-basis:100% se ferait juste écraser en colonne étroite */
+    /* la lecture contextuelle passe sous la contribution en colonne étroite */
     .fx-row{flex-wrap:wrap}
     .fx-read{flex-basis:100%; order:5; padding-left:.3rem}
-    /* §6 : cibles tactiles ≥ 44 px. Seules les cases du calendrier y échappent —
-       7 colonnes à 360 px imposent ~39 px, d'où le score numérique (voir plus haut). */
-    .mode-toggle{flex:1}
-    .mode-toggle button{flex:1; justify-content:center; min-height:44px}
+    /* §6 : cibles tactiles ≥ 44 px */
     .seg button{min-height:44px}
     .icon-btn{width:44px; height:44px}
     .back-lmt{min-height:44px}
     .head-tools{width:100%}
     .seg-scroll{overflow-x:auto; -webkit-overflow-scrolling:touch}
-    .wrow{grid-template-columns:70px 1fr 42px; gap:.5rem}
-    /* Semaine : jour + cote sur une ligne, barre 24 h en dessous — à 320 px la
-       3e colonne ne laissait que ~60 px à la barre. */
+    /* Semaine : jour + indice sur une ligne, barre 24 h en dessous */
     .wk-row{grid-template-columns:auto 1fr; gap:.45rem .6rem}
     .wk-row .wkt{grid-column:1 / -1}
   }
@@ -335,41 +276,12 @@ if (lang !== 'fr' && lang !== 'en') lang = 'fr';
 
 const I18N = {
   fr: {
-    title:'Activité solunaire', modeFish:'Pêcheur', modeDeer:'Chasseur',
-    subFish:'Mode pêche', subDeer:'Mode chasse', back:'lmt', backTitle:'Retour au tableau de bord',
-    day:'Jour', week:'Semaine', month:'Mois',
-    factors:'Facteurs de la cote', ofFish:'pêche', ofDeer:'chasse',
-    moon:'Lune', press:'Pression', wind:'Vent', dir:'Direction', total:'Total',
-    verdicts:{ fish:['Journée creuse','Activité modérée','Bonne journée','Journée exceptionnelle'],
-               deer:['Peu favorable','Passable','Favorable','Très favorable'] },
-    pressRead:{ 4:['▼','chute · front qui arrive'], 3:['▼','en baisse'], 2:['→','stable'], 1:['▲','en hausse'] },
-    // Variante sans clause causale : dès qu'on affiche la tendance 3 h à côté,
-    // « front qui arrive » peut contredire les faits (front déjà passé, pression
-    // qui remonte). On qualifie alors la fenêtre au lieu de prédire.
-    pressRead24:{ 4:'chute sur 24 h', 3:'en baisse sur 24 h', 2:'stable sur 24 h', 1:'en hausse sur 24 h' },
-    windRead:{ fish:['calme plat','ride idéale','clapot','trop fort'],
-               deer:['trop calme',"porte l'odeur",'soutenu','gibier au sol'] },
-    dirRead:{ fish:["vent d'ouest favorable",'favorable','neutre',"vent d'est défavorable"],
-              deer:['quadrant froid favorable','favorable','neutre','air chaud défavorable'] },
-    moonLvl:['fort','moyen','faible'],
-    major:'Majeure', minor:'Mineure',
-    src:{ sensor:'Capteur', measured:'Mesuré', forecast:'Open-Meteo', moon:'Lune seule' },
-    beyond:'hors horizon', unavail:'non mesuré',
-    beyondNote:'Pression, vent et direction non prévisibles au-delà de ~14 jours — cote sur la lune seule.',
-    pastNote:'Aucune mesure météo pour ce jour (capteurs installés début juillet 2026) — cote sur la lune seule.',
-    partialNote:'Facteur(s) météo indisponible(s) pour ce jour — poids renormalisés sur les autres.',
+    title:'Activité solunaire', subFish:'Mode pêche',
+    back:'lmt', backTitle:'Retour au tableau de bord',
+    day:'Jour', week:'Semaine', month:'Mois', total:'Total',
     today:'Aujourd\'hui', prevDay:'Jour précédent', nextDay:'Jour suivant',
     sunrise:'Lever', sunset:'Coucher', moonrise:'Lune',
-    excellent:'excellente', poor:'faible', noHorizon:'sans données météo',
     weekOf:'Semaine du', lit:'% éclairée',
-    settings:'Réglages', weightsTitle:'Poids des facteurs', reset:'Défauts',
-    weightsHint:'Les poids sont normalisés à 100 % et conservés sur cet appareil.',
-    tipFish:"<b>Pêche.</b> Cale tes sorties sur les <b>majeures</b> (passage de la lune) et surveille une pression en baisse — c'est là que ça mord en salves.",
-    tipDeerLead:'Chasse.',
-    tipDeerDark:'Nuits sombres → le cerf bouge de jour : bonne fenêtre diurne.',
-    tipDeerBright:'Nuits claires → activité repoussée la nuit : chasse de jour plus difficile.',
-    tipDeerMid:'Mise sur les mineures près de l\'aube et du crépuscule.',
-    tipDeerTail:'Un vent modéré et une chute de pression décuplent le mouvement.',
     phases:['Nouvelle lune','Premier croissant','Premier quartier','Gibbeuse croissante',
             'Pleine lune','Gibbeuse décroissante','Dernier quartier','Dernier croissant'],
     sectors:{ N:'N', NE:'NE', E:'E', SE:'SE', S:'S', SO:'SO', O:'O', NO:'NO' },
@@ -390,38 +302,12 @@ const I18N = {
     }
   },
   en: {
-    title:'Solunar activity', modeFish:'Angler', modeDeer:'Hunter',
-    subFish:'Fishing mode', subDeer:'Hunting mode', back:'lmt', backTitle:'Back to dashboard',
-    day:'Day', week:'Week', month:'Month',
-    factors:'Rating factors', ofFish:'fishing', ofDeer:'hunting',
-    moon:'Moon', press:'Pressure', wind:'Wind', dir:'Direction', total:'Total',
-    verdicts:{ fish:['Slow day','Moderate','Good day','Exceptional'],
-               deer:['Poor','Fair','Good','Excellent'] },
-    pressRead:{ 4:['▼','sharp drop · front'], 3:['▼','falling'], 2:['→','steady'], 1:['▲','rising'] },
-    pressRead24:{ 4:'sharp drop over 24 h', 3:'falling over 24 h', 2:'steady over 24 h', 1:'rising over 24 h' },
-    windRead:{ fish:['dead calm','ideal chop','choppy','too rough'],
-               deer:['too still','carries scent','gusty','deer bedded'] },
-    dirRead:{ fish:['west wind favours','favourable','neutral','east wind against'],
-              deer:['cool quadrant','favourable','neutral','warm air against'] },
-    moonLvl:['strong','moderate','weak'],
-    major:'Major', minor:'Minor',
-    src:{ sensor:'Sensor', measured:'Measured', forecast:'Open-Meteo', moon:'Moon only' },
-    beyond:'beyond horizon', unavail:'not measured',
-    beyondNote:'Pressure, wind and direction are not forecastable past ~14 days — moon-only rating.',
-    pastNote:'No weather measurement for that day (sensors installed early July 2026) — moon-only rating.',
-    partialNote:'Some weather factors are unavailable for this day — weights renormalised on the rest.',
+    title:'Solunar activity', subFish:'Fishing mode',
+    back:'lmt', backTitle:'Back to dashboard',
+    day:'Day', week:'Week', month:'Month', total:'Total',
     today:'Today', prevDay:'Previous day', nextDay:'Next day',
     sunrise:'Sunrise', sunset:'Sunset', moonrise:'Moon',
-    excellent:'excellent', poor:'weak', noHorizon:'no weather data',
     weekOf:'Week of', lit:'% lit',
-    settings:'Settings', weightsTitle:'Factor weights', reset:'Defaults',
-    weightsHint:'Weights are normalised to 100 % and kept on this device.',
-    tipFish:'<b>Fishing.</b> Time your outings on the <b>major</b> windows (moon transit) and watch for falling pressure — that is when they bite in bursts.',
-    tipDeerLead:'Hunting.',
-    tipDeerDark:'Dark nights → deer move by day: good daylight window.',
-    tipDeerBright:'Bright nights → activity shifts to the night: harder daytime hunting.',
-    tipDeerMid:'Focus on the minor windows around dawn and dusk.',
-    tipDeerTail:'Moderate wind and a pressure drop multiply movement.',
     phases:['New moon','Waxing crescent','First quarter','Waxing gibbous',
             'Full moon','Waning gibbous','Last quarter','Waning crescent'],
     sectors:{ N:'N', NE:'NE', E:'E', SE:'SE', S:'S', SO:'SW', O:'W', NO:'NW' },
@@ -450,7 +336,6 @@ const locale = () => lang === 'fr' ? 'fr-CA' : 'en-CA';
    ══════════════════════════════════════════════════════════════════════════ */
 const ICON = {
   fish:'<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4.2 12c1.1-2.9 5.6-4.8 9.4-4.8 3.9 0 7 1.9 8 4.8-1 2.9-4.1 4.8-8 4.8-3.8 0-8.3-1.9-9.4-4.8z"/><path d="M4.2 12 .8 8.4c-.3-.3-.8 0-.7.4l.7 3.2-.7 3.2c-.1.4.4.7.7.4L4.2 12z"/><circle cx="16.4" cy="10.5" r="1.05" fill="#07131f"/></svg>',
-  deer:'<svg viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 10.5C7.2 8.9 7 6.2 5.6 4.3M9 10.5C6.9 10.2 5.4 9.7 4 8.2M9 10.5C8.6 8.6 8.7 7 8 5.4"/><path d="M15 10.5c1.8-1.6 2-4.3 3.4-6.2M15 10.5c2.1-.3 3.6-.8 5-2.3M15 10.5c.4-1.9.3-3.5 1-5.1"/></g><path d="M9 10.4c.5 1 1.6 1.8 3 1.8s2.5-.8 3-1.8c1 1 1.4 2.7 1 4.4-.5 2.3-2 4.2-4 4.2s-3.5-1.9-4-4.2c-.4-1.7 0-3.4 1-4.4z" fill="currentColor"/></svg>',
   moon:'<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a7 7 0 1 0 10.5 10.5z"/></svg>',
   gauge:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 14l3-3M4.5 18a9 9 0 1 1 15 0"/></svg>',
   wind:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10a2.5 2.5 0 1 0-2.5-2.5M3 16h13a2.5 2.5 0 1 1-2.5 2.5M3 12h7"/></svg>',
@@ -459,8 +344,7 @@ const ICON = {
   sunset:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 18h18M12 10V4M6 8l1.5 1.5M18 8l-1.5 1.5"/><path d="M8 18a4 4 0 0 1 8 0"/></svg>',
   chevL:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>',
   chevR:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>',
-  clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l2.5 1.5"/></svg>',
-  sliders:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h10M18 18h2"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="16" cy="18" r="2"/></svg>'
+  clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l2.5 1.5"/></svg>'
 };
 
 /* ══════════════════════════════════════════════════════════════════════════
