@@ -1143,14 +1143,19 @@ const MODEL = {
   // direction du lac, ne s'y ajoute pas. `nordPostfrontal` s'applique quand le
   // régime F est actif, `nordIsole` sinon.
   //
-  // `neutraliserPreferences` (§16.4, §20.2) : quand true, les 7 autres secteurs
-  // (NE·E·SE·S·SO·O·NO) valent 0 pour TOUS les lacs — la table de préférence par
-  // secteur est réputée non fiable (Ben l'a calée « sur ce qu'affichait la
-  // station », or la station lit tout le quadrant ouest comme N/NO, §18.5). Le
-  // journal la reconstruira. Passer à false réactive `LAKES[lac].dir` en une
-  // ligne, une fois la table validée. La règle « nord » reste active dans les
-  // deux cas — c'est une règle nommée du modèle, pas une préférence de secteur.
-  dir: { nordIsole:-7, nordPostfrontal:-20, neutraliserPreferences:true },
+  // Décision §20.2 (2026-07-22, Ben) :
+  //   • `neutraliserPreferences:true` → les 7 secteurs de préférence
+  //     (NE·E·SE·S·SO·O·NO) valent 0 pour tous les lacs. La table « dicton » de
+  //     Manitou dort dans LAKES.manitou.dir, réactivable en passant ce flag à
+  //     false une fois validée par le journal.
+  //   • `nordIsole:0` → le nord ISOLÉ ne pénalise plus. L'expérience « nord =
+  //     mauvais » de Manitou est confondue par le capteur, qui lit tout le
+  //     quadrant ouest comme N/NO (§18.5) : impossible de savoir si c'est le
+  //     nord ou l'ouest qui déçoit. Le journal tranchera. (Valeur d'origine −7.)
+  //   • `nordPostfrontal:-20` → CONSERVÉ. Règle météo générale (front froid NO),
+  //     indépendante du capteur, confirmée à Devenyns le 19 juillet ; couplée au
+  //     régime F et ramenée à −10 par l'anti-double-comptage (§15.8).
+  dir: { nordIsole:0, nordPostfrontal:-20, neutraliserPreferences:true },
   lune: { nouvelle:4, pleineNuit:4, pleineJour:0, quartier:1,
           leverCoucher:4, transit:2, plafond:10,         // §15.6
           fenetrePhaseJours:1.5, fenetreEvtMin:90 },     // largeurs des fenêtres
