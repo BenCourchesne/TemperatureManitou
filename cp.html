@@ -850,8 +850,8 @@ const V2 = {
    * physique : il ne doit pas clignoter parce qu'une valeur frôle un seuil.
    * Comble les trous d'une heure, puis absorbe les segments trop courts.
    */
-  classify(lakeKey) {
-    const h = V2.series[lakeKey];
+  classify(lakeKey, h) {
+    h = h || V2.series[lakeKey];                          // série explicite pour le rejeu (§17.1)
     if (!h) throw new Error('série non chargée — appeler V2.load() d\'abord');
     const brut = h.time.map((_, i) => V2.regimeAt(h, i));
     for (let i = 1; i < brut.length - 1; i++)            // trous d'une heure
@@ -1093,9 +1093,9 @@ const V2 = {
    * Jour (facteur par facteur, régime en tête, réduction explicite). `brut` est
    * l'indice avant réétalonnage (§20.3) ; `value` est l'indice affiché 0-100.
    */
-  decompose(lakeKey, i) {
-    const h = this.series[lakeKey];
-    const reg = this.regimes(lakeKey)[i];
+  decompose(lakeKey, i, h, reg) {
+    h = h || this.series[lakeKey];                        // série + régime explicites pour le rejeu
+    if (reg == null) reg = this.regimes(lakeKey)[i];
     const red = this.reduction(reg);
     const pr = this.scorePress(h, i);
     const di = this.scoreDirection(lakeKey, h, i, reg);
@@ -1227,6 +1227,70 @@ const V2 = {
   ensureCalibrated(lakeKeys) {
     if (LS.get(MODEL_KEY, null)) return null;             // déjà calé sur cet appareil
     return this.recalibrer(lakeKeys);
+  },
+
+  /* ── Rejeu du modèle sur une sortie du journal (§17.1, §17.4) ─────────────
+     Principe fondateur : le journal stocke les ENTRÉES météo, jamais le score.
+     N'importe quelle version du modèle peut donc être rejouée sur toutes les
+     sorties passées → calibration cumulative. */
+
+  /** Série de type Open-Meteo reconstruite depuis les `conditions_horaires`
+   *  d'une entrée de journal (§17.2). Accepte l'ancien `R3` faute de `R`. */
+  serieDepuisEntree(entry) {
+    const c = entry.conditions_horaires || entry.conditions || [];
+    const col = (f, d) => c.map(x => x[f] != null ? x[f] : d);
+    return {
+      time: c.map(x => x.t),
+      pressure_msl:       col('P', null),
+      temperature_2m:     col('T', null),
+      wind_speed_10m:     col('W', null),
+      wind_gusts_10m:     col('G', null),
+      wind_direction_10m: col('D', null),
+      cloud_cover:        col('N', null),
+      // `R` = précip horaire (préféré) ; à défaut on répartit `R3` sur 3 h.
+      precipitation: c.map(x => x.R != null ? x.R : (x.R3 != null ? x.R3 / 3 : 0))
+    };
+  },
+
+  /** Rejoue l'indice horaire du modèle courant sur une série explicite `h`
+   *  (§17.1). Retourne un point par heure : { i, t, regime, value, brut, parts }. */
+  rejouer(lakeKey, h) {
+    const reg = this.classify(lakeKey, h);
+    return h.time.map((t, i) => {
+      const d = this.decompose(lakeKey, i, h, reg[i]);
+      return { i, t, regime: d.regime, value: d.value, brut: d.brut, parts: d.parts };
+    });
+  },
+
+  /**
+   * Point de calibration d'une sortie (§17.4) : indice prédit (rejoué) sur la
+   * fenêtre [debut, fin] en regard des captures/heure et touches/heure, tagué
+   * par régime dominant. `parHeure` porte le rejeu complet pour les graphes.
+   */
+  calibrer(entry) {
+    const lakeKey = entry.lac, h = this.serieDepuisEntree(entry);
+    if (!h.time.length) return null;
+    const rej = this.rejouer(lakeKey, h);
+    const { debut, fin } = entry;
+    const dans = (debut && fin)
+      ? rej.filter(r => { const ts = this.tsAt(h, r.i); return ts >= debut && ts < fin; })
+      : rej;
+    const vals = dans.map(r => r.value);
+    const moy = arr => arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : null;
+    const heures = (debut && fin) ? (fin - debut) / 3600e3 : null;
+    const reg = {};
+    for (const r of dans) reg[r.regime] = (reg[r.regime] || 0) + 1;
+    return {
+      lac: lakeKey,
+      indiceMoyen: moy(vals),
+      indiceMax: vals.length ? Math.max.apply(null, vals) : null,
+      heures,
+      capturesParH: (entry.captures != null && heures) ? entry.captures / heures : null,
+      touchesParH:  (entry.touches  != null && heures) ? entry.touches  / heures : null,
+      regimeDominant: Object.keys(reg).sort((a, b) => reg[b] - reg[a])[0] || null,
+      resultat_confiance: entry.resultat_confiance || null,
+      parHeure: rej
+    };
   }
 };
 
