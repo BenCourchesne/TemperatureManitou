@@ -7,6 +7,11 @@
 <title>Activité solunaire — Lac Manitou</title>
 <link rel="icon" href="favico.png">
 <script src="https://cdn.jsdelivr.net/npm/suncalc@1.9.0/suncalc.js"></script>
+<!-- Journal (§17) : SDK Firebase compat (Auth + RTDB). Chargé pour tous, mais
+     n'est initialisé que si la config est renseignée et la vue Journal ouverte. -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <style>
   :root{
     --bg:#07111e; --bg2:#0c1a2e; --panel:rgba(255,255,255,.045);
@@ -191,6 +196,46 @@
     .bw-idx{min-width:auto} .bw-when{flex:1}
     .bw-fiab{margin-left:auto} .bw-reg{flex-basis:100%; order:5}
   }
+
+  /* ══ Journal de sorties (§17) ══ */
+  .jr{display:flex; flex-direction:column; gap:1rem}
+  .jr-block, .jr-form, .jr-login{border:1px solid var(--border); border-radius:14px; background:var(--panel); padding:.9rem 1rem}
+  .jr-h{font-size:.66rem; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); font-weight:700; margin-bottom:.6rem}
+  .jr-note{font-size:.72rem; color:var(--dim); font-style:italic}
+  .jr-msg{font-size:.9rem; color:var(--warn); font-weight:600; margin-bottom:.4rem}
+  .jr-err{font-size:.78rem; color:#f87171; font-weight:600; margin:.3rem 0}
+  .jr-authbar{display:flex; align-items:center; justify-content:space-between; gap:.6rem; font-size:.8rem; color:var(--muted);
+    border:1px solid var(--border); border-radius:12px; background:var(--panel2); padding:.55rem .85rem}
+  .jr-authbar b{color:var(--text)}
+  .jr-logout{cursor:pointer; font-family:inherit; font-size:.75rem; font-weight:600; color:var(--muted);
+    background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:.4rem .7rem; min-height:36px}
+  .jr-logout:hover{color:var(--text); border-color:var(--border2)}
+  .jr-login{display:flex; flex-direction:column; gap:.6rem; max-width:340px}
+  .jr-grid{display:grid; grid-template-columns:1fr 1fr; gap:.6rem .8rem}
+  .jr label, .jr-login label{display:flex; flex-direction:column; gap:.25rem; font-size:.74rem; color:var(--muted); font-weight:600}
+  .jr-wide{margin-top:.7rem}
+  .jr input, .jr select, .jr textarea{font-family:inherit; font-size:.86rem; color:var(--text); background:var(--bg2);
+    border:1px solid var(--border); border-radius:8px; padding:.5rem .6rem; min-height:40px; width:100%}
+  .jr textarea{min-height:auto; resize:vertical}
+  .jr input:focus, .jr select:focus, .jr textarea:focus{outline:none; border-color:var(--accent)}
+  .jr-actions{display:flex; align-items:center; justify-content:space-between; gap:.8rem; margin-top:.8rem; flex-wrap:wrap}
+  .jr-form button, .jr-login button{cursor:pointer; font-family:inherit; font-size:.84rem; font-weight:650; color:#07131f;
+    background:var(--accent); border:0; border-radius:9px; padding:.6rem 1.1rem; min-height:44px}
+  .jr-form button:hover, .jr-login button:hover{filter:brightness(1.08)}
+  .rp{display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:.35rem; vertical-align:middle}
+  .jr-cal{width:100%; border-collapse:collapse; font-size:.82rem; margin-top:.5rem}
+  .jr-cal th{text-align:left; font-size:.62rem; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); font-weight:700; padding:.3rem .5rem; border-bottom:1px solid var(--border)}
+  .jr-cal td{padding:.35rem .5rem; border-bottom:1px solid var(--border); font-variant-numeric:tabular-nums}
+  .jr-scatter{margin:.5rem 0}
+  .jr-scatter svg{width:100%; height:120px; background:linear-gradient(180deg,#0a1524,#0d1c30); border:1px solid var(--border); border-radius:9px}
+  .jr-axes{display:flex; justify-content:space-between; font-size:.6rem; color:var(--dim); margin-top:3px}
+  .jr-entry{display:grid; grid-template-columns:auto 1fr auto; gap:.7rem; align-items:center; padding:.55rem .3rem; border-bottom:1px solid var(--border)}
+  .jr-entry:last-child{border-bottom:0}
+  .jr-e-idx{font-size:1.1rem; font-weight:750; color:var(--accent); font-variant-numeric:tabular-nums; min-width:28px; text-align:center}
+  .jr-e-main b{display:block; font-size:.84rem; font-weight:650}
+  .jr-e-main span{font-size:.74rem; color:var(--muted)}
+  .jr-e-conf{font-size:.66rem; letter-spacing:.04em; text-transform:uppercase; font-weight:700; color:var(--dim); white-space:nowrap}
+  @media (max-width:560px){ .jr-grid{grid-template-columns:1fr} }
 </style>
 </head>
 <body data-mode="fish">
@@ -298,7 +343,29 @@ const I18N = {
       reduced:'réduit de moitié — même front que le régime (§15.8)',
       atWindow:'à la meilleure fenêtre', factorsTitle:'Décomposition de l\'indice',
       hour:{ aube:'aube', matin:'matin', midi:'milieu de journée', finJournee:'fin de journée', crepuscule:'crépuscule', nuit:'nuit' },
-      tip:'<b>Pêche.</b> L\'indice combine régime météo, pression, vent, lune et heure. Vise les fenêtres au-dessus de 70 ; le régime en tête dit <i>pourquoi</i> — de quoi juger le modèle plutôt que le suivre aveuglément.'
+      tip:'<b>Pêche.</b> L\'indice combine régime météo, pression, vent, lune et heure. Vise les fenêtres au-dessus de 70 ; le régime en tête dit <i>pourquoi</i> — de quoi juger le modèle plutôt que le suivre aveuglément.',
+      j:{
+        title:'Journal de sorties',
+        configRequise:'Configuration Firebase requise pour la connexion et l\'écriture.',
+        configAide:'À renseigner dans cp.html (FB_CONFIG.apiKey) + activer « E-mail/Mot de passe » dans la console Firebase. La lecture des sorties restera publique.',
+        connexion:'Connexion', email:'Courriel', mdp:'Mot de passe', seConnecter:'Se connecter',
+        lecturePublique:'La lecture des sorties est publique ; seule l\'écriture demande la connexion.',
+        connecteEnTant:'Connecté :', deconnexion:'Déconnexion',
+        nouvelleSortie:'Nouvelle sortie', lac:'Lac', espece:'Espèce', especePh:'doré, achigan…',
+        debut:'Début', fin:'Fin', captures:'Captures', touches:'Touches',
+        confiance:'Confiance du résultat', confCompte:'compté', confEstime:'estimé', confMemoire:'de mémoire',
+        note:'Note (1-5)', secteur:'Secteur', secteurPh:'baie nord…', technique:'Technique', techniquePh:'traîne, lancer…',
+        obsDir:'Vent observé', obsConf:'Confiance obs.', obsMesure:'mesuré', obsBonne:'bonne', obsFaible:'faible',
+        commentaire:'Commentaire', commentairePh:'conditions, remarques…',
+        snapNote:'Les conditions Open-Meteo (−36 h → fin) sont figées à l\'enregistrement.',
+        enregistrer:'Enregistrer la sortie',
+        calibration:'Calibration', sorties:'sorties', attente:'tendances vers 30-50 sorties, sérieux au-delà de 100 (§17.4)',
+        regime:'Régime', indicePredit:'Indice prédit', capturesH:'Captures/h',
+        pasAssez:'Pas encore assez de sorties chiffrées pour calibrer.',
+        axeIndice:'Indice prédit →', axeCaptures:'Captures/h ↑',
+        sortiesTitre:'Sorties enregistrées', aucuneSortie:'Aucune sortie pour l\'instant.', capt:'capt.', touch:'touches',
+        errConnexion:'Échec de la connexion', errDates:'Vérifie les dates : la fin doit suivre le début.', errEcriture:'Échec de l\'enregistrement'
+      }
     }
   },
   en: {
@@ -324,7 +391,29 @@ const I18N = {
       reduced:'halved — same front as the regime (§15.8)',
       atWindow:'at the best window', factorsTitle:'Index breakdown',
       hour:{ aube:'dawn', matin:'morning', midi:'midday', finJournee:'late day', crepuscule:'dusk', nuit:'night' },
-      tip:'<b>Fishing.</b> The index blends weather regime, pressure, wind, moon and time. Aim for windows above 70; the regime shown first tells you <i>why</i> — so you can judge the model rather than follow it blindly.'
+      tip:'<b>Fishing.</b> The index blends weather regime, pressure, wind, moon and time. Aim for windows above 70; the regime shown first tells you <i>why</i> — so you can judge the model rather than follow it blindly.',
+      j:{
+        title:'Outing journal',
+        configRequise:'Firebase configuration required for sign-in and writing.',
+        configAide:'Fill it in cp.html (FB_CONFIG.apiKey) + enable "Email/Password" in the Firebase console. Reading entries stays public.',
+        connexion:'Sign in', email:'Email', mdp:'Password', seConnecter:'Sign in',
+        lecturePublique:'Reading entries is public; only writing requires sign-in.',
+        connecteEnTant:'Signed in:', deconnexion:'Sign out',
+        nouvelleSortie:'New outing', lac:'Lake', espece:'Species', especePh:'walleye, bass…',
+        debut:'Start', fin:'End', captures:'Catches', touches:'Bites',
+        confiance:'Result confidence', confCompte:'counted', confEstime:'estimated', confMemoire:'from memory',
+        note:'Rating (1-5)', secteur:'Area', secteurPh:'north bay…', technique:'Technique', techniquePh:'trolling, casting…',
+        obsDir:'Observed wind', obsConf:'Obs. confidence', obsMesure:'measured', obsBonne:'good', obsFaible:'weak',
+        commentaire:'Comment', commentairePh:'conditions, notes…',
+        snapNote:'Open-Meteo conditions (−36 h → end) are frozen on save.',
+        enregistrer:'Save outing',
+        calibration:'Calibration', sorties:'outings', attente:'trends by 30-50 outings, meaningful past 100 (§17.4)',
+        regime:'Regime', indicePredit:'Predicted index', capturesH:'Catches/h',
+        pasAssez:'Not enough quantified outings to calibrate yet.',
+        axeIndice:'Predicted index →', axeCaptures:'Catches/h ↑',
+        sortiesTitre:'Logged outings', aucuneSortie:'No outings yet.', capt:'catches', touch:'bites',
+        errConnexion:'Sign-in failed', errDates:'Check the dates: end must be after start.', errEcriture:'Save failed'
+      }
     }
   }
 };
@@ -344,7 +433,9 @@ const ICON = {
   sunset:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 18h18M12 10V4M6 8l1.5 1.5M18 8l-1.5 1.5"/><path d="M8 18a4 4 0 0 1 8 0"/></svg>',
   chevL:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>',
   chevR:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>',
-  clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l2.5 1.5"/></svg>'
+  clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l2.5 1.5"/></svg>',
+  journal:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h11a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2z"/><path d="M9 4v16M12 9h3M12 13h3"/></svg>',
+  cal:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 9h16M8 3v4M16 3v4"/></svg>'
 };
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -391,7 +482,9 @@ function phaseIndex(p){
 const STATE = {
   gran: 'month',
   sel: civToday(),
-  lake: LS.rawGet('lm_cp_lake', 'manitou')
+  lake: LS.rawGet('lm_cp_lake', 'manitou'),
+  view: 'cal',                // 'cal' = calendrier · 'journal' = journal de sorties (§17)
+  jError: null                // message d'erreur de connexion, éphémère
 };
 const lakeKey = () => STATE.lake;
 /** Série chargée pour le lac courant ? (sinon on affiche le voile de chargement) */
@@ -599,6 +692,146 @@ function weekHTML(){
   return `<div class="cal-legend"><span><b>${t.weekOf} ${esc(fmtShortDate(ws))}</b></span></div><div class="wk">${rows}</div>`;
 }
 
+/* ── Journal de sorties (§17) — vue, formulaire, calibration ────────────────*/
+
+/** "YYYY-MM-DDTHH:MM" (datetime-local, lu comme heure locale Toronto) → ms UTC. */
+function dtlToMs(v){
+  const m = v && v.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})/);
+  return m ? V2.localMs(m[1], +m[2], +m[3]) : null;
+}
+/** ms UTC → "YYYY-MM-DDTHH:MM" en heure locale Toronto, pour préremplir un input. */
+function msToDtl(ms){
+  const p = {}; for (const x of _dtfParts.formatToParts(new Date(ms))) p[x.type] = x.value;
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
+}
+
+function jrLoginHTML(){
+  const j = T().v2.j;
+  return `<form class="jr-login" data-role="jlogin">
+    <div class="jr-h">${j.connexion}</div>
+    <label>${j.email}<input type="email" data-f="email" autocomplete="username" required></label>
+    <label>${j.mdp}<input type="password" data-f="mdp" autocomplete="current-password" required></label>
+    ${STATE.jError ? `<div class="jr-err">${esc(STATE.jError)}</div>` : ''}
+    <button type="submit">${j.seConnecter}</button>
+    <div class="jr-note">${j.lecturePublique}</div>
+  </form>`;
+}
+
+function jrEntryFormHTML(){
+  const j = T().v2.j, now = Date.now();
+  const opt = (arr, sel) => arr.map(o => `<option value="${o[0]}" ${o[0]===sel?'selected':''}>${esc(o[1])}</option>`).join('');
+  const lakes = Object.keys(LAKES).map(k => [k, T().v2.lakes[k] || LAKES[k].nom]);
+  const conf = [['compte', j.confCompte], ['estime', j.confEstime], ['memoire', j.confMemoire]];
+  const secteurs = [['', '—']].concat(SECTEURS.map(s => [s, T().sectors[s] || s]));
+  const obsConf = [['', '—'], ['mesure', j.obsMesure], ['bonne', j.obsBonne], ['faible', j.obsFaible]];
+  return `<form class="jr-form" data-role="jform">
+    <div class="jr-h">${j.nouvelleSortie}</div>
+    <div class="jr-grid">
+      <label>${j.lac}<select data-f="lac">${opt(lakes, STATE.lake)}</select></label>
+      <label>${j.espece}<input type="text" data-f="espece" placeholder="${j.especePh}"></label>
+      <label>${j.debut}<input type="datetime-local" data-f="debut" value="${msToDtl(now - 3*3600e3)}" required></label>
+      <label>${j.fin}<input type="datetime-local" data-f="fin" value="${msToDtl(now)}" required></label>
+      <label>${j.captures}<input type="number" min="0" step="1" data-f="captures" placeholder="0"></label>
+      <label>${j.touches}<input type="number" min="0" step="1" data-f="touches" placeholder="0"></label>
+      <label>${j.confiance}<select data-f="resultat_confiance">${opt(conf, 'compte')}</select></label>
+      <label>${j.note}<select data-f="note">${opt([['','—'],['1','1'],['2','2'],['3','3'],['4','4'],['5','5']], '')}</select></label>
+      <label>${j.secteur}<input type="text" data-f="secteur" placeholder="${j.secteurPh}"></label>
+      <label>${j.technique}<input type="text" data-f="technique" placeholder="${j.techniquePh}"></label>
+      <label>${j.obsDir}<select data-f="obsDir">${opt(secteurs, '')}</select></label>
+      <label>${j.obsConf}<select data-f="obsConf">${opt(obsConf, '')}</select></label>
+    </div>
+    <label class="jr-wide">${j.commentaire}<textarea data-f="commentaire" rows="2" placeholder="${j.commentairePh}"></textarea></label>
+    ${STATE.jError ? `<div class="jr-err">${esc(STATE.jError)}</div>` : ''}
+    <div class="jr-actions"><span class="jr-note">${j.snapNote}</span><button type="submit">${j.enregistrer}</button></div>
+  </form>`;
+}
+
+/** Vue calibration (§17.4) : indice prédit rejoué contre captures/heure, par régime. */
+function jrCalibrationHTML(){
+  const j = T().v2.j, entries = JOURNAL.entries || [];
+  const pts = [];
+  for (const e of entries){
+    let cal; try { cal = V2.calibrer(e); } catch(err){ cal = null; }
+    if (cal) pts.push({ e, cal });
+  }
+  const avecSucces = pts.filter(p => p.cal.capturesParH != null && p.cal.indiceMoyen != null);
+  // Agrégat par régime
+  const parReg = {};
+  for (const p of avecSucces){
+    const r = p.cal.regimeDominant || '?';
+    (parReg[r] = parReg[r] || []).push(p.cal);
+  }
+  const moy = (arr, f) => arr.length ? arr.reduce((a, x) => a + f(x), 0) / arr.length : null;
+  const rows = Object.keys(parReg).map(r => {
+    const a = parReg[r];
+    return `<tr><td><i class="rp" style="background:${REGIME_COLOR[r] || 'var(--muted)'}"></i>${esc(regimeNom(r))}</td>
+      <td>${a.length}</td><td>${Math.round(moy(a, x => x.indiceMoyen))}</td>
+      <td>${moy(a, x => x.capturesParH).toFixed(2)}</td></tr>`;
+  }).join('');
+  // Nuage indice → captures/h
+  let scatter = '';
+  if (avecSucces.length){
+    const maxY = Math.max(1, ...avecSucces.map(p => p.cal.capturesParH));
+    const dots = avecSucces.map(p => {
+      const x = Math.max(0, Math.min(100, p.cal.indiceMoyen));
+      const y = 100 - (p.cal.capturesParH / maxY) * 100;
+      return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.4" fill="${REGIME_COLOR[p.cal.regimeDominant] || 'var(--muted)'}" vector-effect="non-scaling-stroke"/>`;
+    }).join('');
+    scatter = `<div class="jr-scatter"><svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+      <line x1="60" y1="0" x2="60" y2="100" stroke="var(--border2)" stroke-width="1" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"/>${dots}</svg>
+      <div class="jr-axes"><span>${j.axeIndice}</span><span>${j.axeCaptures} (max ${maxY.toFixed(1)})</span></div></div>`;
+  }
+  const table = rows
+    ? `<table class="jr-cal"><thead><tr><th>${j.regime}</th><th>n</th><th>${j.indicePredit}</th><th>${j.capturesH}</th></tr></thead><tbody>${rows}</tbody></table>`
+    : `<div class="jr-note">${j.pasAssez}</div>`;
+  return `<section class="jr-block"><div class="jr-h">${j.calibration}</div>
+    <div class="jr-note">${entries.length} ${j.sorties} · ${j.attente}</div>
+    ${scatter}${table}</section>`;
+}
+
+function jrEntriesHTML(){
+  const j = T().v2.j, entries = JOURNAL.entries;
+  if (entries == null) return `<section class="jr-block"><div class="jr-note">${T().loading}</div></section>`;
+  if (!entries.length) return `<section class="jr-block"><div class="jr-h">${j.sortiesTitre}</div><div class="jr-note">${j.aucuneSortie}</div></section>`;
+  const rows = entries.map(e => {
+    let cal = null; try { cal = V2.calibrer(e); } catch(err){}
+    const reg = cal && cal.regimeDominant;
+    const idx = cal && cal.indiceMoyen != null ? cal.indiceMoyen : '—';
+    const cap = e.captures != null ? e.captures : '—', tou = e.touches != null ? e.touches : '—';
+    const d = e.debut ? new Date(e.debut).toLocaleDateString(locale(), { timeZone:TZ, day:'numeric', month:'short' }) : (e.date || '—');
+    return `<div class="jr-entry">
+      <span class="jr-e-idx" style="--sc:${cal && cal.indiceMoyen != null ? heatLevel(cal.indiceMoyen) : 0}">${idx}</span>
+      <span class="jr-e-main"><b>${esc((T().v2.lakes[e.lac] || e.lac || ''))} · ${esc(d)}</b>
+        <span>${reg ? `<i class="rp" style="background:${REGIME_COLOR[reg] || 'var(--muted)'}"></i>${esc(regimeNom(reg))} · ` : ''}${cap} ${j.capt} · ${tou} ${j.touch}${e.espece ? ' · ' + esc(e.espece) : ''}</span></span>
+      <span class="jr-e-conf">${esc(confLabel(e.resultat_confiance))}</span>
+    </div>`;
+  }).join('');
+  return `<section class="jr-block"><div class="jr-h">${j.sortiesTitre}</div>${rows}</section>`;
+}
+function confLabel(c){ const j = T().v2.j; return c === 'compte' ? j.confCompte : c === 'estime' ? j.confEstime : c === 'memoire' ? j.confMemoire : (c || ''); }
+
+function journalHTML(){
+  const j = T().v2.j;
+  if (!JOURNAL.configuree()){
+    return `<div class="jr"><section class="jr-block"><div class="jr-h">${j.title}</div>
+      <div class="jr-msg">${j.configRequise}</div>
+      <div class="jr-note">${j.configAide}</div></section></div>`;
+  }
+  JOURNAL.init(render);                                   // idempotent ; rerend à chaque changement d'auth
+  const u = JOURNAL.user;
+  let html = '<div class="jr">';
+  if (u){
+    html += `<div class="jr-authbar"><span>${j.connecteEnTant} <b>${esc(u.email || '')}</b></span>
+      <button class="jr-logout" data-role="jlogout">${j.deconnexion}</button></div>`;
+    html += jrEntryFormHTML();
+  } else {
+    html += jrLoginHTML();
+  }
+  html += jrCalibrationHTML();
+  html += jrEntriesHTML();
+  return html + '</div>';
+}
+
 function headHTML(){
   const t = T();
   return `<div class="app-head">
@@ -611,6 +844,8 @@ function headHTML(){
       <div class="seg lake-sel" data-role="lake">
         ${Object.keys(LAKES).map(k => `<button data-lake="${k}" class="${STATE.lake===k?'on':''}">${esc(t.v2.lakes[k] || LAKES[k].nom)}</button>`).join('')}
       </div>
+      <button type="button" class="icon-btn ${STATE.view==='journal'?'on':''}" data-role="journal"
+        title="${esc(t.v2.j.title)}" aria-label="${esc(t.v2.j.title)}">${STATE.view==='journal'?ICON.cal:ICON.journal}</button>
       <button type="button" class="icon-btn" data-role="lang" title="FR / EN">${lang === 'fr' ? 'EN' : 'FR'}</button>
     </div>
   </div>`;
@@ -621,6 +856,14 @@ function render(){
   document.body.dataset.mode = 'fish';
   document.documentElement.style.setProperty('--accent', 'var(--fish)');
   document.documentElement.lang = lang;
+
+  // Vue Journal (§17) : remplace le calendrier, garde l'en-tête.
+  if (STATE.view === 'journal') {
+    document.getElementById('app').innerHTML = headHTML() + journalHTML();
+    document.getElementById('foot').textContent = t.footNote;
+    document.title = t.title + ' — ' + t.v2.j.title;
+    return;
+  }
 
   let body;
   if (!lakeReady()) body = `<p style="color:var(--muted);padding:2rem 0;text-align:center">${t.loading}</p>`;
@@ -655,6 +898,12 @@ document.getElementById('app').addEventListener('click', e => {
   const lg = e.target.closest('[data-role=lang]');
   if (lg) { lang = lang === 'fr' ? 'en' : 'fr'; LS.rawSet('lm_lang', lang); render(); return; }
 
+  const jbtn = e.target.closest('[data-role=journal]');
+  if (jbtn) { toggleJournal(); return; }
+
+  const jout = e.target.closest('[data-role=jlogout]');
+  if (jout) { STATE.jError = null; JOURNAL.logout(); return; }   // onAuthStateChanged rerend
+
   const step = e.target.closest('.day-step button[data-step]');
   if (step) {
     STATE.sel = step.dataset.step === 'today' ? civToday() : civAdd(STATE.sel, Number(step.dataset.step));
@@ -667,6 +916,63 @@ document.getElementById('app').addEventListener('click', e => {
   // Vue Semaine et bandeau « Prochaines fenêtres » : saut vers le jour visé.
   const key = e.target.closest('.wk-row[data-key], .bw-row[data-key]');
   if (key) { STATE.sel = civFromKey(key.dataset.key); STATE.gran = 'day'; render(); return; }
+});
+
+/** Ouvre/ferme la vue Journal ; charge les sorties à la première ouverture. */
+function toggleJournal(){
+  STATE.view = STATE.view === 'journal' ? 'cal' : 'journal';
+  STATE.jError = null;
+  render();
+  if (STATE.view === 'journal' && JOURNAL.configuree() && JOURNAL.entries == null){
+    JOURNAL.init(render);
+    JOURNAL.charger().then(render).catch(() => { JOURNAL.entries = []; render(); });
+  }
+}
+
+// Formulaires du journal : connexion et saisie d'une sortie.
+document.getElementById('app').addEventListener('submit', async e => {
+  const val = (form, f) => { const el = form.querySelector(`[data-f="${f}"]`); return el ? el.value.trim() : ''; };
+
+  const login = e.target.closest('[data-role=jlogin]');
+  if (login){
+    e.preventDefault();
+    STATE.jError = null;
+    try { await JOURNAL.login(val(login, 'email'), login.querySelector('[data-f="mdp"]').value); }
+    catch(err){ STATE.jError = T().v2.j.errConnexion + ' (' + (err.code || err.message || '') + ')'; render(); }
+    return;                                               // succès → onAuthStateChanged rerend
+  }
+
+  const form = e.target.closest('[data-role=jform]');
+  if (form){
+    e.preventDefault();
+    STATE.jError = null;
+    const j = T().v2.j;
+    const lac = val(form, 'lac'), debut = dtlToMs(val(form, 'debut')), fin = dtlToMs(val(form, 'fin'));
+    if (!debut || !fin || fin <= debut){ STATE.jError = j.errDates; render(); return; }
+    const num = f => { const v = val(form, f); return v === '' ? null : Number(v); };
+    // La série du lac doit être chargée pour l'instantané des conditions.
+    if (!V2.series[lac]) { try { await V2.load(lac); } catch(_){} }
+    const snap = JOURNAL.snapshotConditions(lac, debut, fin);
+    const entry = {
+      lac, debut, fin,
+      espece: val(form, 'espece') || null,
+      captures: num('captures'), touches: num('touches'),
+      secteur: val(form, 'secteur') || null,
+      technique: val(form, 'technique') || null,
+      note: num('note'),
+      commentaire: val(form, 'commentaire') || null,
+      resultat_confiance: val(form, 'resultat_confiance') || null,
+      conditions_horaires: snap.conditions,
+      couverture_complete: snap.couvertureComplete
+    };
+    const obsDir = val(form, 'obsDir'), obsConf = val(form, 'obsConf');
+    if (obsDir || obsConf) entry.observations_terrain = [{ quoi: 'direction du vent', valeur: obsDir || null, confiance: obsConf || null }];
+    try {
+      await JOURNAL.ajouter(entry);
+      STATE.jError = null; render();                      // la sortie apparaît en tête
+    } catch(err){ STATE.jError = j.errEcriture + ' (' + (err.code || err.message || '') + ')'; render(); }
+    return;
+  }
 });
 
 document.addEventListener('keydown', e => {
@@ -1295,6 +1601,86 @@ const V2 = {
 };
 
 window.LAKES = LAKES; window.MODEL = MODEL; window.V2 = V2;
+
+/* ══════════════════════════════════════════════════════════════════════════
+   10c. Journal de sorties — auth + écriture (§17)
+   ─────────────────────────────────────────────────────────────────────────
+   Le journal stocke les ENTRÉES météo, jamais le score (§17.1) : le modèle est
+   rejoué dessus (V2.calibrer). Lecture publique, écriture réservée au compte de
+   Ben (règles `/journal`). Le mot de passe n'est saisi que par Ben dans le
+   formulaire ; il ne transite jamais par le code.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+// ⚠️ À RENSEIGNER (Ben) — Console Firebase → Paramètres du projet (⚙️) → « Vos
+// applications » → app Web → `firebaseConfig`. `apiKey` est PUBLIQUE (elle
+// identifie le projet et ne protège rien ; ce sont les règles `/journal` qui
+// protègent). Tant qu'elle vaut le placeholder, la vue Journal affiche
+// « configuration requise » au lieu du formulaire.
+const FB_CONFIG = {
+  apiKey:      'REMPLACER_PAR_APIKEY',
+  authDomain:  'lac-manitou-temperatures-d284a.firebaseapp.com',
+  databaseURL: 'https://lac-manitou-temperatures-d284a-default-rtdb.firebaseio.com',
+  projectId:   'lac-manitou-temperatures-d284a'
+};
+
+const JOURNAL = {
+  app: null, ready: false, user: null, entries: null, _cbs: [],
+
+  /** La config est-elle renseignée et le SDK chargé ? */
+  configuree(){ return typeof firebase !== 'undefined' && FB_CONFIG.apiKey && FB_CONFIG.apiKey.indexOf('REMPLACER') === -1; },
+
+  /** Initialise Firebase une seule fois et branche l'observateur d'auth. */
+  init(onChange){
+    if (onChange && this._cbs.indexOf(onChange) === -1) this._cbs.push(onChange);
+    if (this.app || !this.configuree()) return this.configuree();
+    this.app = firebase.initializeApp(FB_CONFIG);
+    firebase.auth().onAuthStateChanged(u => { this.user = u; this.ready = true; this._cbs.forEach(f => f()); });
+    return true;
+  },
+
+  login(email, mdp){ return firebase.auth().signInWithEmailAndPassword(email, mdp); },
+  logout(){ return firebase.auth().signOut(); },
+
+  /** Écrit une sortie sous `/journal/{pushId}`. Auth requise (règles §17.3). */
+  async ajouter(entry){
+    entry.cree = Date.now();
+    const ref = firebase.database().ref('journal').push();
+    await ref.set(entry);
+    if (this.entries) this.entries.unshift({ id: ref.key, ...entry });
+    return ref.key;
+  },
+
+  /** Charge toutes les sorties (lecture publique), triées par début décroissant. */
+  async charger(){
+    const snap = await firebase.database().ref('journal').once('value');
+    const obj = snap.val() || {};
+    this.entries = Object.keys(obj).map(k => ({ id:k, ...obj[k] }))
+      .sort((a,b) => (b.debut || b.cree || 0) - (a.debut || a.cree || 0));
+    return this.entries;
+  },
+
+  /**
+   * Instantané horaire des conditions couvrant [debut − 36 h, fin] depuis la
+   * série chargée du lac (§17.2) — 24 h pour les tendances + ~12 h pour que
+   * l'hystérésis du classificateur soit stabilisée au rejeu. Chaque heure porte
+   * les variables du §15.2 + le régime (relecture ; recalculable au rejeu).
+   */
+  snapshotConditions(lakeKey, debut, fin){
+    const h = V2.series[lakeKey];
+    if (!h) return { conditions: [], couvertureComplete: false };
+    const reg = V2.regimes(lakeKey), t0 = debut - 36 * 3600e3, out = [];
+    for (let i = 0; i < h.time.length; i++){
+      const ts = V2.tsAt(h, i);
+      if (ts < t0 || ts > fin) continue;
+      out.push({ t:h.time[i], P:h.pressure_msl[i], T:h.temperature_2m[i], W:h.wind_speed_10m[i],
+        G:h.wind_gusts_10m[i], D:h.wind_direction_10m[i], N:h.cloud_cover[i], R:h.precipitation[i], regime:reg[i] });
+    }
+    // Couverture complète = la série va bien de [debut−36h] à [fin].
+    const complete = out.length > 0 && V2.tsAt(h, 0) <= t0 && V2.tsAt(h, h.time.length - 1) >= fin;
+    return { conditions: out, couvertureComplete: complete };
+  }
+};
+window.JOURNAL = JOURNAL; window.FB_CONFIG = FB_CONFIG;
 
 /* ══════════════════════════════════════════════════════════════════════════
    11. Démarrage + bascule de lac + auto-refresh
