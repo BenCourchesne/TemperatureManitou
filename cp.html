@@ -1163,6 +1163,17 @@ const MODEL = {
   hysteresis:  { dureeMin:3 }                            // §15.3b
 };
 
+// Hydratation de MODEL depuis localStorage (§15.10). Pour l'instant seul le
+// facteur de réétalonnage `echelle` est persisté (§20.3) — la Phase 2 (panneau
+// de réglages) étendra ce merge aux autres seuils édités par Ben.
+const MODEL_KEY = 'lm_cp_model';
+function loadModelCfg(){
+  const s = LS.get(MODEL_KEY, null);
+  if (s && typeof s === 'object' && typeof s.echelle === 'number' && s.echelle > 0) MODEL.echelle = s.echelle;
+}
+function saveModelCfg(){ LS.set(MODEL_KEY, { echelle: MODEL.echelle }); }
+loadModelCfg();
+
 const SECTEURS = ['N','NE','E','SE','S','SO','O','NO'];
 const secteurDe = deg => SECTEURS[Math.round((((deg % 360) + 360) % 360) / 45) % 8];
 
@@ -1579,6 +1590,40 @@ const V2 = {
     for (const j in parJour)
       retenus = retenus.concat(parJour[j].sort((a, b) => b.indice - a.indice).slice(0, cfg.maxParJour));
     return retenus.sort((a, b) => b.indice - a.indice).slice(0, cfg.top);
+  },
+
+  /* ── Réétalonnage (§20.3) ─────────────────────────────────────────────────*/
+
+  /**
+   * Cale l'échelle globale pour que le 99ᵉ centile de l'indice BRUT sur
+   * l'historique tombe vers 92 (§20.3) : le 100 reste aux journées vraiment
+   * rares, la discrimination entre 65 et 90 — la zone qui décide des sorties —
+   * est préservée. Ne considère que le passé (`ts < now`), pas la prévision.
+   * Met à jour `MODEL.echelle` et le persiste. Peut recevoir plusieurs lacs
+   * pour mutualiser l'échantillon.
+   */
+  recalibrer(lakeKeys, cible = 92) {
+    const keys = Array.isArray(lakeKeys) ? lakeKeys : [lakeKeys];
+    const now = Date.now(), raw = [];
+    for (const lac of keys) {
+      const h = this.series[lac];
+      if (!h) continue;
+      for (let i = 0; i < h.time.length; i++)
+        if (this.tsAt(h, i) < now) raw.push(this.decompose(lac, i).brut);
+    }
+    if (raw.length < 20) return { n: raw.length, erreur: 'historique trop court' };
+    raw.sort((a, b) => a - b);
+    const p99 = raw[Math.floor(raw.length * 0.99)];
+    if (p99 <= MODEL.base) return { n: raw.length, p99, erreur: 'p99 sous la base' };
+    MODEL.echelle = (cible - MODEL.base) / (p99 - MODEL.base);
+    saveModelCfg();
+    return { n: raw.length, p99: Math.round(p99 * 10) / 10, echelle: Math.round(MODEL.echelle * 1000) / 1000, cible };
+  },
+
+  /** Réétalonne une seule fois (au premier usage), sauf si déjà persisté. */
+  ensureCalibrated(lakeKeys) {
+    if (LS.get(MODEL_KEY, null)) return null;             // déjà calé sur cet appareil
+    return this.recalibrer(lakeKeys);
   }
 };
 
