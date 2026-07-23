@@ -6,7 +6,7 @@
     "daily":    { ".read": true },
     "journal": {
       ".read": true,
-      "$id": { ".write": "auth.uid === 'REMPLACER_PAR_UID_JOURNAL'" }
+      "$id": { ".write": "auth.uid === 'iOYEm4Ptr2b0sVLgAgrU9korOAt2'" }
     }
   }
 }
