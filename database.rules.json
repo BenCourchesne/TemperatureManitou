@@ -5,8 +5,8 @@
     "readings": { ".read": true },
     "daily":    { ".read": true },
     "journal": {
-      ".read": true,
-      "$id": { ".write": "auth.uid === 'iOYEm4Ptr2b0sVLgAgrU9korOAt2'" }
+      ".read":  "auth.uid === 'iOYEm4Ptr2b0sVLgAgrU9korOAt2'",
+      ".write": "auth.uid === 'iOYEm4Ptr2b0sVLgAgrU9korOAt2'"
     }
   }
 }
