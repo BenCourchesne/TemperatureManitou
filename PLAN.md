@@ -497,21 +497,25 @@ prioriser avant de commencer.
   - Auto-refresh 5 min ignore le fetch du graphique quand on visite une
     fenêtre passée (ne ramène jamais au présent).
 
-- [ ] **Calendrier d'activité chasse-pêche** (nouvelle page cachée) — spec de dev
-      complète dans [`SpecsCalendrierActivites.md`](SpecsCalendrierActivites.md),
-      mockup interactif dans [`mockups/calendrier-activite.html`](mockups/calendrier-activite.html).
-      Pas encore implémenté. Résumé : **page séparée `cp.html`** servie à la route
-      cachée `/cp` (rewrite Firebase, même site — pas de sous-domaine), accès par
-      **appui long 1,2 s sur la tuile Lune** (+ lien footer après déverrouillage).
-      Le **panneau lunaire actuel reste mais perd sa cote ★** (redevient
-      informatif). La page : bascule Pêcheur/Chasseur (recalcule la cote), cote =
-      moyenne pondérée de **4 facteurs** (Lune · Pression · Vent · Direction, poids
-      **configurables/persistés** défaut .35/.35/.10/.20), étoiles → icônes
-      poisson/cerf (total seulement), vues Jour/Semaine/Mois, clic + flèches ‹ ›
-      (avance libre, la grille Mois suit). Météo hybride : capteur+EC aujourd'hui,
-      Open-Meteo (nouvelle dépendance) pour le futur ≤14 j, `/daily` pour le passé,
-      Lune seule au-delà. Décisions produit tranchées (§14) ; restent à valider les
-      seuils + le trou « direction passée » dans `/daily` (§3.2).
+- [x] **Calendrier d'activité chasse-pêche** (page cachée `cp.html`, route `/cp`)
+      — ✅ **v1 livrée le 2026-07-22, remplacée par le modèle v2 le 2026-07-23**
+      (déployé). Suivi détaillé des phases dans
+      [`SpecsCalendrierActivites.md`](SpecsCalendrierActivites.md) §19 et §0.
+      - **v1 (livrée)** : page `/cp` (rewrite Firebase), accès par appui long
+        1,2 s sur la tuile Lune ; le panneau lunaire de `index.html` a perdu sa
+        cote ★ (§10.B/C).
+      - **v2 (le cœur actuel)** : cote 1-4 journalière remplacée par un **indice
+        horaire 0-100 par régime météo** (§15). La bascule Pêcheur/**Chasseur est
+        retirée** — pêche uniquement, la chasse reviendra avec son propre modèle
+        (§14.1-6). Le **régime vient d'Open-Meteo**, plus du capteur canalisé
+        (§16.3, §18.5). Facteurs, anti-double-comptage, meilleures fenêtres,
+        réétalonnage : Phase 1. Sélecteur de lac (Manitou/Devenyns), bandeau
+        « Prochaines fenêtres », courbe d'indice, décomposition régime-en-tête :
+        Phase 2.
+      - **Reste** : Phase 3 (journal Firebase authentifié + vue calibration, §17)
+        et Phase 4 (calibration continue, dès ~30-50 sorties). Deux questions en
+        attente de terrain : §20.1 (échelle de vent) et §20.2 (le nord ou l'ouest
+        déçoit-il au Manitou ?).
 - [ ] **Navigation temporelle — polish : séries absentes d'une fenêtre passée**
       — pas encore fait. Actuellement le bloc de stats est **omis entièrement**
       quand une série n'a pas de données dans la fenêtre visitée, au lieu de

@@ -42,6 +42,21 @@
 | Horizon de prévision corrigé, §15.9b | `24cd66f` | `gem_seamless` va à 10 j, pas 16 |
 | **Fondation du moteur v2** | `23f89ac` | `LAKES`, `MODEL`, `V2` — bloc `10b` de `cp.html`, additif |
 
+### Livré en production (2026-07-23) — modèle v2 (Phases 1 et 2)
+
+| Élément | Commit | Note |
+|---|---|---|
+| Cinq facteurs de score (§15.4-15.7) | `1958396` | pression interpolée, vent, direction, lune, heure |
+| Anti-double-comptage (§15.8) | `3fc9b09` | `V2.reduction` |
+| `indexAt` / `decompose` (§15.1) | `cf82ed3` | indice 0-100 par heure |
+| `dayIndex` (§15.9) | `340d435` | meilleure fenêtre de 2 h |
+| `meilleuresFenetres` (§15.9b) | `6ca3554` | classement transversal |
+| Réétalonnage 99ᵉ centile → 92 (§20.3) | `71435f3` | `MODEL.echelle` persisté |
+| Décision vent §20.1/§20.2 (Ben) | `a5f4ce5` | Open-Meteo ; `nordIsole` 0, `nordPostfrontal` conservé |
+| **Bascule des vues + Phase 2 UI** | `759e057` | sélecteur de lac, bandeau fenêtres, courbe, décompo |
+| Retrait code v1 (`SCORING`, capteur, `solunar`) | `2ae8fdb` | ~450 lignes |
+| Nettoyage i18n/CSS mode Chasseur | `21dab0d` | déployé |
+
 ### Carte Vent de `index.html` (2026-07-22)
 
 Valeur principale = **vent au large** (modèle GEM d'Environnement Canada,
@@ -1208,7 +1223,7 @@ puis **corrigé deux fois** par confrontation aux données réelles :
 Validé contre la première sortie du journal (§17.5, Devenyns 19 juillet, pêche
 médiocre → postfrontal froid correctement identifié).
 
-### Phase 1 — Moteur horaire ⬅️ **EN COURS**
+### Phase 1 — Moteur horaire ✅ **FAITE (2026-07-23)**
 
 **Point de départ.** Tout se passe dans [`cp.html`](cp.html) (~1 300 lignes,
 vanilla JS, sans build). Les règles à implémenter sont aux §15.1 à §15.9, la
@@ -1240,20 +1255,39 @@ Validé le 2026-07-22 : le 19 juillet à Devenyns ressort **24 h sur 24 en
 postfrontal froid**, cohérent avec la pêche médiocre du §17.5 ; et **17 %** de
 postfrontal sur 600 h pour chacun des deux lacs, donc pas de surdéclenchement.
 
-#### ⬜ Reste à faire
+#### ✅ Fait (2026-07-23) — les sept points, en commits séparés
 
-1. **Les cinq facteurs de score** — §15.4 pression, §15.5 vent (vitesse et
-   direction), §15.6 lune plafonnée, §15.7 heure du jour. Les barèmes sont dans
-   `MODEL`, il manque les fonctions qui les appliquent.
-2. **Règle anti-double-comptage** (§15.8) — `MODEL.correlation` est prêt.
-3. **`indexAt(lac, i)`** — assemblage du §15.1, indice 0-100 pour une heure.
-4. **`dayIndex(lac, jour)`** — meilleure fenêtre de 2 h (§15.9).
-5. **`meilleuresFenetres(lac)`** — classement transversal (§15.9b).
-6. **Réétalonnage** — ajuster l'échelle pour que le 99ᵉ centile tombe vers 92 (§20.3).
-7. **Basculer les vues** de `breakdown()`/`scoreOf()` vers les nouvelles fonctions,
-   puis retirer `SCORING` et le mode Chasseur (§14.1 décision 6).
+1. ✅ **Les cinq facteurs de score** (§15.4-15.7) — `V2.scorePress` (taux
+   dominant interpolé), `scoreVentVitesse`, `scoreDirection` (règle nord),
+   `scoreLune` (plafonnée), `scoreHeure` (bandes lac-conscientes). Commit
+   `1958396`.
+2. ✅ **Règle anti-double-comptage** (§15.8) — `V2.reduction`. Commit `3fc9b09`.
+3. ✅ **`indexAt(lac, i)`** + `decompose` (§15.1). Commit `cf82ed3`.
+4. ✅ **`dayIndex(lac, jour)`** — meilleure fenêtre de 2 h (§15.9). Commit `340d435`.
+5. ✅ **`meilleuresFenetres(lac)`** — classement transversal (§15.9b). Commit `6ca3554`.
+6. ✅ **Réétalonnage** `V2.recalibrer` → 99ᵉ centile à 92, `MODEL.echelle`
+   persisté (§20.3). Commit `71435f3`.
+7. ✅ **Bascule des vues** + retrait de `SCORING`/mode Chasseur (§14.1-6).
+   Commits `759e057` (bascule), `2ae8fdb` (retrait code v1), `21dab0d` (nettoyage
+   i18n/CSS).
 
-Les points 1 à 5 sont testables en console avant de toucher à l'interface.
+Décision §20.1/§20.2 de Ben (2026-07-22) appliquée : échelle Open-Meteo pour le
+vent ; `nordIsole` mis à 0 (confondu par le capteur, §18.5) mais `nordPostfrontal`
+−20 conservé ; préférences de direction neutralisées, réactivables via
+`MODEL.dir.neutraliserPreferences`. Commit `a5f4ce5`.
+
+**Vérifié en console** (les deux lacs, 600 h) : 0 NaN sur les cinq facteurs ; le
+19 juillet Devenyns sort à moyenne 34 (postfrontal, cohérent §17.5) ; p99 brut
+108 → échelle 0,724 → p99 affiché 92 pile. Puis en interface : Manitou/Devenyns,
+FR/EN, Jour/Semaine/Mois, mobile, 0 erreur console.
+
+**Écarts assumés au plan ci-dessous.** La couche de rendu a été *branchée sur le
+moteur v2*, pas seulement adaptée : `solunar()`, `dayWeather()` et la couche de
+données capteur (§6) ont été **retirées** (l'astronomie vient de `V2.astro`
+lac-conscient, la barre 24 h porte la courbe d'indice) ; le panneau de réglages a
+été **retiré** (édition de `MODEL` reportée). `past_days` reste à **14** (défaut
+de la fondation `V2.load`), pas 92 — le réétalonnage s'appuie donc sur 14 j
+d'historique, à réviser quand la fenêtre s'allongera.
 
 **À conserver tel quel** — cette couche est éprouvée et indépendante du modèle :
 
@@ -1297,7 +1331,12 @@ vent) et §20.2 (table de direction). Les recommandations y sont documentées av
 les preuves ; il manque la confirmation de Ben. En attendant, implémenter avec les
 recommandations et garder les valeurs dans `MODEL` pour les changer d'une ligne.
 
-### Phase 2 — Interface
+### Phase 2 — Interface ✅ **FAITE (2026-07-23)** — déployée
+
+Tout le contenu ci-dessous est livré et en ligne (`firebase deploy`, commit
+`21dab0d`) : sélecteur de lac, indice 0-100 par régime, bandeau « Prochaines
+fenêtres », courbe d'indice 24 h, décomposition régime-en-tête avec mention de la
+réduction anti-double-comptage, i18n FR/EN. Le mode Chasseur est retiré.
 
 - Barre 24 h existante : courbe de l'indice au lieu des seules fenêtres solunaires.
 - Cellule du mois : indice + heure de la meilleure fenêtre.
