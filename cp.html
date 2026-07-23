@@ -1319,6 +1319,17 @@ const V2 = {
     return out;
   },
 
+  /**
+   * Règle anti-double-comptage (§15.8) — l'apport central du modèle. Quand
+   * plusieurs facteurs découlent du même front, on garde tout le score de
+   * régime et on réduit de moitié ceux qui ne font que le refléter (pression et
+   * direction). La VITESSE du vent garde son plein effet : elle agit sur la
+   * pêchabilité concrète, pas sur le régime.
+   */
+  reduction(regime) {
+    return ('XFAP'.includes(regime)) ? MODEL.correlation.reduite : MODEL.correlation.pleine;
+  },
+
   /* ── Les cinq facteurs de score (§15.4 à §15.7) ───────────────────────────
      Chacun rend son score BRUT (avant réduction anti-double-comptage §15.8).
      Barèmes dans `MODEL`. */
