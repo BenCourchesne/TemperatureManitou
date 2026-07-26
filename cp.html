@@ -236,6 +236,21 @@
     border:1px solid var(--border); border-radius:8px; padding:.5rem .6rem; min-height:40px; width:100%}
   .jr textarea{min-height:auto; resize:vertical}
   .jr input:focus, .jr select:focus, .jr textarea:focus{outline:none; border-color:var(--accent)}
+  /* Multi-select des espèces */
+  .jr-ms{display:flex; flex-direction:column; gap:.25rem}
+  .jr-ms-lbl{font-size:.74rem; color:var(--muted); font-weight:600}
+  .jr-ms details{position:relative}
+  .jr-ms-sum{list-style:none; cursor:pointer; font-size:.86rem; color:var(--text); background:var(--bg2);
+    border:1px solid var(--border); border-radius:8px; padding:.5rem .6rem; min-height:40px; display:flex; align-items:center; justify-content:space-between}
+  .jr-ms-sum::-webkit-details-marker{display:none}
+  .jr-ms-sum::after{content:'▾'; color:var(--muted); margin-left:.5rem; flex-shrink:0}
+  .jr-ms details[open] .jr-ms-sum{border-color:var(--accent)}
+  .jr-ms details[open] .jr-ms-sum::after{content:'▴'}
+  .jr-ms-panel{position:absolute; top:100%; left:0; right:0; z-index:30; margin-top:4px; background:var(--bg2);
+    border:1px solid var(--border2); border-radius:8px; padding:.3rem; box-shadow:0 14px 32px rgba(0,0,0,.45); display:flex; flex-direction:column}
+  .jr-ms-panel .jr-ms-opt{display:flex; flex-direction:row; align-items:center; gap:.5rem; font-size:.85rem; color:var(--text); font-weight:500; padding:.4rem .5rem; border-radius:6px; cursor:pointer}
+  .jr-ms-panel .jr-ms-opt:hover{background:var(--hover)}
+  .jr-ms-panel .jr-ms-opt input{width:auto; min-height:auto; margin:0; accent-color:var(--accent); flex-shrink:0}
   .jr-actions{display:flex; align-items:center; justify-content:space-between; gap:.8rem; margin-top:.8rem; flex-wrap:wrap}
   .jr-form button, .jr-login button{cursor:pointer; font-family:inherit; font-size:.84rem; font-weight:650; color:#07131f;
     background:var(--accent); border:0; border-radius:9px; padding:.6rem 1.1rem; min-height:44px}
@@ -372,7 +387,8 @@ const I18N = {
         connexion:'Connexion', email:'Courriel', mdp:'Mot de passe', seConnecter:'Se connecter',
         lecturePublique:'La lecture des sorties est publique ; seule l\'écriture demande la connexion.',
         connecteEnTant:'Connecté :', deconnexion:'Déconnexion',
-        nouvelleSortie:'Nouvelle sortie', lac:'Lac', espece:'Espèce', especePh:'doré, achigan…',
+        nouvelleSortie:'Nouvelle sortie', lac:'Lac', espece:'Espèce(s)', choisirEspece:'Choisir…',
+        especes:[['achigan','Achigan'],['brochet','Brochet'],['dore','Doré'],['perchaude','Perchaude'],['touladi','Touladi'],['autre','Autre']],
         debut:'Début', fin:'Fin', captures:'Captures', touches:'Touches',
         confiance:'Confiance du résultat', confCompte:'compté', confEstime:'estimé', confMemoire:'de mémoire',
         note:'Note (1-5)', secteur:'Secteur', secteurPh:'baie nord…', technique:'Technique', techniquePh:'traîne, lancer…',
@@ -422,7 +438,8 @@ const I18N = {
         connexion:'Sign in', email:'Email', mdp:'Password', seConnecter:'Sign in',
         lecturePublique:'Reading entries is public; only writing requires sign-in.',
         connecteEnTant:'Signed in:', deconnexion:'Sign out',
-        nouvelleSortie:'New outing', lac:'Lake', espece:'Species', especePh:'walleye, bass…',
+        nouvelleSortie:'New outing', lac:'Lake', espece:'Species', choisirEspece:'Choose…',
+        especes:[['achigan','Bass'],['brochet','Pike'],['dore','Walleye'],['perchaude','Perch'],['touladi','Lake trout'],['autre','Other']],
         debut:'Start', fin:'End', captures:'Catches', touches:'Bites',
         confiance:'Result confidence', confCompte:'counted', confEstime:'estimated', confMemoire:'from memory',
         note:'Rating (1-5)', secteur:'Area', secteurPh:'north bay…', technique:'Technique', techniquePh:'trolling, casting…',
@@ -757,7 +774,7 @@ function jrEntryFormHTML(){
     <div class="jr-h">${j.nouvelleSortie}</div>
     <div class="jr-grid">
       <label>${j.lac}<select data-f="lac">${opt(lakes, STATE.lake)}</select></label>
-      <label>${j.espece}<input type="text" data-f="espece" placeholder="${j.especePh}"></label>
+      ${especeMultiHTML([])}
       <label>${j.debut}<input type="datetime-local" data-f="debut" value="${msToDtl(now - 3*3600e3)}" required></label>
       <label>${j.fin}<input type="datetime-local" data-f="fin" value="${msToDtl(now)}" required></label>
       <label>${j.captures}<input type="number" min="0" step="1" data-f="captures" placeholder="0"></label>
@@ -832,7 +849,7 @@ function jrEntriesHTML(){
     return `<div class="jr-entry">
       <span class="jr-e-idx" style="--sc:${cal && cal.indiceMoyen != null ? heatLevel(cal.indiceMoyen) : 0}">${idx}</span>
       <span class="jr-e-main"><b>${esc((T().v2.lakes[e.lac] || e.lac || ''))} · ${esc(d)}</b>
-        <span>${reg ? `<i class="rp" style="background:${REGIME_COLOR[reg] || 'var(--muted)'}"></i>${esc(regimeNom(reg))} · ` : ''}${cap} ${j.capt} · ${tou} ${j.touch}${e.espece ? ' · ' + esc(e.espece) : ''}</span></span>
+        <span>${reg ? `<i class="rp" style="background:${REGIME_COLOR[reg] || 'var(--muted)'}"></i>${esc(regimeNom(reg))} · ` : ''}${cap} ${j.capt} · ${tou} ${j.touch}${especesTexte(e) ? ' · ' + esc(especesTexte(e)) : ''}</span></span>
       <span class="jr-e-conf">${esc(confLabel(e.resultat_confiance))}</span>
       ${peutSuppr ? `<button type="button" class="jr-del" data-role="jdel" data-id="${esc(e.id)}" title="${esc(j.supprimer)}" aria-label="${esc(j.supprimer)}">✕</button>` : ''}
     </div>`;
@@ -840,6 +857,27 @@ function jrEntriesHTML(){
   return `<section class="jr-block"><div class="jr-h">${j.sortiesTitre}</div>${rows}</section>`;
 }
 function confLabel(c){ const j = T().v2.j; return c === 'compte' ? j.confCompte : c === 'estime' ? j.confEstime : c === 'memoire' ? j.confMemoire : (c || ''); }
+/** Libellé localisé d'une espèce (clé → nom courant). */
+function especeLabel(key){ const r = (T().v2.j.especes || []).find(e => e[0] === key); return r ? r[1] : key; }
+/** Étiquette d'une sortie : liste `especes` (nouveau) ou champ `espece` (ancien texte). */
+function especesTexte(e){
+  if (Array.isArray(e.especes) && e.especes.length) return e.especes.map(especeLabel).join(', ');
+  return e.espece || '';
+}
+/** Multi-select déroulant des espèces (cases à cocher). `selected` = clés cochées. */
+function especeMultiHTML(selected){
+  const j = T().v2.j, sel = selected || [];
+  const labels = sel.map(especeLabel).filter(Boolean);
+  const boxes = j.especes.map(([k, lab]) =>
+    `<label class="jr-ms-opt"><input type="checkbox" data-especes value="${k}" ${sel.includes(k) ? 'checked' : ''}>${esc(lab)}</label>`).join('');
+  return `<div class="jr-ms">
+    <span class="jr-ms-lbl">${j.espece}</span>
+    <details data-role="especeMs">
+      <summary class="jr-ms-sum"><span data-role="especeLabel">${labels.length ? esc(labels.join(', ')) : j.choisirEspece}</span></summary>
+      <div class="jr-ms-panel">${boxes}</div>
+    </details>
+  </div>`;
+}
 
 function journalHTML(){
   const j = T().v2.j;
@@ -1019,9 +1057,10 @@ document.getElementById('app').addEventListener('submit', async e => {
     // La série du lac doit être chargée pour l'instantané des conditions.
     if (!V2.series[lac]) { try { await V2.load(lac); } catch(_){} }
     const snap = JOURNAL.snapshotConditions(lac, debut, fin);
+    const especes = [...form.querySelectorAll('input[data-especes]:checked')].map(c => c.value);
     const entry = {
       lac, debut, fin,
-      espece: val(form, 'espece') || null,
+      especes: especes.length ? especes : null,
       captures: num('captures'), touches: num('touches'),
       secteur: val(form, 'secteur') || null,
       technique: val(form, 'technique') || null,
@@ -1039,6 +1078,16 @@ document.getElementById('app').addEventListener('submit', async e => {
     } catch(err){ STATE.jError = j.errEcriture + ' (' + (err.code || err.message || '') + ')'; render(); }
     return;
   }
+});
+
+// Multi-select des espèces : met à jour le résumé au coche/décoche (sans render).
+document.getElementById('app').addEventListener('change', e => {
+  const cb = e.target.closest('input[data-especes]');
+  if (!cb) return;
+  const det = cb.closest('[data-role=especeMs]');
+  const sel = [...det.querySelectorAll('input[data-especes]:checked')].map(c => c.value);
+  det.querySelector('[data-role=especeLabel]').textContent =
+    sel.length ? sel.map(especeLabel).join(', ') : T().v2.j.choisirEspece;
 });
 
 document.addEventListener('keydown', e => {
