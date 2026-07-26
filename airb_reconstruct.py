@@ -46,18 +46,18 @@ data = requests.get(f'{FB}/readings.json?orderBy="$key"&startAt="{ms0}"&endAt="{
                     timeout=120).json() or {}
 rows = sorted(((k, int(k) / 1000, v) for k, v in data.items()), key=lambda x: x[1])
 
-# Idempotent : les lignes déjà reconstruites (airb_est) sont exclues à la fois
-# des cibles (leur airb n'est plus 10.80) et de la référence (ne pas calibrer
-# l'offset sur des valeurs estimées).
+# Cible = toute lecture DANS la fenêtre du gel qui est soit encore figée (10.80),
+# soit déjà reconstruite (airb_est) — ce qui rend le script re-exécutable pour
+# améliorer le lissage. Référence = lectures RÉELLES hors fenêtre (jamais
+# estimées : on ne calibre pas l'offset sur des valeurs reconstruites).
 ref, frozen = [], []
 for k, ts, r in rows:
-    if r.get("airb_est"):
-        continue
-    if FREEZE0 <= ts <= FREEZE1 and r.get("airb") is not None \
-            and abs(r["airb"] - FROZEN_VAL) < 0.05:
-        frozen.append((k, ts, r))
-    elif r.get("airb") is not None:
+    if FREEZE0 <= ts <= FREEZE1:
+        if r.get("airb_est") or (r.get("airb") is not None and abs(r["airb"] - FROZEN_VAL) < 0.05):
+            frozen.append((k, ts, r))
+    elif not r.get("airb_est") and r.get("airb") is not None:
         ref.append((ts, r))
+frozen.sort(key=lambda x: x[1])
 
 # ── 2. Profil horaire de décalage airb - air(quai) sur les données saines ────
 buckets = {h: [] for h in range(24)}
@@ -86,35 +86,54 @@ if frozen:
         try: bk = json.load(open(bpath, encoding="utf-8"))
         except Exception: pass
     for k, ts, r in frozen:
-        bk["original"].setdefault(k, {"airb": r.get("airb")})
+        # la valeur d'origine était toujours FROZEN_VAL (10.80), même si la
+        # ligne porte déjà une estimation lors d'une ré-exécution
+        bk["original"].setdefault(k, {"airb": FROZEN_VAL})
     bk["count"] = len(bk["original"])
     json.dump(bk, open(bpath, "w", encoding="utf-8"), indent=2)
     print(f"Backup fusionné : {bpath} ({len(bk['original'])} lignes)")
 else:
     print("Aucune cible → backup inchangé.")
 
-# ── 4. Calcul des valeurs reconstruites ──────────────────────────────────────
+# ── 4. Reconstruction ANCRÉE aux frontières réelles (raccord lisse) ──────────
+# base(t) = air(t) + offset horaire. On ancre ensuite la base aux dernières/
+# premières VRAIES valeurs airb de part et d'autre du gel, et on étale le biais
+# résiduel (Δ0 au début, Δ1 à la fin) linéairement dans le temps. Résultat : la
+# série reconstruite se raccorde EXACTEMENT aux vraies données aux deux bouts,
+# sans marche, tout en gardant la forme réelle venant du quai.
+def base(ts, r): return r["air"] + offset[hour_of(ts)]
+
 patches = []
 skipped = 0
-for k, ts, r in frozen:
-    h = hour_of(ts)
-    air = r.get("air")
-    if air is not None and h in offset:
-        newv = round(air + offset[h], 1)
+if frozen:
+    tf, tl = frozen[0][1], frozen[-1][1]
+    before = [(ts, r) for ts, r in ref if ts < tf and r.get("airb") is not None]
+    after  = [(ts, r) for ts, r in ref if ts > tl and r.get("airb") is not None]
+    A0 = before[-1][1]["airb"] if before else base(tf, frozen[0][2])
+    A1 = after[0][1]["airb"]  if after  else base(tl, frozen[-1][2])
+    D0 = A0 - base(tf, frozen[0][2])
+    D1 = A1 - base(tl, frozen[-1][2])
+    span = (tl - tf) or 1
+    print(f"Ancrage frontières : A0={A0}° (Δ0={D0:+.2f}) → A1={A1}° (Δ1={D1:+.2f}), "
+          f"biais étalé sur {span/3600:.1f}h")
+    for k, ts, r in frozen:
+        if r.get("air") is None or hour_of(ts) not in offset:
+            skipped += 1
+            continue
+        f = (ts - tf) / span
+        newv = round(base(ts, r) + D0 + (D1 - D0) * f, 1)
         patches.append((k, ts, newv))
-    else:
-        skipped += 1
 
 vals = [v for _, _, v in patches]
 print(f"\nReconstruction : {len(patches)} valeurs calculées, {skipped} ignorées (air manquant)")
 if vals:
-    print(f"  Nouvelle plage airb : {min(vals):.1f}° → {max(vals):.1f}°  (vs 10.8 figé)")
+    print(f"  Nouvelle plage airb : {min(vals):.1f}° → {max(vals):.1f}°")
 print("  Aperçu (toutes les ~3h) :")
 last = 0
 for k, ts, v in patches:
     if ts - last < 10800: continue
     last = ts
-    print(f"    {fmt(ts)} h{hour_of(ts):02d} : 10.8 → {v}")
+    print(f"    {fmt(ts)} h{hour_of(ts):02d} : → {v}")
 
 # ── 5. Écriture (si --write) ─────────────────────────────────────────────────
 if not WRITE:

@@ -374,7 +374,10 @@ state:
   (`airv`). `airb` was **reconstructed** as `air + hourly_offset`, where the offset per
   hour-of-day was calibrated on the healthy readings before/after the freeze — the dock
   won over the veranda (reconstruction RMSE 1.20 °C vs 1.56 °C; the veranda's greenhouse
-  effect makes its afternoon offset erratic). Every corrected reading carries
+  effect makes its afternoon offset erratic). The estimate is **anchored to the real
+  readings at both edges** of the gap (the residual bias is ramped linearly from start to
+  end) so the reconstructed series joins the genuine data smoothly, with no step at either
+  boundary. Every corrected reading carries
   `"airb_est": true` (so it stays distinguishable and reversible — any marked row
   originally held 10.80). Done via [`airb_reconstruct.py`](airb_reconstruct.py); originals
   backed up to `backups/airb_blackout_20260723.json` (gitignored). If the sensor freezes
