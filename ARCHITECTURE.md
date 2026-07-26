@@ -364,30 +364,46 @@ state:
   key is restricted to Identity Toolkit API only (rotated 2026-07-11); corrupting or
   losing it breaks both the 5-min write and aggregation, since HA re-authenticates with
   it every cycle.
-- **Ecowitt outdoor-temp sensor freeze (2026-07-23 → 07-25).** The gateway's
-  `outdoor_temperature` channel (source of `airb`, the primary air reading) stuck at a
-  constant **10.80 °C** from **Jul 23 ~04:00** to **Jul 25 11:30 EDT** (~55 h, 666
-  five-minute samples). Humidity (`humb`) kept working — temperature only. Because the
-  5-min automation reads the HA state blindly, the frozen value was written to Firebase
-  every cycle. The dead air probe (`chalet_outdoor`) had no data and the WS69 array does
-  not measure temperature, so the only live references were the dock (`air`) and veranda
-  (`airv`). `airb` was **reconstructed** as `air + hourly_offset`, where the offset per
-  hour-of-day was calibrated on the healthy readings before/after the freeze — the dock
-  won over the veranda (reconstruction RMSE 1.20 °C vs 1.56 °C; the veranda's greenhouse
-  effect makes its afternoon offset erratic). The estimate is **anchored to the real
-  readings at both edges** of the gap (the residual bias is ramped linearly from start to
-  end) so the reconstructed series joins the genuine data smoothly, with no step at either
-  boundary. Every corrected reading carries
-  `"airb_est": true` (so it stays distinguishable and reversible — any marked row
-  originally held 10.80). Done via [`airb_reconstruct.py`](airb_reconstruct.py); originals
-  backed up to `backups/airb_blackout_20260723.json` (gitignored). If the sensor freezes
-  again, watch for a long run of identical `airb` in `/readings` while `air`/`airv` vary.
+- **Ecowitt gateway upload dropout (2026-07-23 → 07-25).** The **entire `gw3000b`
+  device stopped uploading to Home Assistant** for ~54 h (Jul 23 ~05:05 → Jul 25 11:30
+  EDT). *Not* a sensor fault: the console LCD kept showing the correct temperature the
+  whole time (the console receives its sensors locally over RF, independently of the
+  WiFi/"customized" upload to HA that died). Diagnosis confirmed by the data — in HA
+  history **every** `gw3000b_*` entity (temperature, humidity, dewpoint, feels_like)
+  shows the *same* 54 h gap, and in Firebase all ten Ecowitt fields
+  (`airb, humb, wind, gust, wdir, rrate, rday, uv, solar, press`) are each stuck at a
+  single constant across Jul 24, while the independent sensors (ESP32 dock probes,
+  veranda) vary normally. The 5-min automation reads HA state blindly, so it rewrote each
+  field's last-known value to Firebase every cycle (~666 samples). Remediation:
+  - **`airb`** (primary air temp) was **reconstructed** as `air(dock) + hourly_offset`,
+    the per-hour offset calibrated on healthy readings before/after the gap. Dock beat
+    veranda (RMSE 1.20 vs 1.56 °C — veranda's greenhouse effect makes its afternoon
+    offset erratic) and `chalet_outdoor` had no data. The estimate is **anchored to the
+    real readings at both edges** (residual bias ramped linearly) so it joins genuine
+    data with no step. Each reconstructed row carries `"airb_est": true` (traceable +
+    reversible — any marked row originally held 10.80). Script:
+    [`airb_reconstruct.py`](airb_reconstruct.py).
+  - **The other 9 frozen fields** have no independent reference, so they were **deleted**
+    from the affected `/readings` ([`delete_frozen_ecowitt.py`](delete_frozen_ecowitt.py))
+    — the chart shows an honest gap rather than a false flat line, and `humb`'s removal
+    makes the frontend fall back to veranda humidity via `val('humidity') = humb ?? hum`.
+  - **`/daily`** for UTC Jul 23–25 was deleted
+    ([`delete_daily_frozen.py`](delete_daily_frozen.py)) and rebuilt by
+    `script.manitou_aggregate_daily` from the corrected `/readings` (airb avg now correct;
+    the deleted fields aggregate to `null` on the fully-frozen day).
+  - Originals backed up under `backups/` (gitignored): `airb_blackout_20260723.json`,
+    `ecowitt_frozen_20260723.json`, `daily_frozen_20260723.json`.
+  - **Detection next time:** a long run of *identical* Ecowitt values in `/readings` while
+    the dock/veranda vary = the gateway has stopped uploading to HA (check WiFi / the
+    gateway's "customized" upload; the console LCD may still look fine). A future
+    HA template-sensor staleness alert on `gw3000b_outdoor_temperature` would catch it.
 - **Firebase Hosting caching:** verify frontend changes in an incognito window; a hard
   refresh alone can serve a stale build.
 - **Maintenance scripts** (Python, gitignored secrets via `backfill_veranda.py`):
   `backfill_ecowitt.py`, `backfill_veranda.py`, `catchup.py`, `clear_phantom_rain.py`,
-  `fix_pressure_offset.py`, `airb_reconstruct.py` — one-off backfills/corrections that
-  reuse the HA writer credentials to PATCH Firebase.
+  `fix_pressure_offset.py`, `airb_reconstruct.py`, `delete_frozen_ecowitt.py`,
+  `delete_daily_frozen.py` — one-off backfills/corrections that reuse the HA writer
+  credentials to PATCH Firebase.
 
 ---
 
