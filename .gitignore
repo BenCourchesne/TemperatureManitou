@@ -4,6 +4,7 @@ backfill_*.py
 __pycache__/
 *.pyc
 home_assistant.yaml
+backups/
 .firebase/
 firebase-debug.log
 .clasp.json

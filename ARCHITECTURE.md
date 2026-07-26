@@ -203,15 +203,20 @@ UTC-midnight ms.
 ```json
 {
   "air": 14.06, "surface": 22.94, "depth": 23.12,   // ESP32 water/dock probes (°C)
-  "airv": 15.36, "hum": 91.52,                       // veranda temp (°C) / humidity (%)
+  "airb": 16.6, "humb": 71,                          // Ecowitt outdoor temp (°C) / humidity (%) — PRIMARY air
+  "airv": 15.36, "hum": 91.52,                       // veranda temp (°C) / humidity (%) — fallback
   "wind": 0.7, "gust": 1.8, "wdir": 302,             // Ecowitt wind
   "rrate": 0.0, "rday": 0.0,                          // Ecowitt rain (mm/h, mm)
   "uv": 0, "solar": 32,                               // Ecowitt sky
-  "press": 1009                                       // sea-level pressure (hPa)
+  "press": 1009,                                      // sea-level pressure (hPa)
+  "airb_est": true                                    // OPTIONAL: airb is a reconstructed estimate (see §11 sensor freeze)
 }
 ```
 Fields may be absent on older records (sensors were added over time — pressure/wind/UV
-only exist from ~Jul 7 2026; `airv`/`hum` from ~Jul 6 2026).
+only exist from ~Jul 7 2026; `airv`/`hum` from ~Jul 6 2026; `airb`/`humb` from ~Jul 10 2026).
+The frontend `val()` helper resolves air as `airb → airv → air` (Ecowitt → veranda → dock)
+and humidity as `humb → hum`. The `airb_est` marker is present only on readings whose `airb`
+was reconstructed after a sensor failure (never written by the live pipeline).
 
 ### 5.2 `/daily/{utc_midnight_ms}` — daily aggregates
 ```json
@@ -359,12 +364,27 @@ state:
   key is restricted to Identity Toolkit API only (rotated 2026-07-11); corrupting or
   losing it breaks both the 5-min write and aggregation, since HA re-authenticates with
   it every cycle.
+- **Ecowitt outdoor-temp sensor freeze (2026-07-23 → 07-25).** The gateway's
+  `outdoor_temperature` channel (source of `airb`, the primary air reading) stuck at a
+  constant **10.80 °C** from **Jul 23 ~04:00** to **Jul 25 11:30 EDT** (~55 h, 666
+  five-minute samples). Humidity (`humb`) kept working — temperature only. Because the
+  5-min automation reads the HA state blindly, the frozen value was written to Firebase
+  every cycle. The dead air probe (`chalet_outdoor`) had no data and the WS69 array does
+  not measure temperature, so the only live references were the dock (`air`) and veranda
+  (`airv`). `airb` was **reconstructed** as `air + hourly_offset`, where the offset per
+  hour-of-day was calibrated on the healthy readings before/after the freeze — the dock
+  won over the veranda (reconstruction RMSE 1.20 °C vs 1.56 °C; the veranda's greenhouse
+  effect makes its afternoon offset erratic). Every corrected reading carries
+  `"airb_est": true` (so it stays distinguishable and reversible — any marked row
+  originally held 10.80). Done via [`airb_reconstruct.py`](airb_reconstruct.py); originals
+  backed up to `backups/airb_blackout_20260723.json` (gitignored). If the sensor freezes
+  again, watch for a long run of identical `airb` in `/readings` while `air`/`airv` vary.
 - **Firebase Hosting caching:** verify frontend changes in an incognito window; a hard
   refresh alone can serve a stale build.
 - **Maintenance scripts** (Python, gitignored secrets via `backfill_veranda.py`):
   `backfill_ecowitt.py`, `backfill_veranda.py`, `catchup.py`, `clear_phantom_rain.py`,
-  `fix_pressure_offset.py` — one-off backfills/corrections that reuse the HA writer
-  credentials to PATCH Firebase.
+  `fix_pressure_offset.py`, `airb_reconstruct.py` — one-off backfills/corrections that
+  reuse the HA writer credentials to PATCH Firebase.
 
 ---
 
