@@ -1117,6 +1117,9 @@
       'custom':      'Personnalisé',
       chartTitle:    'Historique des données',
       sub24h:        'Dernières 24 heures',
+      sub7d:         '7 derniers jours',
+      sub30d:        '30 derniers jours',
+      sub365:        '365 derniers jours',
       stepPrev:      'Période précédente',
       stepNext:      'Période suivante',
       todayBtn:      "Aujourd'hui",
@@ -1195,6 +1198,9 @@
       'custom':      'Custom',
       chartTitle:    'Historical data',
       sub24h:        'Last 24 hours',
+      sub7d:         'Last 7 days',
+      sub30d:        'Last 30 days',
+      sub365:        'Last 365 days',
       stepPrev:      'Previous period',
       stepNext:      'Next period',
       todayBtn:      'Today',
@@ -1273,7 +1279,7 @@
     });
     // Étiquette de période + sous-titre : dérivés de la fenêtre courante (time-travel)
     if (currentWindow) {
-      updateNavUI(currentWindow, currentGranularity, currentIsLiveDay);
+      updateNavUI(currentWindow, currentGranularity, currentIsLiveRolling);
     } else {
       document.getElementById('chart-subtitle').textContent = t.sub24h;
     }
@@ -1294,6 +1300,13 @@
   // fait correspondre à une granularité de fenêtre alignée sur le calendrier.
   const STATION_TZ = 'America/Toronto';
   const GRAN = { '24h': 'day', '7d': 'week', '30d': 'month', 'season': 'season', 'year': 'year', 'custom': 'custom' };
+  // Granularités « live roulantes » : quand la fenêtre calendaire courante contient
+  // l'instant présent, on affiche plutôt les N derniers jours (aujourd'hui inclus)
+  // au lieu de la fenêtre calendaire — évite le graphique quasi-vide un lundi (7j),
+  // un début de mois, ou un 3 janvier (année). Le passé reste aligné sur le
+  // calendrier (navigation, sélecteur, comparaison « 2026 vs 2025 »). Seule la
+  // saison ne roule pas (choix explicite : bloc nommé « Été 2026 » vu en entier).
+  const ROLLING_SPAN = { day: 864e5, week: 7 * 864e5, month: 30 * 864e5, year: 365 * 864e5 };
 
   function tzPartsFromUtc(utcMs) {
     const dtf = new Intl.DateTimeFormat('en-US', {
@@ -1448,7 +1461,8 @@
   let currentAnchor = todayAnchor();
   let currentWindow = null;
   let currentGranularity = 'day';
-  let currentIsLiveDay = true;
+  let currentIsLiveDay = true;      // jour courant (24h roulant) — pilote l'axe auto + le fetch limitToLast
+  let currentIsLiveRolling = true;  // jour/semaine/mois roulant (fenêtre se terminant maintenant)
   let earliestDataMs = null;
   let fetchToken = 0;
   const windowCache = new Map();
@@ -1467,6 +1481,21 @@
     const locale = lang === 'fr' ? 'fr-CA' : 'en-CA';
     const s = tzPartsFromUtc(win.start);
     const e = tzPartsFromUtc(win.end - 43200000); // midi de la veille de la fin (abri DST)
+    const dS = new Date(Date.UTC(s.y, s.mo - 1, s.d));
+    const dE = new Date(Date.UTC(e.y, e.mo - 1, e.d));
+    const optsShort = { day: 'numeric', month: 'short', timeZone: 'UTC' };
+    const optsFull = { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' };
+    const startStr = dS.toLocaleDateString(locale, s.y === e.y ? optsShort : optsFull).replace('.', '');
+    const endStr = dE.toLocaleDateString(locale, optsFull).replace('.', '');
+    return `${startStr} – ${endStr}`;
+  }
+  // Étiquette d'une fenêtre roulante se terminant « maintenant » (vue live
+  // semaine/mois). Contrairement à customRangeLabel, la fin n'est PAS une borne
+  // de minuit exclusive → on lit tzParts(win.end) directement (pas de recul 12h).
+  function rollingRangeLabel(win, lang) {
+    const locale = lang === 'fr' ? 'fr-CA' : 'en-CA';
+    const s = tzPartsFromUtc(win.start);
+    const e = tzPartsFromUtc(win.end);
     const dS = new Date(Date.UTC(s.y, s.mo - 1, s.d));
     const dE = new Date(Date.UTC(e.y, e.mo - 1, e.d));
     const optsShort = { day: 'numeric', month: 'short', timeZone: 'UTC' };
@@ -1734,12 +1763,17 @@
 
   // Point d'entrée unique : source + agrégation selon la granularité, avec
   // cache en mémoire pour les fenêtres passées (immuables → jamais invalidées).
-  async function fetchWindow(win, granularity, isLiveDay) {
+  async function fetchWindow(win, granularity, isLiveRolling) {
     const cacheKey = granularity + '|' + win.start + '|' + win.end;
+    // Une fenêtre roulante se termine « maintenant » → jamais mise en cache
+    // (elle change à chaque chargement) ; seules les fenêtres passées immuables
+    // le sont. Les vues live semaine/mois passent par les branches week/month
+    // ci-dessous avec une fenêtre {now-N, now} : source identique, borne roulante.
     const isPast = win.end <= Date.now();
-    if (!isLiveDay && isPast && windowCache.has(cacheKey)) return windowCache.get(cacheKey);
+    if (!isLiveRolling && isPast && windowCache.has(cacheKey)) return windowCache.get(cacheKey);
 
     let rows;
+    const isLiveDay = isLiveRolling && granularity === 'day';
     if (isLiveDay)                    rows = await fetchReadingsRolling24h();
     else if (granularity === 'day')   rows = await fetchReadingsRange(win.start, win.end);
     else if (granularity === 'week')  rows = bucketRows(await fetchReadingsRange(win.start, win.end), 36e5);
@@ -1753,7 +1787,7 @@
     }
     else                               rows = await fetchDailyRange(win.start, win.end);
 
-    if (!isLiveDay && isPast) windowCache.set(cacheKey, rows);
+    if (!isLiveRolling && isPast) windowCache.set(cacheKey, rows);
     return rows;
   }
 
@@ -1769,7 +1803,7 @@
         const keys = Object.keys(obj);
         if (keys.length) {
           earliestDataMs = Number(keys[0]);
-          if (currentWindow) updateNavUI(currentWindow, currentGranularity, currentIsLiveDay);
+          if (currentWindow) updateNavUI(currentWindow, currentGranularity, currentIsLiveRolling);
         }
       }
     } catch (e) { console.error(e); }
@@ -2359,12 +2393,21 @@
     return win.start <= earliestWin.start;
   }
 
-  function updateNavUI(win, granularity, isLiveDay) {
+  function updateNavUI(win, granularity, isLiveRolling) {
     const t = i18n[currentLang];
-    document.getElementById('period-label').textContent = granularity === 'custom'
-      ? customRangeLabel(win, currentLang)
-      : periodLabel(win, granularity, currentAnchor, currentLang);
-    document.getElementById('chart-subtitle').textContent = isLiveDay ? t.sub24h : '';
+    // Semaine/mois en vue live roulante : la fenêtre n'est plus une semaine
+    // calendaire ni « Août 2026 » → on montre la plage de dates roulante et un
+    // sous-titre « N derniers jours ». Le jour live garde sa date + « 24 h ».
+    const rollingRange = isLiveRolling && granularity !== 'day';
+    document.getElementById('period-label').textContent =
+        granularity === 'custom' ? customRangeLabel(win, currentLang)
+      : rollingRange             ? rollingRangeLabel(win, currentLang)
+      :                            periodLabel(win, granularity, currentAnchor, currentLang);
+    document.getElementById('chart-subtitle').textContent = !isLiveRolling ? ''
+      : granularity === 'week'  ? t.sub7d
+      : granularity === 'month' ? t.sub30d
+      : granularity === 'year'  ? t.sub365
+      : t.sub24h;
 
     if (granularity === 'custom') {
       document.getElementById('step-next').disabled = win.end > Date.now();
@@ -2372,7 +2415,7 @@
       const def = defaultCustomRange();
       document.getElementById('today-btn').disabled = (win.start === def.start && win.end === def.end);
     } else {
-      const live = isLiveDay || isLiveWindow(win);
+      const live = isLiveRolling || isLiveWindow(win);
       document.getElementById('step-next').disabled = live;
       document.getElementById('today-btn').disabled = live;
       document.getElementById('step-prev').disabled = isAtFirstData(win, granularity);
@@ -2726,25 +2769,39 @@
   async function load(period, animate = true) {
     currentPeriod = period;
     const granularity = GRAN[period];
-    let win;
+    let win, calWin = null;
     if (granularity === 'custom') {
       if (!customRange) customRange = defaultCustomRange();
       win = customRange;
     } else {
-      win = windowFor(currentAnchor, granularity);
+      calWin = windowFor(currentAnchor, granularity);
+      win = calWin;
     }
-    const isLiveDay = granularity === 'day' && isLiveWindow(win);
+    // Vue live roulante (jour/semaine/mois) : la fenêtre calendaire contient
+    // l'instant présent → on affiche les N derniers jours se terminant maintenant.
+    // Le jour (24h) garde son chemin historique (fenêtre auto, fetch limitToLast) ;
+    // semaine/mois remplacent la fenêtre par {now-N, now} et réutilisent les
+    // branches week/month existantes (readings horaires / daily) sur cette plage.
+    const rollingSpan = ROLLING_SPAN[granularity];
+    const isLiveRolling = rollingSpan != null && calWin != null && isLiveWindow(calWin);
+    const isLiveDay = isLiveRolling && granularity === 'day';
+    if (isLiveRolling && granularity !== 'day') {
+      win = { start: Date.now() - rollingSpan, end: Date.now() };
+    }
 
     currentWindow = win;
     currentGranularity = granularity;
     currentIsLiveDay = isLiveDay;
-    updateNavUI(win, granularity, isLiveDay);
-    updateUrlState(win, granularity, isLiveDay);
+    currentIsLiveRolling = isLiveRolling;
+    updateNavUI(win, granularity, isLiveRolling);
+    // URL basée sur l'ancre calendaire (pas la fenêtre roulante) : un rechargement
+    // restaure le même onglet/position et redétecte le mode live → roulant.
+    updateUrlState(calWin || win, granularity, isLiveDay);
 
     const token = ++fetchToken;
     setChartStatus('loading');
     try {
-      const data = await fetchWindow(win, granularity, isLiveDay);
+      const data = await fetchWindow(win, granularity, isLiveRolling);
       if (token !== fetchToken) return; // une navigation plus récente a eu lieu entre-temps
       allData = data;
       setChartStatus(data.length ? 'ok' : 'empty');

@@ -157,6 +157,24 @@ Touch targets ≥ 44px. Picker popover becomes a bottom sheet on mobile.
   empty at 7 a.m. Keep the rolling window when viewing the *current* period
   (label it "Dernières 24 h"); calendar-day alignment applies only once the
   user steps into the past. Confirm this hybrid with product.
+- **The 24 h hybrid was extended to 7 jours, Mois and Année (2026-07-27).** Same
+  reasoning: a strict Mon–Sun week viewed on a *Monday* shows a single day, a
+  calendar month on the 2nd shows one point, and a calendar year on Jan 3 shows
+  three days on a Jan–Dec axis. So when the current window contains "now", these
+  granularities switch to a **rolling window ending now** (last 7 / 30 / 365
+  days), labelled by a date range with a "N derniers jours" subtitle; stepping
+  into the past still snaps to calendar weeks/months/years (navigation, picker,
+  and the future year-over-year compare all keep clean `2026`/`2025` units).
+  Implementation: `ROLLING_SPAN` map + `isLiveRolling` in `load()`; the rolling
+  window reuses the existing `week`→hourly-`/readings` and
+  `month`/`year`→`/daily` fetch branches, just with a `{now−N, now}` window.
+  **Consequence at month/year scale:** `/daily` excludes the current incomplete
+  day (Option A), so the Mois/Année line reaches *yesterday*, not the current
+  hour (today's live value is still in the condition cards). 7 jours reads raw
+  `/readings`, so it does include today up to now. **Only Saison stays
+  calendar-aligned** — an explicit product choice (a named block like "Été 2026"
+  is meant to be seen whole), even though a season start (Dec 1 / Mar 1 / Jun 1 /
+  Sep 1) has the same start-of-period sparseness; revisit if that bites.
 - **Live data on the current period**: when viewing the period that contains
   "now" at 24 h granularity, the chart may still be filling — keep the existing
   live behaviour; only past periods are fully static.
