@@ -407,7 +407,47 @@ state:
 
 ---
 
-## 12. Repository layout
+## 12. Monitoring — external watchdog
+
+A **dead-man's-switch** that fires a phone notification when the database stops
+receiving data — e.g. the ESP32/HA host does not come back after a power outage, or
+the 5-min write silently starts failing.
+
+**Why it must live outside this system.** A watchdog can't run on the Pi/HA host (a
+dead host can't report itself), and Firebase can't self-monitor — a database doesn't
+"notice" an *absence* of writes, and the **no-Cloud-Functions** rule (§1) means there's
+no scheduled backend here to check. So the check runs on a **third party** on a timer.
+
+- **Repo:** [`BenCourchesne/manitou-watchdog`](https://github.com/BenCourchesne/manitou-watchdog)
+  — a **separate, public** repo (not part of this one). Public ⇒ unlimited free GitHub
+  Actions minutes; safe because the code holds no secrets (the RTDB is public-read
+  anyway, and the Pushover keys live in encrypted Actions secrets).
+- **Runner:** a GitHub Actions workflow on `cron: "*/15 * * * *"` runs `watchdog.py`.
+- **Checks (public REST, no auth):** for `/readings` and `/daily` it fetches the newest
+  key with `orderBy="$key"&limitToLast=1` — one record server-side, no full download.
+  **The key *is* the timestamp** (§5), so freshness = `now − latest_key`.
+  - `/readings` stale if **> 30 min** old (writes are every 5 min).
+  - `/daily` stale if **> 60 h** old. A healthy `/daily` is **24–50 h** old because
+    Option A stores *completed* days only (§4.2) — today is never present — so the
+    threshold sits above the normal maximum to avoid a nightly false alarm.
+- **Alert channel:** direct POST to the Pushover **Messages API**
+  (`api.pushover.net/1/messages.json`) with `PUSHOVER_TOKEN` / `PUSHOVER_USER` (GitHub
+  Actions secrets) → push to iPhone. No Firebase credentials are used.
+- **Keepalive:** a second monthly workflow makes an empty commit — GitHub disables
+  scheduled workflows after **60 days without repo activity**, which would silently kill
+  the watchdog.
+- **Known limitation:** the runner is stateless, so during a real outage it re-alerts
+  **every run** (15 min) until data resumes — a useful reminder, but a transition-based
+  "notify once + recovery" dedup (Actions cache / repo variable) is not implemented.
+
+> The watchdog only *detects* an outage; it doesn't fix the root cause. The recurring
+> "Pi unreachable after a power blip" issue was addressed separately at the network
+> layer (fixed IP / DHCP reservation on the UDM Pro so the Pi doesn't depend on DHCP
+> being up before it boots).
+
+---
+
+## 13. Repository layout
 
 ```
 ESPHome/
