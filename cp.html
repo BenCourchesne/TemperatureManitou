@@ -73,7 +73,12 @@
   .fx-lead b{font-weight:600}
   .fx-lead svg{width:14px; height:14px; color:var(--muted); flex-shrink:0}
   .fx-read{flex:1; font-size:.78rem; color:var(--muted); min-width:0}
+  .fx-read.sol-t{color:var(--text); font-variant-numeric:tabular-nums; letter-spacing:.01em}
+  .factors.sol{margin-top:.7rem}
+  .factors.sol .fx-lead svg{color:var(--moon)}
   .fx-note{font-size:.72rem; color:var(--dim); margin:.35rem 0 .1rem; font-style:italic}
+  .fx-item .fx-row{padding-bottom:.12rem}
+  .fx-why{font-size:.72rem; color:var(--dim); line-height:1.35; padding:0 0 .3rem calc(96px + .6rem)}
   .fx-total{display:flex; align-items:center; gap:.7rem; margin-top:.55rem; padding-top:.6rem; border-top:1px solid var(--border)}
   .ft-lab{font-size:.66rem; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); font-weight:700}
   .fx-verdict{font-size:.85rem; font-weight:650; color:var(--accent); margin-left:auto; text-align:right}
@@ -148,6 +153,7 @@
     /* la lecture contextuelle passe sous la contribution en colonne étroite */
     .fx-row{flex-wrap:wrap}
     .fx-read{flex-basis:100%; order:5; padding-left:.3rem}
+    .fx-why{padding-left:.3rem}
     /* §6 : cibles tactiles ≥ 44 px */
     .seg button{min-height:44px}
     .icon-btn{width:44px; height:44px}
@@ -379,6 +385,15 @@ const I18N = {
       reduced:'réduit de moitié — même front que le régime (§15.8)',
       atWindow:'à la meilleure fenêtre', factorsTitle:'Décomposition de l\'indice',
       hour:{ aube:'aube', matin:'matin', midi:'milieu de journée', finJournee:'fin de journée', crepuscule:'crépuscule', nuit:'nuit' },
+      solunar:{ title:'Calendrier solunaire', sub:'lune seule', majeures:'Majeures', mineures:'Mineures', quality:'Qualité', only:'solunaire' },
+      why:{
+        regime:{ X:'front qui passe — activité brièvement soutenue', F:'air froid postfrontal — poissons apathiques', A:'front en approche — fenêtre d\'alimentation avant la dégradation', P:'chute barométrique préfrontale — forte activité', R:'stabilisation après le passage du front', S:'temps stable — activité régulière', '?':'régime indéterminé, faute de données' },
+        press:{ chuteRapide:'chute rapide', baisseLente:'baisse lente', stable:'pression stable', hausseLente:'hausse lente', hausseRapide:'hausse rapide', haute:'haute pression absolue', sansTendance:'pas encore de tendance mesurable' },
+        vent:['calme plat — trop peu de brassage','brise légère — favorable','ridée idéale — pêche optimale','vent modéré — encore bon','vent soutenu — neutre','trop de vent — difficile'],
+        lune:{ nouvelle:'nouvelle lune', pleineNuit:'pleine lune (nuit, aube ou crépuscule)', pleineJour:'pleine lune en plein jour', quartier:'quartier', leverCoucher:'lever ou coucher de lune (±90 min)', transit:'lune au zénith ou au nadir (±90 min)', plafond:'écrêté au plafond +10', rien:'aucun temps fort lunaire à cette heure' },
+        heure:{ aube:'pic d\'activité de l\'aube', matin:'matinée encore active', midi:'creux du milieu de journée', finJournee:'reprise de fin de journée', crepuscule:'pic du crépuscule', nuit:'activité nocturne faible', midiAnnule:'pénalité de midi annulée (ciel couvert + vent)' },
+        dirNeutral:'préférences de secteur neutralisées (§20.2)', dirNordPost:'vent du nord postfrontal (front froid)', dirNordIso:'vent du nord isolé', dirSecteur:'préférence de rive du lac', reduit:'réduit de moitié — même front que le régime'
+      },
       tip:'<b>Pêche.</b> L\'indice combine régime météo, pression, vent, lune et heure. Vise les fenêtres au-dessus de 70 ; le régime en tête dit <i>pourquoi</i> — de quoi juger le modèle plutôt que le suivre aveuglément.',
       j:{
         title:'Journal de sorties',
@@ -430,6 +445,15 @@ const I18N = {
       reduced:'halved — same front as the regime (§15.8)',
       atWindow:'at the best window', factorsTitle:'Index breakdown',
       hour:{ aube:'dawn', matin:'morning', midi:'midday', finJournee:'late day', crepuscule:'dusk', nuit:'night' },
+      solunar:{ title:'Solunar calendar', sub:'moon only', majeures:'Major', mineures:'Minor', quality:'Quality', only:'solunar' },
+      why:{
+        regime:{ X:'front passing — briefly heightened activity', F:'cold postfrontal air — sluggish fish', A:'front approaching — feeding window before it breaks down', P:'prefrontal pressure drop — strong activity', R:'settling down after the front', S:'stable weather — steady activity', '?':'regime undetermined, lacking data' },
+        press:{ chuteRapide:'rapid fall', baisseLente:'slow fall', stable:'steady pressure', hausseLente:'slow rise', hausseRapide:'rapid rise', haute:'high absolute pressure', sansTendance:'no measurable trend yet' },
+        vent:['dead calm — too little mixing','light breeze — favourable','ideal ripple — optimal','moderate wind — still good','fresh wind — neutral','too much wind — tough'],
+        lune:{ nouvelle:'new moon', pleineNuit:'full moon (night, dawn or dusk)', pleineJour:'full moon at midday', quartier:'quarter moon', leverCoucher:'moonrise or moonset (±90 min)', transit:'moon overhead or underfoot (±90 min)', plafond:'capped at +10', rien:'no lunar peak at this hour' },
+        heure:{ aube:'dawn activity peak', matin:'morning still active', midi:'midday lull', finJournee:'late-day pickup', crepuscule:'dusk peak', nuit:'low night activity', midiAnnule:'midday penalty waived (overcast + wind)' },
+        dirNeutral:'sector preferences neutralized (§20.2)', dirNordPost:'postfrontal north wind (cold front)', dirNordIso:'isolated north wind', dirSecteur:'lake-shore preference', reduit:'halved — same front as the regime'
+      },
       tip:'<b>Fishing.</b> The index blends weather regime, pressure, wind, moon and time. Aim for windows above 70; the regime shown first tells you <i>why</i> — so you can judge the model rather than follow it blindly.',
       j:{
         title:'Outing journal',
@@ -578,12 +602,14 @@ const capFirst = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 // Teinte par régime — utilisée dans la décomposition et le bandeau.
 const REGIME_COLOR = { X:'#fbbf24', F:'#60a5fa', A:'#2dd4bf', P:'#34d399', R:'#94a3b8', S:'#94a3b8', '?':'#64748b' };
 
-/** Une ligne de facteur : libellé, contribution signée en points, lecture. */
-function fxRow(icon, name, points, read){
+/** Une ligne de facteur : libellé, contribution signée en points, lecture, et
+ *  une ligne « pourquoi ce score » optionnelle (§Phase 2, détail du calcul). */
+function fxRow(icon, name, points, read, why){
   const cls = points > 0.5 ? 'pos' : points < -0.5 ? 'neg' : 'zero';
   const val = (points > 0 ? '+' : points < 0 ? '−' : '') + Math.abs(Math.round(points));
-  return `<div class="fx-row"><span class="fx-lead">${icon}<b>${name}</b></span>` +
+  const row = `<div class="fx-row"><span class="fx-lead">${icon}<b>${name}</b></span>` +
     `<span class="fx-pts ${cls}">${val}</span><span class="fx-read">${read}</span></div>`;
+  return why ? `<div class="fx-item">${row}<div class="fx-why">${why}</div></div>` : row;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -630,23 +656,86 @@ function factorsHTML(c){
   const dec = V2.decompose(STATE.lake, di.i), p = dec.parts;
   const h = V2.series[STATE.lake], W = h.wind_speed_10m[di.i], D = h.wind_direction_10m[di.i];
   const bucket = V2.heureBucket(STATE.lake, h, di.i);
-  const redNote = dec.red < 1 ? t.v2.reduced : '';
   const regDot = `<span class="fx-reg" style="background:${REGIME_COLOR[dec.regime] || 'var(--muted)'}"></span>`;
   const kmh = W != null ? ' · ' + Math.round(W) + ' km/h' : '';
   const sect = D != null ? ' · ' + (t.sectors[secteurDe(D)] || '') : '';
 
-  let html = fxRow(regDot,       t.v2.factors.regime,    p.regime,    esc(regimeNom(dec.regime)));
-  html += fxRow(ICON.gauge,      t.v2.factors.pression,  p.pression,  p.pression !== 0 && dec.red < 1 ? redNote : '');
-  html += fxRow(ICON.compass,    t.v2.factors.direction, p.direction, esc((t.sectors[D != null ? secteurDe(D) : ''] || '')) + (p.direction !== 0 && dec.red < 1 ? ' · ' + redNote : ''));
-  html += fxRow(ICON.wind,       t.v2.factors.vitesse,   p.vitesse,   esc((W != null ? Math.round(W) + ' km/h' : '')));
-  html += fxRow(ICON.moon,       t.v2.factors.lune,      p.lune,      '');
-  html += fxRow(ICON.clock,      t.v2.factors.heure,     p.heure,     esc(t.v2.hour[bucket] || ''));
+  // ── « Pourquoi ce score » — un détail lisible par facteur (§Phase 2) ────────
+  const w = t.v2.why, idx = di.i;
+
+  // Pression : état + variation de la fenêtre 3/6/12 h dominante.
+  const ep = V2.explainPress(h, idx);
+  let whyPress = '';
+  if (ep) {
+    let base;
+    if (ep.win == null) base = w.press.sansTendance;
+    else {
+      const mag = Math.abs(ep.delta).toLocaleString(locale(), { minimumFractionDigits:1, maximumFractionDigits:1 });
+      const sign = ep.delta > 0 ? '+' : ep.delta < 0 ? '−' : '';
+      base = `${w.press[ep.state]} · ${sign}${mag} hPa/${ep.win} h`;
+    }
+    const bits = [base];
+    if (ep.haute) bits.push(w.press.haute);
+    if (dec.red < 1) bits.push(w.reduit);
+    whyPress = esc(bits.join(' · '));
+  }
+
+  // Direction : règle du nord, ou préférences neutralisées.
+  let whyDir = MODEL.dir.neutraliserPreferences ? w.dirNeutral : w.dirSecteur;
+  if (D != null && secteurDe(D) === 'N') whyDir = dec.regime === 'F' ? w.dirNordPost : w.dirNordIso;
+  if (dec.red < 1 && D != null && secteurDe(D) === 'N') whyDir += ' · ' + w.reduit;
+
+  // Vent : tranche de vitesse de la table §15.5.
+  let whyVent = '';
+  if (W != null) {
+    let bi = MODEL.vent.findIndex(([maxK]) => W <= maxK);
+    if (bi < 0) bi = MODEL.vent.length - 1;
+    whyVent = w.vent[bi] || '';
+  }
+
+  // Lune : composantes actives (phase + événements), plafond signalé.
+  const el = V2.explainLune(STATE.lake, h, idx);
+  let whyLune;
+  if (!el.parts.length) whyLune = w.lune.rien;
+  else {
+    const list = el.parts.map(x => `${w.lune[x.k]} (+${x.p})`).join(' · ');
+    whyLune = el.plafonne ? list + ' · ' + w.lune.plafond : list;
+  }
+
+  // Heure : sens de la tranche, avec l'exception « midi annulé ».
+  let whyHeure = w.heure[bucket] || '';
+  if (bucket === 'midi' && Math.round(p.heure) === 0 && MODEL.heure.midi !== 0) whyHeure = w.heure.midiAnnule;
+
+  let html = fxRow(regDot,       t.v2.factors.regime,    p.regime,    esc(regimeNom(dec.regime)),
+    esc(w.regime[dec.regime] || w.regime['?']));
+  html += fxRow(ICON.gauge,      t.v2.factors.pression,  p.pression,  '', whyPress);
+  html += fxRow(ICON.compass,    t.v2.factors.direction, p.direction, esc((t.sectors[D != null ? secteurDe(D) : ''] || '')), esc(whyDir));
+  html += fxRow(ICON.wind,       t.v2.factors.vitesse,   p.vitesse,   esc((W != null ? Math.round(W) + ' km/h' : '')), esc(whyVent));
+  html += fxRow(ICON.moon,       t.v2.factors.lune,      p.lune,      esc(t.v2.solunar.only + ' · ' + verdictV2(V2.solunar(STATE.lake, dateISO).score)), esc(whyLune));
+  html += fxRow(ICON.clock,      t.v2.factors.heure,     p.heure,     esc(t.v2.hour[bucket] || ''), esc(whyHeure));
 
   const winLbl = fmtTime(di.debut) + '–' + fmtTime(di.fin);
   return `<div class="factors">
     <div class="fx-head"><span>${t.v2.factorsTitle}</span><span class="fx-src">${t.v2.atWindow} ${winLbl}</span></div>
     ${html}
     <div class="fx-total"><span class="ft-lab">${t.total}</span><span class="fx-big" style="--sc:${heatLevel(di.indice)}">${di.indice}</span><span class="fx-verdict">${esc(verdictV2(di.indice))}</span></div>
+  </div>`;
+}
+
+/**
+ * Calendrier solunaire du jour (§15.6) — vue « lune seule », indépendante de la
+ * météo. Liste les fenêtres majeures (transits) et mineures (lever/coucher de
+ * lune) et note la journée comme si la lune était le seul paramètre.
+ */
+function solunarHTML(c){
+  const t = T(), tl = t.v2.solunar, s = V2.solunar(STATE.lake, civKey(c));
+  const fp = p => fmtTime(p.start) + '–' + fmtTime(p.end);
+  const join = arr => arr.length ? arr.map(fp).join(' · ') : '—';
+  return `<div class="factors sol">
+    <div class="fx-head"><span>${tl.title}</span><span class="fx-src">${tl.sub}</span></div>
+    <div class="fx-row"><span class="fx-lead">${ICON.moon}<b>${tl.majeures}</b></span><span class="fx-read sol-t">${esc(join(s.majors))}</span></div>
+    <div class="fx-row"><span class="fx-lead">${ICON.clock}<b>${tl.mineures}</b></span><span class="fx-read sol-t">${esc(join(s.minors))}</span></div>
+    <div class="fx-total"><span class="ft-lab">${tl.quality}</span><span class="fx-big" style="--sc:${heatLevel(s.score)}">${s.score}</span><span class="fx-verdict">${esc(verdictV2(s.score))}</span></div>
   </div>`;
 }
 
@@ -670,6 +759,7 @@ function detailHTML(c){
     </div>
     ${curveHTML(dateISO)}
     ${factorsHTML(c)}
+    ${solunarHTML(c)}
     <div class="astro">
       <span style="color:var(--warn)">${ICON.sunrise} ${t.sunrise} ${fmtTime(a.sunrise)}</span>
       <span style="color:#fb923c">${ICON.sunset} ${t.sunset} ${fmtTime(a.sunset)}</span>
@@ -1166,6 +1256,13 @@ const MODEL = {
   lune: { nouvelle:4, pleineNuit:4, pleineJour:0, quartier:1,
           leverCoucher:4, transit:2, plafond:10,         // §15.6
           fenetrePhaseJours:1.5, fenetreEvtMin:90 },     // largeurs des fenêtres
+  // Calendrier solunaire (vue Jour, purement présentatif — n'entre PAS dans
+  // l'indice §15.1). Largeurs classiques : majeures 2 h (transit sup./inf.),
+  // mineures 1 h (lever/coucher de lune). La qualité « lune seule » note le jour
+  // sur la seule proximité nouvelle/pleine lune, bonifiée quand une période
+  // coïncide avec le lever/coucher du soleil.
+  solunaire: { majeureMin:60, mineureMin:30, base:40, ampl:45,
+               bonusMajeur:10, bonusMineur:6, bonusMax:15 },
   heure: { aube:9, matin:5, midi:-3, finJournee:6, crepuscule:9, nuit:0 },  // §15.7
   correlation: { reduite:0.5, pleine:1.0 },              // §15.8
   jour: { fenetreH:2 },                                  // §15.9 — meilleure fenêtre
@@ -1363,6 +1460,43 @@ const V2 = {
   },
 
   /**
+   * Calendrier solunaire d'un jour civil (vue Jour, §15.6) — PRÉSENTATIF, hors
+   * indice. Périodes majeures : ±60 min autour des transits supérieur et
+   * inférieur de la lune (lune au zénith / au nadir). Périodes mineures : ±30 min
+   * autour du lever et du coucher de lune. `score` note la journée « comme si la
+   * lune était le seul paramètre » : proximité nouvelle/pleine lune (meilleurs
+   * jours) bonifiée quand une période tombe au lever ou au coucher du soleil.
+   * Cache par lac+date.
+   */
+  solunar(lakeKey, dateISO) {
+    const key = lakeKey + '|' + dateISO;
+    this._sol = this._sol || {};
+    if (this._sol[key]) return this._sol[key];
+    const a = this.astro(lakeKey, dateISO), S = MODEL.solunaire, MIN = 60000;
+    const mk = (center, halfMin) => center == null ? null :
+      { start: center - halfMin * MIN, end: center + halfMin * MIN, center };
+    const byCenter = (x, y) => x.center - y.center;
+    const majors = [mk(a.transitUp, S.majeureMin), mk(a.transitDown, S.majeureMin)]
+      .filter(Boolean).sort(byCenter);
+    const minors = [mk(a.moonrise, S.mineureMin), mk(a.moonset, S.mineureMin)]
+      .filter(Boolean).sort(byCenter);
+    // Proximité nouvelle/pleine lune : 1 à la syzygie, 0 au quartier.
+    const dNew = Math.min(a.phase, 1 - a.phase), dFull = Math.abs(a.phase - 0.5);
+    const closeness = Math.max(0, 1 - Math.min(dNew, dFull) / 0.25);
+    let bonus = 0;
+    for (const evt of [a.sunrise, a.sunset]) {
+      if (evt == null) continue;
+      if (majors.some(p => evt >= p.start && evt <= p.end)) bonus += S.bonusMajeur;
+      else if (minors.some(p => evt >= p.start && evt <= p.end)) bonus += S.bonusMineur;
+    }
+    const score = Math.max(0, Math.min(100,
+      Math.round(S.base + S.ampl * closeness + Math.min(bonus, S.bonusMax))));
+    const out = { majors, minors, score, phase: a.phase };
+    this._sol[key] = out;
+    return out;
+  },
+
+  /**
    * Règle anti-double-comptage (§15.8) — l'apport central du modèle. Quand
    * plusieurs facteurs découlent du même front, on garde tout le score de
    * régime et on réduit de moitié ceux qui ne font que le refléter (pression et
@@ -1413,6 +1547,33 @@ const V2 = {
     }
     if (P > p.seuilHaute) s += p.hautePression;           // pression absolue haute (§15.4)
     return s;
+  },
+
+  /**
+   * Explication de la pression (vue Jour) — refait la lecture de `scorePress`
+   * mais rend les faits lisibles : la fenêtre 3/6/12 h dominante, sa variation
+   * en hPa et l'état (chute rapide → hausse rapide). Ne recalcule pas le score.
+   */
+  explainPress(h, i) {
+    const P = h.pressure_msl[i];
+    if (P == null) return null;
+    let r = 0, win = null, delta = 0;
+    for (const n of [3, 6, 12]) {
+      if (i >= n && h.pressure_msl[i - n] != null) {
+        const dv = P - h.pressure_msl[i - n], rate = dv / n;
+        if (Math.abs(rate) > Math.abs(r)) { r = rate; win = n; delta = dv; }
+      }
+    }
+    // Seuils calés sur la courbe de `scorePress` : le plateau « baisse lente »
+    // (meilleur score) couvre ~−0,5..−0,05 hPa/h ; ne reste « stable » que le
+    // quasi-plat. Ainsi le libellé suit le score (une baisse douce vaut cher).
+    let state;
+    if (r <= -0.6) state = 'chuteRapide';
+    else if (r <= -0.05) state = 'baisseLente';
+    else if (r < 0.05) state = 'stable';
+    else if (r < 0.6)  state = 'hausseLente';
+    else state = 'hausseRapide';
+    return { state, delta, win, haute: P > MODEL.press.seuilHaute };
   },
 
   /** Vent — vitesse (§15.5). Table [maxKmh, score] de `MODEL.vent`, appliquée à
@@ -1500,6 +1661,31 @@ const V2 = {
     return Math.min(s, M.plafond);
   },
 
+  /**
+   * Explication de la lune (vue Jour) — liste les composantes actives de
+   * `scoreLune` (phase + événements) avec leurs points, et signale si le plafond
+   * +10 a écrêté le total. Miroir de `scoreLune`, sans recalcul du score.
+   */
+  explainLune(lakeKey, h, i) {
+    const M = MODEL.lune, ts = this.tsAt(h, i), dateISO = h.time[i].slice(0, 10);
+    const a = this.astro(lakeKey, dateISO), parts = [];
+    const wPhase = M.fenetrePhaseJours / 29.53;
+    const dNew = Math.min(a.phase, 1 - a.phase), dFull = Math.abs(a.phase - 0.5);
+    if (dNew < wPhase) parts.push({ k: 'nouvelle', p: M.nouvelle });
+    else if (dFull < wPhase) {
+      const midi = this.heureBucket(lakeKey, h, i) === 'midi';
+      parts.push({ k: midi ? 'pleineJour' : 'pleineNuit', p: midi ? M.pleineJour : M.pleineNuit });
+    } else if (Math.abs(a.phase - 0.25) < wPhase || Math.abs(a.phase - 0.75) < wPhase) {
+      parts.push({ k: 'quartier', p: M.quartier });
+    }
+    const win = M.fenetreEvtMin * 60000;
+    if ((a.moonrise != null && Math.abs(ts - a.moonrise) <= win) ||
+        (a.moonset  != null && Math.abs(ts - a.moonset)  <= win)) parts.push({ k: 'leverCoucher', p: M.leverCoucher });
+    if (Math.abs(ts - a.transitUp) <= win || Math.abs(ts - a.transitDown) <= win) parts.push({ k: 'transit', p: M.transit });
+    const raw = parts.reduce((sum, x) => sum + x.p, 0);
+    return { parts, plafonne: raw > M.plafond };
+  },
+
   /* ── Assemblage de l'indice (§15.1) ───────────────────────────────────────*/
 
   /** Régimes du lac, avec cache (classify est O(n)). Invalidé par load(). */
@@ -1550,15 +1736,18 @@ const V2 = {
    */
   dayIndex(lakeKey, dateISO) {
     const h = this.series[lakeKey], span = MODEL.jour.fenetreH;
-    let best = null;
+    let best = null, bestJour = null;                     // 24 h (repli) ; jour = aube→crépuscule (§15.7)
     for (const i of this.dayHours(lakeKey, dateISO)) {
       let sum = 0, k = 0;
       for (let j = i; j < i + span && j < h.time.length; j++) { sum += this.indexAt(lakeKey, j); k++; }
-      const moy = sum / k;
-      if (!best || moy > best.moy) best = { moy, i, debut: this.tsAt(h, i), fin: this.tsAt(h, i) + span * 3600e3 };
+      const moy = sum / k, w = { moy, i, debut: this.tsAt(h, i), fin: this.tsAt(h, i) + span * 3600e3 };
+      if (!best || moy > best.moy) best = w;
+      // On ne pêche qu'au jour : la fenêtre retenue doit démarrer hors nuit.
+      if (this.heureBucket(lakeKey, h, i) !== 'nuit' && (!bestJour || moy > bestJour.moy)) bestJour = w;
     }
-    if (!best) return null;
-    return { date: dateISO, indice: Math.round(best.moy), debut: best.debut, fin: best.fin, i: best.i };
+    const sel = bestJour || best;                         // repli sur 24 h si l'astro manque (jour tout nuit)
+    if (!sel) return null;
+    return { date: dateISO, indice: Math.round(sel.moy), debut: sel.debut, fin: sel.fin, i: sel.i };
   },
 
   /** Fiabilité d'une fenêtre selon l'échéance en jours (§15.9b). */
@@ -1592,6 +1781,7 @@ const V2 = {
     let i0 = 0; while (i0 < n && this.tsAt(h, i0) < now) i0++;
     const cands = [];
     for (let i = Math.max(1, i0); i < n - 1; i++) {
+      if (this.heureBucket(lakeKey, h, i) === 'nuit') continue;  // on ne pêche qu'au jour (aube→crépuscule, §15.7)
       // Strict à gauche : sur un plateau de valeurs égales, seul le premier point
       // (celui qui monte dans le plateau) est retenu — évite deux fenêtres
       // adjacentes qui se chevauchent (§15.9b : couvrir l'horizon, pas s'agglutiner).
