@@ -123,6 +123,16 @@
       box-shadow: 0 0 0 0 rgba(52,211,153,.6);
       animation: pulse 2s infinite;
     }
+    .live-badge.offline {
+      background: rgba(248,113,113,.14);
+      border-color: rgba(248,113,113,.4);
+      color: #f87171;
+    }
+    .live-badge.offline .live-dot {
+      background: #f87171;
+      box-shadow: none;
+      animation: none;
+    }
     @keyframes pulse {
       0%   { box-shadow: 0 0 0 0   rgba(52,211,153,.6) }
       70%  { box-shadow: 0 0 0 7px rgba(52,211,153,0)  }
@@ -852,6 +862,67 @@
       color: var(--muted);
       font-size: .85rem;
     }
+
+    /* ── Pop-up d'avis (site hors service) ─────────────────────────────────── */
+    .notice-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      display: flex; align-items: center; justify-content: center;
+      padding: 1.2rem;
+      background: rgba(3, 8, 15, .72);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      animation: notice-fade .25s ease;
+    }
+    .notice-overlay[hidden] { display: none; }
+    @keyframes notice-fade { from { opacity: 0 } to { opacity: 1 } }
+    .notice-box {
+      position: relative;
+      width: 100%; max-width: 520px;
+      max-height: 88vh; overflow-y: auto;
+      background: linear-gradient(180deg, var(--bg2), var(--bg));
+      border: 1px solid rgba(45,212,191,.35);
+      border-radius: var(--radius);
+      box-shadow: 0 24px 70px rgba(0,0,0,.6);
+      padding: 1.6rem 1.6rem 1.4rem;
+      animation: notice-pop .28s cubic-bezier(.2,.8,.3,1);
+    }
+    @keyframes notice-pop { from { transform: translateY(14px) scale(.98); opacity: 0 } to { transform: none; opacity: 1 } }
+    .notice-icon {
+      font-size: 1.9rem; line-height: 1;
+      margin-bottom: .5rem;
+    }
+    .notice-box h2 {
+      margin: 0 0 .8rem; font-size: 1.15rem; font-weight: 700;
+      color: var(--text);
+    }
+    .notice-box p {
+      margin: 0 0 .8rem; font-size: .92rem; line-height: 1.5;
+      color: #c3d1e4;
+    }
+    .notice-box p:last-of-type { margin-bottom: 0; }
+    .notice-box .notice-good { color: var(--live); font-weight: 600; }
+    .notice-sep {
+      border: none; height: 1px; margin: 1.3rem 0;
+      background: rgba(255,255,255,.1);
+    }
+    .notice-close {
+      position: absolute; top: .6rem; right: .7rem;
+      width: 34px; height: 34px; border: none; cursor: pointer;
+      background: rgba(255,255,255,.06); color: var(--text);
+      border-radius: 50%; font-size: 1.2rem; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .15s;
+    }
+    .notice-close:hover { background: rgba(255,255,255,.14); }
+    .notice-actions { margin-top: 1.2rem; text-align: right; }
+    .notice-btn {
+      border: 1px solid rgba(45,212,191,.45); cursor: pointer;
+      background: rgba(45,212,191,.14); color: var(--text);
+      padding: .6rem 1.2rem; border-radius: 999px;
+      font-size: .9rem; font-weight: 600; font-family: inherit;
+      transition: background .15s;
+    }
+    .notice-btn:hover { background: rgba(45,212,191,.24); }
   </style>
   <!-- Google Analytics 4 -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-DPZEL02P7N"></script>
@@ -864,6 +935,35 @@
 </head>
 
 <body>
+
+<!-- Pop-up d'avis : site hors service (bilingue) -->
+<div class="notice-overlay" id="notice-overlay" role="dialog" aria-modal="true" aria-labelledby="notice-title-fr" hidden>
+  <div class="notice-box">
+    <button class="notice-close" id="notice-close" type="button" aria-label="Fermer / Close">&times;</button>
+    <div class="notice-icon">🔧</div>
+
+    <h2 id="notice-title-fr">Site temporairement hors service</h2>
+    <p>Chers résidents et résidentes du lac Manitou,</p>
+    <p>Le site est présentement hors service, et le sera pour environ 4 à 6 semaines. Pendant cette période, les données en direct (température de l’eau, météo) ne seront malheureusement pas affichées.</p>
+    <p class="notice-good">Bonne nouvelle : les mesures continuent d’être enregistrées — rien n’est perdu.</p>
+    <p>Dès que le site sera rétabli, tout l’historique de cette période sera réintégré, et l’affichage en temps réel reprendra normalement.</p>
+    <p>Merci de votre compréhension et de votre patience. Le site sera de retour bientôt !</p>
+
+    <hr class="notice-sep">
+
+    <h2>Site temporarily down</h2>
+    <p>Dear Lake Manitou residents,</p>
+    <p>The site is currently down, and will remain so for approximately 4 to 6 weeks. During this time, the live data (water temperature, weather) will unfortunately not be shown.</p>
+    <p class="notice-good">The good news: measurements continue to be recorded — nothing is being lost.</p>
+    <p>Once the site is restored, all data from this period will be added back, and real-time display will resume as normal.</p>
+    <p>Thank you for your understanding and patience. The site will be back soon!</p>
+
+    <div class="notice-actions">
+      <button class="notice-btn" id="notice-ok" type="button">J’ai compris / Got it</button>
+    </div>
+  </div>
+</div>
+
 <div class="page">
 
   <!-- Header -->
@@ -878,7 +978,7 @@
       <p data-i18n="subtitle">Station météo — Températures en temps réel</p>
     </div>
     <div class="status-row">
-      <span class="live-badge"><span class="live-dot"></span>LIVE</span>
+      <span class="live-badge offline"><span class="live-dot"></span>OFF-LINE</span>
       <span id="last-update">Chargement…</span>
       <div class="lang-toggle">
         <button class="ltab active" data-lang="fr">FR</button>
@@ -1289,6 +1389,19 @@
       upd.textContent = t.loading;
     }
   }
+
+  // ── Pop-up d'avis bilingue : site hors service ────────────────────────────
+  (function initNotice() {
+    const overlay = document.getElementById('notice-overlay');
+    if (!overlay) return;
+    const hide = () => { overlay.hidden = true; };
+    document.getElementById('notice-close').addEventListener('click', hide);
+    document.getElementById('notice-ok').addEventListener('click', hide);
+    overlay.addEventListener('click', e => { if (e.target === overlay) hide(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && !overlay.hidden) hide(); });
+    overlay.hidden = false;
+  })();
+
   let chart = null;
   let allData = [];
   const SERIES = ['air', 'surface', 'depth'];   // datasets 0/1/2 (températures)
