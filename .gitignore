@@ -1,6 +1,7 @@
 patch_*.py
 update_header.py
 backfill_*.py
+!outils/recup/backfill_*.py
 __pycache__/
 *.pyc
 home_assistant.yaml

@@ -9,6 +9,7 @@
       "backups/**",
       "mockups/**",
       "journal/**",
+      "outils/**",
       "**/.*",
       "**/.*/**",
       ".git/**",
