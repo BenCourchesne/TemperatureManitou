@@ -443,7 +443,12 @@ Fait :
 - [ ] **Revoir le modèle du lac dans quelques jours** avec plus d'historique
       d'automne : rafraîchir `recup/readings_all.json`, relancer
       `recup/estime_lac.py` (recalage auto, mêmes jours réécrits), comparer avec
-      `recup/estime_lac_params.json` du calage précédent.
+      `recup/estime_lac_params.json` du calage précédent. Relancer aussi
+      `recup/modele_variantes.py` (air seul / air + soleil / + humidité) en
+      ajoutant des trous d'automne cachés. État au 2026-10-24 : air + soleil
+      gagne en automne (1er-3 oct. : 0,23 °C surface vs 0,38 air seul) mais perd
+      en été ; humidité et vent rejetés (pas assez de signal en été). Conclusions
+      fondées sur 2 périodes d'automne seulement.
 - [ ] **Pousser** le commit `e235d01` (branche `weather-station`).
 - [ ] Rebrancher le capteur de la véranda après les rénos.
 - [ ] Renommer les capteurs ESPHome « Delta surface / 4 pi » et « Delta surface /
