@@ -433,13 +433,17 @@ Fait :
       depuis la SD du GW3000 via `recup/backfill_nuit.py`. Sondes du lac perdues.
 - [x] **`/daily` du 2026-10-22 nettoyé** (plus de `airv`/`hum` à 0.0, n=288) et
       derniers faux 0.0 retirés de `/readings`.
-- [ ] **Estimer la température du lac sur les jours vides** (19 sept., 23-30 sept.,
-      5-21 oct.) : modèle air→eau à pas de 24 h glissant (`recup/modele_horaire.py`,
-      test automne 0,2-0,5 °C d'erreur), ancres = jours mesurés. Écrire dans
-      `/daily` avec `est: 1`, jamais dans `/readings`. Jours partiels (20 et
-      22 sept., 1er-4 oct.) = moyenne des vraies mesures, sans marque.
-- [ ] **Front end** : afficher les jours `est: 1` en pointillé, mention « estimé »
-      dans l'infobulle, exclus des Min/Moy/Max.
+- [x] **Température du lac estimée** (2026-10-24) via `recup/estime_lac.py` :
+      modèle air→eau à pas de 24 h glissant + correction du cycle jour/nuit,
+      pontage entre ancres mesurées. 33 jours `est: 1` dans `/daily`
+      (18 sept. → 21 oct., sauf le 21 sept. mesuré) ; `/readings` intact.
+      Paramètres du calage : `recup/estime_lac_params.json`.
+- [x] **Front end** : jours `est: 1` en pointillé (Surface/4 pieds), « (estimé) »
+      dans l'infobulle, exclus des Min/Moy/Max + note (commit `e759e20`).
+- [ ] **Revoir le modèle du lac dans quelques jours** avec plus d'historique
+      d'automne : rafraîchir `recup/readings_all.json`, relancer
+      `recup/estime_lac.py` (recalage auto, mêmes jours réécrits), comparer avec
+      `recup/estime_lac_params.json` du calage précédent.
 - [ ] **Pousser** le commit `e235d01` (branche `weather-station`).
 - [ ] Rebrancher le capteur de la véranda après les rénos.
 - [ ] Renommer les capteurs ESPHome « Delta surface / 4 pi » et « Delta surface /
