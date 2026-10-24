@@ -4,9 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Lac Manitou — Températures</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/favico.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.11.0/dist/tabler-icons.min.css" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/suncalc@1.9.0/suncalc.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 
   <style>
@@ -24,6 +27,13 @@
       --surface:     #bae6fd;
       --depth:       #1e40af;
       --humidity:    #22d3ee;
+      --pressure:    #94a3b8;
+      --wind:        #2dd4bf;
+      --rain:        #38bdf8;
+      --uv:          #a78bfa;
+      --solar:       #fb923c;
+      --moon:        #cbd5e1;
+      --radar:       #60a5fa;
       --live:        #34d399;
       --radius:      18px;
     }
@@ -120,7 +130,16 @@
     }
 
     /* ── Cards ── */
-    .cards { display: grid; grid-template-columns: repeat(4,1fr); gap: 1rem; margin-bottom: 1.5rem; }
+    .section-label {
+      font-size: .68rem; letter-spacing: .12em; text-transform: uppercase;
+      color: #5f7891; display: flex; align-items: center; gap: 7px;
+      margin: 1.4rem 0 .55rem;
+    }
+    .section-label:first-of-type { margin-top: 0; }
+    .cards { display: grid; gap: .75rem; margin-bottom: .25rem; }
+    .cards-3 { grid-template-columns: repeat(3,1fr); }
+    .cards-2 { grid-template-columns: repeat(2,1fr); }
+    .cards-5 { grid-template-columns: repeat(5,1fr); }
 
     /* ══ TABLET (≤ 768px) ══════════════════════════════════════════════════ */
     @media (max-width: 768px) {
@@ -133,7 +152,7 @@
       /* En-tête reste combiné sur tablette (se replie si trop serré) */
       .hero { padding: 1rem; gap: 1rem; }
       .lake-logo { width: 72px; height: 72px; }
-      .cards { grid-template-columns: repeat(2,1fr); }
+      .cards-3, .cards-5 { grid-template-columns: repeat(3,1fr); }
       .card { padding: 1.1rem 1rem 1rem; }
       .card-temp { font-size: 2.2rem; }
       .chart-header { flex-direction: column; gap: .75rem; }
@@ -146,26 +165,21 @@
       .page { padding: 1rem .75rem 2.5rem; }
 
       /* Cards : 1 colonne */
-      .cards { grid-template-columns: 1fr; gap: .75rem; }
+      .cards-3, .cards-5 { grid-template-columns: repeat(2,1fr); gap: .6rem; }
+      .cards-2 { grid-template-columns: repeat(2,1fr); gap: .6rem; }
 
-      /* Card layout horizontal sur mobile */
-      .card {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        grid-template-rows: auto auto auto;
-        align-items: start;
-        column-gap: .75rem;
-        padding: .9rem 1rem;
-      }
-      .card-label    { grid-column: 1; grid-row: 1; margin-bottom: .3rem; }
-      .card-temp     { grid-column: 1; grid-row: 2; font-size: 2rem; }
-      .card-alt      { grid-column: 1; grid-row: 3; margin-top: .1rem; }
-      .card-unit-toggle { grid-column: 2; grid-row: 1 / 3; align-self: center; flex-direction: column; }
-      .card-trend    { grid-column: 1 / 3; grid-row: 4; margin-top: .4rem; }
+      .card { padding: .9rem 1rem; }
+      /* Tuiles Eau (cards-2) : temp plus petite + gap réduit pour que le toggle
+         °C/°F tienne dans la carte en grille 2 colonnes (~131px de contenu).
+         Sélecteur `.cards-2` requis : les règles de base `.card-temp` (2.8rem)
+         et `.card-mainrow` (1.4rem) apparaissent PLUS BAS dans le CSS et, à
+         spécificité égale, l'emporteraient sur une simple règle media. */
+      .cards-2 .card-temp { font-size: 1.7rem; }
+      .cards-2 .card-mainrow { gap: .6rem; }
 
-      /* Tabs periode : pleine largeur */
-      .period-tabs { gap: .3rem; }
-      .tab { flex: 1; text-align: center; padding: .5rem .3rem; font-size: .75rem; }
+      /* Tabs période : voir le bloc @media plus bas (rangée scrollable) — les
+         règles doivent venir APRÈS .tab/.period-tabs de base pour s'appliquer
+         (même piège d'ordre source que le stepper, voir plus bas). */
 
       /* Toggles C/F et FR/EN : plus grands pour le touch */
       .utab, .ltab { padding: .4rem .8rem; font-size: .8rem; }
@@ -216,6 +230,13 @@
     .card-surface::before  { background: linear-gradient(90deg, var(--surface), transparent); }
     .card-depth::before    { background: linear-gradient(90deg, var(--depth), transparent); }
     .card-humidity::before { background: linear-gradient(90deg, var(--humidity), transparent); }
+    .card-pressure::before { background: linear-gradient(90deg, var(--pressure), transparent); }
+    .card-wind::before     { background: linear-gradient(90deg, var(--wind), transparent); }
+    .card-rain::before     { background: linear-gradient(90deg, var(--rain), transparent); }
+    .card-uv::before       { background: linear-gradient(90deg, var(--uv), transparent); }
+    .card-solar::before    { background: linear-gradient(90deg, var(--solar), transparent); }
+    .card-moon::before     { background: linear-gradient(90deg, var(--moon), transparent); }
+    .card-radar::before    { background: linear-gradient(90deg, var(--radar), transparent); }
 
     .card-label {
       font-size: .72rem;
@@ -227,10 +248,129 @@
       align-items: center;
       gap: .4rem;
     }
+    .moon-icon { display: inline-flex; align-items: center; }
     .card-air      .card-label { color: var(--air); }
     .card-surface  .card-label { color: var(--surface); }
     .card-depth    .card-label { color: var(--depth); }
     .card-humidity .card-label { color: var(--humidity); }
+    .card-pressure .card-label { color: #b6c2d1; }
+    .card-wind     .card-label { color: var(--wind); }
+    .card-rain     .card-label { color: var(--rain); }
+    .card-uv       .card-label { color: var(--uv); }
+    .card-solar    .card-label { color: var(--solar); }
+    .card-moon     .card-label { color: #cbd5e1; }
+    .card-radar    .card-label { color: var(--radar); }
+
+    /* Icône eau (vague) + flèche directionnelle superposée (surface ↑ / 4 pieds ↓) */
+    .water-icon { position: relative; display: inline-flex; }
+    .water-icon-arrow {
+      position: absolute; right: -5px; bottom: -4px;
+      font-size: .62em; background: var(--bg);
+      border-radius: 50%; box-shadow: 0 0 0 2px var(--bg);
+    }
+    .water-icon-arrow-top { bottom: auto; top: -4px; }
+
+    /* Tuile Lune — cliquable (accordéon vers le panneau solunaire) */
+    .card-moon { cursor: pointer; border-color: rgba(45,212,191,.25); }
+    .card-moon:hover { border-color: rgba(45,212,191,.4); }
+    /* Porte cachée vers /cp (SpecsCalendrierActivites §10.C) : un maintien souris ne
+       doit pas démarrer une sélection de texte, ni un appui long tactile ouvrir le
+       menu « copier ». `touch-action` reste libre pour qu'un scroll amorcé sur la
+       tuile fonctionne — il émet alors pointercancel, qui annule proprement l'appui. */
+    .card-moon { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+    .card-moon.cp-arming {
+      box-shadow: 0 0 0 1px rgba(45,212,191,.55), 0 0 24px rgba(45,212,191,.45);
+      animation: cp-pulse .4s ease-out;
+    }
+    @keyframes cp-pulse { 0% { transform: scale(1); } 50% { transform: scale(1.03); } 100% { transform: scale(1); } }
+    .cp-toast {
+      position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%);
+      background: rgba(7,19,31,.96); border: 1px solid rgba(45,212,191,.45);
+      color: #e2eaf4; padding: .55rem .95rem; border-radius: 999px;
+      font-size: .85rem; font-weight: 600; z-index: 9999; pointer-events: none;
+      box-shadow: 0 10px 34px rgba(0,0,0,.55);
+    }
+    #cp-footer-link { color: inherit; text-decoration: none; opacity: .75; }
+    #cp-footer-link:hover { opacity: 1; text-decoration: underline; }
+    @media (prefers-reduced-motion: reduce) { .card-moon.cp-arming { animation: none; } }
+    .card-radar { cursor: pointer; border-color: rgba(45,212,191,.25); }
+    .card-radar:hover { border-color: rgba(45,212,191,.4); }
+    /* Rangée Prévisions : tuile radar compacte, prête à accueillir les tuiles
+       de prévisions 7 jours plus tard sans réorganisation */
+    .forecast-row { display: flex; flex-wrap: wrap; gap: .75rem; margin-bottom: .25rem; }
+    .forecast-row .card-radar { flex: 0 1 220px; }
+
+    /* Carte prévisions 7 jours : à droite du radar (même rangée), passe sous
+       le radar seulement quand la rangée manque de place (petits écrans). */
+    .forecast-row .card-forecast { flex: 1 1 340px; min-width: 0; }
+    .forecast-week { display: flex; gap: .4rem; margin-top: .6rem; overflow-x: auto; padding-bottom: .2rem; }
+    .fc-day {
+      flex: 1 1 0; min-width: 34px; text-align: center;
+      background: rgba(255,255,255,.03); border: 1px solid var(--border); border-radius: 10px;
+      padding: .45rem .25rem; display: flex; flex-direction: column; align-items: center; gap: .25rem;
+    }
+    .fc-name { font-size: .66rem; color: var(--muted); text-transform: capitalize; white-space: nowrap; }
+    .fc-icon { font-size: 1.35rem; line-height: 1; }
+    .fc-temps { font-size: .8rem; display: flex; flex-direction: column; align-items: center; line-height: 1.25; }
+    .fc-temps b { color: #fca5a5; font-weight: 700; }
+    .fc-temps .fc-lo { color: #93c5fd; }
+    .forecast-foot { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-top: .5rem; }
+    .forecast-attrib { font-size: .62rem; color: var(--muted); opacity: .7; }
+    .forecast-foot .accordion-badge { margin-top: 0; }
+
+    /* Panneau radar (accordéon — iframe chargée seulement à l'ouverture) */
+    .radar-panel {
+      background: var(--glass); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: .6rem; margin-bottom: .5rem;
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
+    .radar-frame-wrap { position: relative; width: 100%; padding-bottom: 65%; border-radius: 10px; overflow: hidden; }
+    .radar-frame-wrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+    /* Badge « Détails/Ouvrir » — signale une tuile-accordéon cliquable (Lune, Radar…) */
+    .accordion-badge {
+      display: flex; align-items: center; gap: 3px;
+      width: fit-content; margin-left: auto; margin-top: .45rem;
+      font-size: .62rem; color: #2dd4bf; background: rgba(45,212,191,.1);
+      border-radius: 5px; padding: 1px 6px;
+    }
+    .accordion-badge i { font-size: .85em; }
+    .accordion-badge[role="button"] { cursor: pointer; }
+    /* Liens de prévisions externes (accordéon « Externe » de la carte prévisions) */
+    .ext-links { display: flex; flex-direction: column; gap: .35rem; margin-top: .5rem; }
+    .ext-links a {
+      display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+      font-size: .74rem; color: inherit; text-decoration: none;
+      background: rgba(255,255,255,.03); border: 1px solid var(--border);
+      border-radius: 8px; padding: .4rem .6rem; transition: background .15s, border-color .15s;
+    }
+    .ext-links a:hover { background: var(--glass-hover); border-color: rgba(45,212,191,.4); }
+    .ext-links a i { font-size: .9em; color: #2dd4bf; }
+
+    /* Tuiles météo compactes (valeur plus petite que les températures) */
+    .cards-5 .card-temp, .card-pressure .card-temp, .card-humidity .card-temp, .card-air .card-temp { font-size: 1.7rem; }
+    .cards-5 .card-unit, .card-pressure .card-unit, .card-humidity .card-unit, .card-air .card-unit { font-size: .85rem; }
+    .cards-5 .card-label, .card-pressure .card-label, .card-humidity .card-label { font-size: .64rem; }
+
+    /* Panneau solunaire */
+    .solunar-panel {
+      background: var(--glass); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1rem 1.1rem; margin-bottom: .5rem;
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
+    .solunar-head { display: flex; align-items: center; gap: .7rem; margin-bottom: .85rem; }
+    .solunar-ic {
+      width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0;
+      background: rgba(203,213,225,.1); border: 1px solid rgba(203,213,225,.25);
+      display: flex; align-items: center; justify-content: center; color: #cbd5e1; font-size: 21px;
+    }
+    .solunar-bar {
+      position: relative; height: 30px; background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.07); border-radius: 8px; overflow: hidden; margin-bottom: .35rem;
+    }
+    .solunar-seg { position: absolute; top: 0; bottom: 0; }
+    .solunar-scale { display: flex; justify-content: space-between; font-size: 10px; color: #5f7891; margin-bottom: .9rem; }
+    .solunar-periods { display: grid; grid-template-columns: 1fr 1fr; gap: .55rem; }
+    .solunar-per { border-radius: 10px; padding: .55rem .7rem; }
 
     .card-temp {
       font-size: 2.8rem;
@@ -257,13 +397,37 @@
     }
     .trend-up   { color: #f87171; }
     .trend-down { color: #34d399; }
+
+    /* Valeur + tendance sur la même ligne (Solaire, Lune) — structure identique
+       pour garantir la même hauteur avant le séparateur lever/coucher */
+    .card-value-row { display: flex; align-items: baseline; gap: .5rem; }
+    .card-value-row .card-trend { margin-top: 0; }
+    /* Solar (unité W/m² sur 2 lignes) et Lune : même hauteur de bloc valeur pour
+       que les rangées Lever soleil / Lever lune s'alignent horizontalement. */
+    .card-solar .card-value-row, .card-moon .card-value-row { min-height: 3.4rem; }
     .trend-flat { color: var(--muted); }
+
+    .card-sunrow {
+      margin-top: .5rem; padding-top: .5rem; border-top: 1px solid rgba(255,255,255,.06);
+      font-size: .72rem; color: var(--muted); display: flex; flex-direction: column; gap: .2rem;
+    }
+    .card-sunrow span { display: flex; align-items: center; gap: .3rem; }
+
+    .card-winddir {
+      margin-top: .35rem; font-size: .74rem; color: var(--muted);
+      display: flex; align-items: center; gap: .3rem;
+    }
+    .card-winddir .wind-arrow {
+      color: var(--wind); font-size: .95rem; line-height: 1;
+      display: inline-block; transition: transform .3s ease;
+    }
 
     /* ── Period tabs ── */
     .period-tabs {
       display: flex;
       justify-content: center;
       gap: .4rem;
+      margin-top: 1.5rem;
       margin-bottom: 1.2rem;
     }
     .tab {
@@ -283,6 +447,260 @@
       background: rgba(56,189,248,.15);
       border-color: rgba(56,189,248,.4);
       color: #7dd3fc;
+    }
+
+    /* ── Time-travel : stepper ── */
+    .period-nav {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.2rem;
+    }
+    .period-stepper {
+      position: relative; /* ancre le popover du sélecteur de période */
+      display: flex;
+      align-items: center;
+      gap: .35rem;
+      background: var(--glass);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: .3rem .4rem;
+    }
+    .step-btn {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1rem;
+      font-family: inherit;
+      transition: all .15s;
+    }
+    .step-btn:hover:not(:disabled) { color: var(--text); background: var(--glass-hover); }
+    .step-btn:disabled { opacity: .3; cursor: not-allowed; }
+    .period-label {
+      background: transparent;
+      border: none;
+      font-family: inherit;
+      cursor: pointer;
+      font-size: .85rem;
+      font-weight: 500;
+      color: var(--text);
+      padding: 0 .5rem;
+      min-width: 9rem;
+      text-align: center;
+      transition: color .15s;
+    }
+    .period-label:hover { color: #7dd3fc; }
+    .period-label::after {
+      content: '';
+      display: inline-block;
+      width: .35em;
+      height: .35em;
+      margin-left: .4em;
+      border-right: 1.5px solid currentColor;
+      border-bottom: 1.5px solid currentColor;
+      opacity: .55;
+      transform: translateY(-2px) rotate(45deg);
+    }
+    .period-label[aria-expanded="true"]::after { transform: translateY(1px) rotate(-135deg); }
+    .today-btn {
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      background: var(--glass);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: .45rem .9rem;
+      font-size: .8rem;
+      font-weight: 500;
+      color: var(--muted);
+      cursor: pointer;
+      font-family: inherit;
+      transition: all .2s;
+    }
+    .today-btn:hover:not(:disabled) { color: var(--text); border-color: rgba(255,255,255,.2); }
+    .today-btn:disabled { opacity: .35; cursor: not-allowed; }
+
+    .chart-status {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .85rem;
+      color: var(--muted);
+      background: rgba(7,17,30,.55);
+      border-radius: 12px;
+      text-align: center;
+      padding: 1rem;
+    }
+    .chart-status-error { color: #f87171; }
+
+    /* ── Sélecteur de période (popover, section 4 du plan) ── */
+    .picker-popover {
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      margin-top: .5rem;
+      z-index: 50;
+      width: max-content;
+      min-width: 250px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: .75rem;
+      box-shadow: 0 12px 32px rgba(0,0,0,.45);
+    }
+    .picker-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: .5rem; }
+    .picker-head-label { font-size: .8rem; font-weight: 600; color: var(--text); }
+    .picker-nav {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .picker-nav:hover:not(:disabled) { color: var(--text); background: var(--glass-hover); }
+    .picker-nav:disabled { opacity: .25; cursor: not-allowed; }
+
+    .picker-grid { display: grid; gap: .2rem; }
+    .picker-grid-days { grid-template-columns: repeat(7, 1fr); }
+    .picker-grid-months { grid-template-columns: repeat(3, 1fr); }
+    .picker-grid-seasons { grid-template-columns: repeat(2, 1fr); }
+    .picker-grid-years { grid-template-columns: repeat(3, 1fr); max-height: 220px; overflow-y: auto; }
+
+    .picker-weekday { font-size: .65rem; color: var(--muted); text-align: center; padding: .2rem 0; }
+    .picker-day, .picker-month, .picker-season, .picker-year {
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      color: var(--text);
+      font-size: .78rem;
+      font-family: inherit;
+      padding: .4rem 0;
+      cursor: pointer;
+      text-align: center;
+      transition: all .15s;
+    }
+    .picker-day:hover:not(:disabled), .picker-month:hover:not(:disabled),
+    .picker-season:hover:not(:disabled), .picker-year:hover:not(:disabled) {
+      background: var(--glass-hover);
+      border-color: rgba(255,255,255,.15);
+    }
+    .picker-day-today { border-color: rgba(56,189,248,.4); }
+    .picker-day-selected { background: rgba(56,189,248,.15); border-color: rgba(56,189,248,.4); color: #7dd3fc; }
+    .picker-day-disabled { opacity: .25; cursor: not-allowed; }
+    .picker-day-empty { visibility: hidden; }
+
+    .picker-foot { margin-top: .6rem; padding-top: .6rem; border-top: 1px solid var(--border); display: flex; justify-content: center; }
+    .picker-today-btn {
+      display: flex;
+      align-items: center;
+      gap: .35rem;
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-size: .75rem;
+      font-family: inherit;
+      cursor: pointer;
+      padding: .3rem .6rem;
+      border-radius: 8px;
+    }
+    .picker-today-btn:hover { color: var(--text); background: var(--glass-hover); }
+
+    /* ── Plage personnalisée (picker "custom") ── */
+    .picker-custom { display: flex; flex-direction: column; gap: .6rem; min-width: 220px; }
+    .picker-custom-field { display: flex; flex-direction: column; gap: .25rem; font-size: .75rem; color: var(--muted); }
+    .picker-custom-field input[type="date"] {
+      background: var(--glass);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: .45rem .5rem;
+      font-family: inherit;
+      font-size: .85rem;
+      color-scheme: dark;
+    }
+    .picker-apply-btn {
+      background: rgba(56,189,248,.15);
+      border: 1px solid rgba(56,189,248,.4);
+      color: #7dd3fc;
+      border-radius: 8px;
+      padding: .55rem;
+      font-size: .8rem;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background .15s;
+    }
+    .picker-apply-btn:hover { background: rgba(56,189,248,.25); }
+
+    /* Stepper mobile : pleine largeur, cibles tactiles ≥44px (section 6 du
+       plan). Doit venir APRÈS les règles .step-btn/.today-btn de base ci-
+       dessus : à spécificité égale, l'ordre source tranche, et un bloc
+       media placé plus tôt dans la feuille (ex. le @media 480px du haut)
+       serait écrasé par elles malgré la condition qui s'applique. */
+    @media (max-width: 480px) {
+      /* Rangée de granularité : scroll horizontal plutôt que rétrécir les
+         onglets (section 6 du plan) — le pastille active se scrolle en vue
+         via JS (scrollActiveTabIntoView). Scrollbar masquée façon "chips". */
+      .period-tabs {
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+        overflow-x: auto;
+        scroll-behavior: smooth;
+        -webkit-overflow-scrolling: touch;
+        gap: .4rem;
+        padding: 0 .1rem .35rem;
+        scrollbar-width: none;
+      }
+      .period-tabs::-webkit-scrollbar { display: none; }
+      .tab {
+        flex: 0 0 auto;
+        white-space: nowrap;
+        min-height: 44px;
+        padding: 0 1rem;
+        font-size: .8rem;
+        display: flex;
+        align-items: center;
+      }
+
+      .period-nav { flex-direction: column; gap: .5rem; }
+      .period-stepper { width: 100%; justify-content: space-between; }
+      .step-btn { width: 44px; height: 44px; }
+      .period-label { flex: 1; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+      .today-btn { width: 100%; justify-content: center; padding: .65rem; }
+
+      /* Picker : feuille ancrée en bas de l'écran plutôt que popover flottant */
+      .picker-popover {
+        position: fixed;
+        top: auto;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        transform: none;
+        margin-top: 0;
+        border-radius: 16px 16px 0 0;
+        max-height: 70vh;
+        overflow-y: auto;
+        padding: 1rem;
+      }
+      .picker-day, .picker-month, .picker-season, .picker-year { padding: .55rem 0; font-size: .85rem; }
     }
 
     /* ── Chart ── */
@@ -334,6 +752,7 @@
     .stat-name { font-size: .78rem; font-weight: 600; margin-bottom: .1rem; }
     .stat-row { display: flex; justify-content: space-between; font-size: .72rem; color: var(--muted); }
     .stat-row b { color: var(--text); font-weight: 600; }
+    .stat-note { grid-column: 1 / -1; font-size: .7rem; color: var(--muted); }
     @media (max-width: 560px) {
       .chart-stats { grid-template-columns: 1fr; }
     }
@@ -348,10 +767,17 @@
     }
 
     /* ── Mini toggle par carte ── */
+    .card-mainrow {
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-start;
+      gap: 1.4rem;
+    }
     .card-unit-toggle {
       display: flex;
+      flex-direction: column;
       gap: .2rem;
-      margin-top: .5rem;
+      flex-shrink: 0;
     }
     .cutab {
       background: rgba(255,255,255,.04);
@@ -464,59 +890,164 @@
   </div>
   </header>
 
-  <!-- Cards -->
-  <div class="cards">
+  <!-- Cartes par catégorie -->
+  <div class="section-label"><i class="ti ti-temperature"></i><span data-i18n="secAir">Air &amp; atmosphère</span></div>
+  <div class="cards cards-3">
     <div class="card card-air">
-      <div class="card-label">🌡 <span data-i18n="air">Air ambiant</span></div>
-      <div class="card-temp" id="val-air">—<span class="card-unit">°C</span></div>
-      <div class="card-alt" id="val-air-f">— °F</div>
-      <div class="card-unit-toggle">
-        <button class="cutab active" data-sensor="air" data-unit="c">°C</button>
-        <button class="cutab"        data-sensor="air" data-unit="f">°F</button>
+      <div class="card-label"><i class="ti ti-temperature"></i> <span data-i18n="air">Air ambiant</span></div>
+      <div class="card-mainrow">
+        <div>
+          <div class="card-temp" id="val-air">—<span class="card-unit">°C</span></div>
+          <div class="card-alt" id="val-air-f">— °F</div>
+        </div>
+        <div class="card-unit-toggle">
+          <button class="cutab active" data-sensor="air" data-unit="c">°C</button>
+          <button class="cutab"        data-sensor="air" data-unit="f">°F</button>
+        </div>
       </div>
       <div class="card-trend" id="trend-air"></div>
     </div>
+    <div class="card card-humidity">
+      <div class="card-label"><i class="ti ti-droplet"></i> <span data-i18n="humidity">Humidité</span></div>
+      <div class="card-temp" id="val-hum">—<span class="card-unit">%</span></div>
+      <div class="card-trend" id="trend-hum"></div>
+    </div>
+    <div class="card card-pressure">
+      <div class="card-label"><i class="ti ti-gauge"></i> <span data-i18n="pressure">Pression</span></div>
+      <div class="card-temp" id="val-press">—<span class="card-unit">hPa</span></div>
+      <div class="card-trend" id="trend-press"></div>
+    </div>
+  </div>
+
+  <div class="section-label"><i class="ti ti-ripple"></i><span data-i18n="secWater">Eau du lac</span></div>
+  <div class="cards cards-2">
     <div class="card card-surface">
-      <div class="card-label">🌊 <span data-i18n="surface">Eau surface</span></div>
-      <div class="card-temp" id="val-surface">—<span class="card-unit">°C</span></div>
-      <div class="card-alt" id="val-surface-f">— °F</div>
-      <div class="card-unit-toggle">
-        <button class="cutab active" data-sensor="surface" data-unit="c">°C</button>
-        <button class="cutab"        data-sensor="surface" data-unit="f">°F</button>
+      <div class="card-label"><span class="water-icon"><i class="ti ti-ripple"></i><i class="ti ti-arrow-up water-icon-arrow water-icon-arrow-top"></i></span> <span data-i18n="surface">Eau surface</span></div>
+      <div class="card-mainrow">
+        <div>
+          <div class="card-temp" id="val-surface">—<span class="card-unit">°C</span></div>
+          <div class="card-alt" id="val-surface-f">— °F</div>
+        </div>
+        <div class="card-unit-toggle">
+          <button class="cutab active" data-sensor="surface" data-unit="c">°C</button>
+          <button class="cutab"        data-sensor="surface" data-unit="f">°F</button>
+        </div>
       </div>
       <div class="card-trend" id="trend-surface"></div>
     </div>
     <div class="card card-depth">
-      <div class="card-label">🔵 <span data-i18n="depth">Eau 4 pieds</span></div>
-      <div class="card-temp" id="val-depth">—<span class="card-unit">°C</span></div>
-      <div class="card-alt" id="val-depth-f">— °F</div>
-      <div class="card-unit-toggle">
-        <button class="cutab active" data-sensor="depth" data-unit="c">°C</button>
-        <button class="cutab"        data-sensor="depth" data-unit="f">°F</button>
+      <div class="card-label"><span class="water-icon"><i class="ti ti-ripple"></i><i class="ti ti-arrow-down water-icon-arrow"></i></span> <span data-i18n="depth">Eau 4 pieds</span></div>
+      <div class="card-mainrow">
+        <div>
+          <div class="card-temp" id="val-depth">—<span class="card-unit">°C</span></div>
+          <div class="card-alt" id="val-depth-f">— °F</div>
+        </div>
+        <div class="card-unit-toggle">
+          <button class="cutab active" data-sensor="depth" data-unit="c">°C</button>
+          <button class="cutab"        data-sensor="depth" data-unit="f">°F</button>
+        </div>
       </div>
       <div class="card-trend" id="trend-depth"></div>
     </div>
-    <div class="card card-humidity">
-      <div class="card-label">💧 <span data-i18n="humidity">Humidité</span></div>
-      <div class="card-temp" id="val-hum">—<span class="card-unit">%</span></div>
-      <div class="card-trend" id="trend-hum"></div>
+  </div>
+
+  <div class="section-label"><i class="ti ti-sun"></i><span data-i18n="secSky">Ciel &amp; conditions</span></div>
+  <div class="cards cards-5">
+    <!-- Vent : valeur principale = vent au large (modèle EC), pied de carte =
+         sonde locale. La sonde est derrière l'île McCall, dans un chenal abrité
+         sous le vent d'une crête, et ne lit que ~28 % du vent régional — voir
+         PLAN.md. Le libellé est posé par updateWindCard(), pas par data-i18n,
+         car il change selon la disponibilité du modèle. -->
+    <div class="card card-wind">
+      <div class="card-label"><i class="ti ti-wind"></i> <span id="wind-label">Vent au large</span></div>
+      <div class="card-temp" id="val-wind">—<span class="card-unit">km/h</span></div>
+      <div class="card-trend" id="trend-wind"></div>
+      <div class="card-winddir" id="wind-dir"></div>
+      <div class="card-sunrow" id="wind-local"></div>
+    </div>
+    <div class="card card-rain">
+      <div class="card-label"><i class="ti ti-cloud-rain"></i> <span data-i18n="rain">Pluie</span></div>
+      <div class="card-temp" id="val-rain">—<span class="card-unit">mm</span></div>
+      <div class="card-trend" id="trend-rain"></div>
+    </div>
+    <div class="card card-uv">
+      <div class="card-label"><i class="ti ti-sun"></i> <span data-i18n="uv">UV</span></div>
+      <div class="card-temp" id="val-uv">—</div>
+      <div class="card-trend" id="trend-uv"></div>
+    </div>
+    <div class="card card-solar">
+      <div class="card-label"><i class="ti ti-brightness-up"></i> <span data-i18n="solar">Luminosité</span></div>
+      <div class="card-value-row">
+        <div class="card-temp" id="val-solar">—<span class="card-unit">W/m²</span></div>
+        <div class="card-trend" id="trend-solar"></div>
+      </div>
+      <div class="card-sunrow" id="solar-sunrow"></div>
+    </div>
+    <div class="card card-moon" id="moon-tile" role="button" tabindex="0" aria-expanded="false">
+      <div class="card-label"><span id="moon-tile-icon" class="moon-icon"><i class="ti ti-moon"></i></span> <span data-i18n="moon">Lune</span></div>
+      <div class="card-value-row">
+        <div class="card-temp" id="val-moon">—<span class="card-unit">%</span></div>
+        <div class="card-trend" id="trend-moon"></div>
+      </div>
+      <div class="card-sunrow" id="moon-rise-tile"></div>
+      <div class="accordion-badge" id="moon-toggle"><i class="ti ti-chevron-down"></i><span data-i18n="moonDetails">Détails</span></div>
     </div>
   </div>
 
+  <!-- Panneau solunaire (accordéon — replié par défaut, clic sur la tuile Lune) -->
+  <div class="section-label" id="solunar-label" style="display:none"><i class="ti ti-moon-stars"></i><span data-i18n="secMoon">Activité lunaire</span></div>
+  <div id="solunar" class="solunar-panel" style="display:none"></div>
+
+  <!-- Prévisions (radar externe — pas mesuré ici) -->
+  <div class="section-label"><i class="ti ti-cloud-storm"></i><span data-i18n="secForecast">Prévisions</span></div>
+  <div class="forecast-row">
+    <div class="card card-radar" id="radar-tile" role="button" tabindex="0" aria-expanded="false">
+      <div class="card-label"><i class="ti ti-radar-2"></i> <span data-i18n="radar">Radar</span></div>
+      <div class="card-alt" data-i18n="radarHint">Voir la carte en direct</div>
+      <div class="accordion-badge" id="radar-toggle"><i class="ti ti-chevron-down"></i><span data-i18n="radarOpen">Ouvrir</span></div>
+    </div>
+    <div class="card card-forecast" id="forecast-card" style="display:none">
+      <div class="card-label"><i class="ti ti-calendar-week"></i> <span data-i18n="forecast7">Prévisions 7 jours</span></div>
+      <div id="forecast-week" class="forecast-week"></div>
+      <div class="forecast-foot">
+        <div id="forecast-attrib" class="forecast-attrib"></div>
+        <div class="accordion-badge" id="forecast-ext-toggle" role="button" tabindex="0" aria-expanded="false"><i class="ti ti-external-link"></i><span data-i18n="external">Externe</span></div>
+      </div>
+      <div id="forecast-ext-panel" class="ext-links" style="display:none">
+        <a href="https://www.accuweather.com/fr/ca/ivry-sur-le-lac/j8c/10-day-weather-forecast/2294475" target="_blank" rel="noopener noreferrer"><span>AccuWeather</span><i class="ti ti-external-link"></i></a>
+        <a href="https://meteo.gc.ca/fr/location/index.html?coords=46.075,-74.337" target="_blank" rel="noopener noreferrer"><span>Environnement Canada</span><i class="ti ti-external-link"></i></a>
+        <a href="https://www.meteomedia.com/fr/ville/ca/quebec/ivry-sur-le-lac/7-jours" target="_blank" rel="noopener noreferrer"><span>MétéoMédia</span><i class="ti ti-external-link"></i></a>
+      </div>
+    </div>
+  </div>
+  <div id="radar-panel" class="radar-panel" style="display:none"></div>
+
   <!-- Period selector -->
   <div class="period-tabs">
-    <button class="tab active" data-period="24h"    data-i18n="24h">24 heures</button>
+    <button class="tab active" data-period="24h"    data-i18n="24h">24 h</button>
     <button class="tab" data-period="7d"     data-i18n="7d">7 jours</button>
-    <button class="tab" data-period="30d"    data-i18n="30d">30 jours</button>
+    <button class="tab" data-period="30d"    data-i18n="30d">Mois</button>
     <button class="tab" data-period="season" data-i18n="season">Saison</button>
     <button class="tab" data-period="year"   data-i18n="year">Année</button>
+    <button class="tab" data-period="custom" data-i18n="custom">Personnalisé</button>
+  </div>
+
+  <!-- Time-travel : position dans la période active -->
+  <div class="period-nav">
+    <div class="period-stepper">
+      <button class="step-btn" id="step-prev" data-i18n-aria="stepPrev" aria-label="Période précédente"><i class="ti ti-chevron-left"></i></button>
+      <button type="button" class="period-label" id="period-label" aria-haspopup="dialog" aria-expanded="false"></button>
+      <button class="step-btn" id="step-next" data-i18n-aria="stepNext" aria-label="Période suivante"><i class="ti ti-chevron-right"></i></button>
+      <div class="picker-popover" id="picker-popover" role="dialog" style="display:none"></div>
+    </div>
+    <button class="today-btn" id="today-btn"><i class="ti ti-clock-hour-4"></i><span data-i18n="todayBtn">Aujourd'hui</span></button>
   </div>
 
   <!-- Chart -->
   <div class="chart-wrap">
     <div class="chart-header">
       <div>
-        <div class="chart-title" data-i18n="chartTitle">Historique des températures</div>
+        <div class="chart-title" data-i18n="chartTitle">Historique des données</div>
         <div class="chart-subtitle" id="chart-subtitle">Dernières 24 heures</div>
       </div>
       <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
@@ -525,15 +1056,26 @@
           <label class="legend-item"><input type="checkbox" class="series-toggle" data-series="surface" checked><span class="legend-dot" style="background:var(--surface)"></span><span data-i18n="legendSurface">Surface</span></label>
           <label class="legend-item"><input type="checkbox" class="series-toggle" data-series="depth" checked><span class="legend-dot" style="background:var(--depth)"></span><span data-i18n="legendDepth">4 pieds</span></label>
           <label class="legend-item"><input type="checkbox" class="series-toggle" data-series="humidity"><span class="legend-dot" style="background:var(--humidity)"></span><span data-i18n="humidity">Humidité</span></label>
+          <label class="legend-item" style="display:none"><input type="checkbox" class="series-toggle" data-series="pressure"><span class="legend-dot" style="background:var(--pressure)"></span><span data-i18n="pressure">Pression</span></label>
+          <label class="legend-item" style="display:none"><input type="checkbox" class="series-toggle" data-series="wind"><span class="legend-dot" style="background:var(--wind)"></span><span data-i18n="wind">Vent</span></label>
+          <label class="legend-item" style="display:none"><input type="checkbox" class="series-toggle" data-series="rain"><span class="legend-dot" style="background:var(--rain)"></span><span data-i18n="rain">Pluie</span></label>
+          <label class="legend-item" style="display:none"><input type="checkbox" class="series-toggle" data-series="uv"><span class="legend-dot" style="background:var(--uv)"></span><span data-i18n="uv">UV</span></label>
+          <label class="legend-item" style="display:none"><input type="checkbox" class="series-toggle" data-series="solar"><span class="legend-dot" style="background:var(--solar)"></span><span data-i18n="solar">Luminosité</span></label>
         </div>
       </div>
     </div>
-    <div class="chart-canvas-wrap"><canvas id="chart"></canvas></div>
+    <div class="chart-canvas-wrap">
+      <canvas id="chart"></canvas>
+      <div class="chart-status" id="chart-status" style="display:none"></div>
+    </div>
     <div class="chart-stats" id="chart-stats"></div>
   </div>
 
   <footer>
     <span data-i18n="footer">Mise à jour toutes les 5 minutes</span> &nbsp;·&nbsp; Lac Manitou
+    <!-- Raccourci vers la page cachée /cp — révélé seulement après un premier
+         appui long sur la tuile Lune (SpecsCalendrierActivites §10.C). -->
+    <a id="cp-footer-link" href="/cp" hidden>&nbsp;·&nbsp;🎣&nbsp;<span data-i18n="cpLink">Chasse-pêche</span></a>
   </footer>
 
 </div>
@@ -568,29 +1110,82 @@
       air:           'Air ambiant',
       surface:       'Eau surface',
       depth:         'Eau 4 pieds',
-      '24h':         '24 heures',
+      '24h':         '24 h',
       '7d':          '7 jours',
-      '30d':         '30 jours',
+      '30d':         'Mois',
       'season':      'Saison',
       'year':        'Année',
-      chartTitle:    'Historique des températures',
+      'custom':      'Personnalisé',
+      chartTitle:    'Historique des données',
       sub24h:        'Dernières 24 heures',
-      sub7d:         'Derniers 7 jours',
-      sub30d:        'Derniers 30 jours',
-      subSeason:     'Derniers 6 mois',
-      subYear:       'Dernière année',
+      sub7d:         '7 derniers jours',
+      sub30d:        '30 derniers jours',
+      sub365:        '365 derniers jours',
+      stepPrev:      'Période précédente',
+      stepNext:      'Période suivante',
+      todayBtn:      "Aujourd'hui",
+      weekOf:        'Semaine du',
+      seasonNames:   ['Hiver','Printemps','Été','Automne'],
+      noData:        'Aucune donnée pour cette période',
+      loadError:     'Erreur de chargement — réessayer',
+      customStart:   'Début',
+      customEnd:     'Fin',
+      customApply:   'Appliquer',
       legendAir:     'Air',
       legendSurface: 'Surface',
       legendDepth:   '4 pieds',
       humidity:      'Humidité',
+      pressure:      'Pression',
+      wind:          'Vent',
+      rain:          'Pluie',
+      uv:            'UV',
+      solar:         'Luminosité',
+      moon:          'Lune',
+      secAir:        'Air & atmosphère',
+      secWater:      'Eau du lac',
+      secSky:        'Ciel & conditions',
+      secMoon:       'Activité lunaire',
+      secForecast:   'Prévisions',
+      radar:         'Radar',
+      radarHint:     'Voir la carte en direct',
+      radarOpen:     'Ouvrir',
+      radarClose:    'Fermer',
+      moonMajor:     'Périodes majeures',
+      moonMinor:     'Périodes mineures',
+      sunrise:       'Lever soleil',
+      sunset:        'Coucher soleil',
+      moonrise:      'Lever lune',
+      moonset:       'Coucher lune',
+      moonDetails:   'Détails',
+      moonHide:      'Masquer',
+      dayRating:     'journée',
+      phases:        ['Nouvelle lune','Premier croissant','Premier quartier','Gibbeuse croissante','Pleine lune','Gibbeuse décroissante','Dernier quartier','Dernier croissant'],
       statMin:       'Min',
       statAvg:       'Moy',
       statMax:       'Max',
+      statTotal:     'Total',
+      estimated:     'estimé',
+      estNote:       'Pointillé = température du lac estimée (sondes hors ligne), exclue des statistiques du lac.',
       footer:        'Mise à jour toutes les 5 minutes',
+      cpLink:        'Chasse-pêche',
+      cpToast:       'Chasse-pêche',
       lastUpdate:    'Dernière mise à jour : ',
       loading:       'Chargement…',
       stable:        '→ stable',
-      vsHour:        'vs 1h',
+      rainDry:       'sec',
+      rainToday:     "aujourd'hui",
+      compass:       ['N','NE','E','SE','S','SO','O','NO'],
+      windFrom:      'Vent du secteur',
+      calm:          'calme',
+      windOpen:      'Vent au large',
+      windLocalOnly: 'Vent (île McCall)',
+      windLocal:     'Île McCall',
+      windGust:      'rafales',
+      windSrcEC:     'Vent au large : modèle HRDPS d\'Environnement Canada. Sonde locale : île McCall, secteur abrité.',
+      forecast7:     'Prévisions 7 jours',
+      fcSource:      'Source : Environnement Canada',
+      external:      'Autres sources',
+      uvLevels:      ['Faible','Modéré','Élevé','Très élevé','Extrême'],
     },
     en: {
       title:         'Lake Manitou',
@@ -598,29 +1193,82 @@
       air:           'Ambient air',
       surface:       'Surface water',
       depth:         'Water 4 feet',
-      '24h':         '24 hours',
+      '24h':         '24h',
       '7d':          '7 days',
-      '30d':         '30 days',
+      '30d':         'Month',
       'season':      'Season',
       'year':        'Year',
-      chartTitle:    'Temperature history',
+      'custom':      'Custom',
+      chartTitle:    'Historical data',
       sub24h:        'Last 24 hours',
       sub7d:         'Last 7 days',
       sub30d:        'Last 30 days',
-      subSeason:     'Last 6 months',
-      subYear:       'Last year',
+      sub365:        'Last 365 days',
+      stepPrev:      'Previous period',
+      stepNext:      'Next period',
+      todayBtn:      'Today',
+      weekOf:        'Week of',
+      seasonNames:   ['Winter','Spring','Summer','Fall'],
+      noData:        'No data for this period',
+      loadError:     'Failed to load — retry',
+      customStart:   'Start',
+      customEnd:     'End',
+      customApply:   'Apply',
       legendAir:     'Air',
       legendSurface: 'Surface',
       legendDepth:   '4 feet',
       humidity:      'Humidity',
+      pressure:      'Pressure',
+      wind:          'Wind',
+      rain:          'Rain',
+      uv:            'UV',
+      solar:         'Solar',
+      moon:          'Moon',
+      secAir:        'Air & atmosphere',
+      secWater:      'Lake water',
+      secSky:        'Sky & conditions',
+      secMoon:       'Lunar activity',
+      secForecast:   'Forecast',
+      radar:         'Radar',
+      radarHint:     'View live map',
+      radarOpen:     'Open',
+      radarClose:    'Close',
+      moonMajor:     'Major periods',
+      moonMinor:     'Minor periods',
+      sunrise:       'Sunrise',
+      sunset:        'Sunset',
+      moonrise:      'Moonrise',
+      moonset:       'Moonset',
+      moonDetails:   'Details',
+      moonHide:      'Hide',
+      dayRating:     'day',
+      phases:        ['New moon','Waxing crescent','First quarter','Waxing gibbous','Full moon','Waning gibbous','Last quarter','Waning crescent'],
       statMin:       'Min',
       statAvg:       'Avg',
       statMax:       'Max',
+      statTotal:     'Total',
+      estimated:     'estimated',
+      estNote:       'Dashed = estimated lake temperature (probes offline), excluded from lake statistics.',
       footer:        'Updated every 5 minutes',
+      cpLink:        'Hunt & fish',
+      cpToast:       'Hunt & fish',
       lastUpdate:    'Last update: ',
       loading:       'Loading…',
       stable:        '→ stable',
-      vsHour:        'vs 1h',
+      rainDry:       'dry',
+      rainToday:     'today',
+      compass:       ['N','NE','E','SE','S','SW','W','NW'],
+      windFrom:      'Wind from',
+      calm:          'calm',
+      windOpen:      'Open-lake wind',
+      windLocalOnly: 'Wind (McCall Island)',
+      windLocal:     'McCall Island',
+      windGust:      'gusts',
+      windSrcEC:     'Open-lake wind: Environment Canada HRDPS model. Local sensor: McCall Island, sheltered spot.',
+      forecast7:     '7-day forecast',
+      fcSource:      'Source: Environment Canada',
+      external:      'Other sources',
+      uvLevels:      ['Low','Moderate','High','Very high','Extreme'],
     }
   };
 
@@ -630,9 +1278,16 @@
       const key = el.dataset.i18n;
       if (t[key]) el.textContent = t[key];
     });
-    // Subtitle du graphique
-    const subKeys = { '24h': 'sub24h', '7d': 'sub7d', '30d': 'sub30d', 'season': 'subSeason', 'year': 'subYear' };
-    document.getElementById('chart-subtitle').textContent = t[subKeys[currentPeriod]];
+    document.querySelectorAll('[data-i18n-aria]').forEach(el => {
+      const key = el.dataset.i18nAria;
+      if (t[key]) { el.setAttribute('aria-label', t[key]); el.title = t[key]; }
+    });
+    // Étiquette de période + sous-titre : dérivés de la fenêtre courante (time-travel)
+    if (currentWindow) {
+      updateNavUI(currentWindow, currentGranularity, currentIsLiveRolling);
+    } else {
+      document.getElementById('chart-subtitle').textContent = t.sub24h;
+    }
     // Loading si pas encore de data
     const upd = document.getElementById('last-update');
     if (upd.textContent.startsWith('Chargement') || upd.textContent.startsWith('Loading')) {
@@ -642,16 +1297,276 @@
   let chart = null;
   let allData = [];
   const SERIES = ['air', 'surface', 'depth'];   // datasets 0/1/2 (températures)
+  const LAKE_KEYS = ['surface', 'depth'];       // séries pouvant être estimées dans /daily (est: 1)
   // dataset 3 = humidité (exclusive vs le groupe températures)
-  let seriesVisible = { air: true, surface: true, depth: true, humidity: false };
+  let seriesVisible = { air: true, surface: true, depth: true, humidity: false, pressure: false, wind: false, rain: false, uv: false, solar: false };
+
+  // ── Time-travel : fenêtres calendaires alignées sur le fuseau de la station ───
+  // '24h'/'7d'/'30d' restent les identifiants d'onglet historiques ; GRAN les
+  // fait correspondre à une granularité de fenêtre alignée sur le calendrier.
+  const STATION_TZ = 'America/Toronto';
+  const GRAN = { '24h': 'day', '7d': 'week', '30d': 'month', 'season': 'season', 'year': 'year', 'custom': 'custom' };
+  // Granularités « live roulantes » : quand la fenêtre calendaire courante contient
+  // l'instant présent, on affiche plutôt les N derniers jours (aujourd'hui inclus)
+  // au lieu de la fenêtre calendaire — évite le graphique quasi-vide un lundi (7j),
+  // un début de mois, ou un 3 janvier (année). Le passé reste aligné sur le
+  // calendrier (navigation, sélecteur, comparaison « 2026 vs 2025 »). Seule la
+  // saison ne roule pas (choix explicite : bloc nommé « Été 2026 » vu en entier).
+  const ROLLING_SPAN = { day: 864e5, week: 7 * 864e5, month: 30 * 864e5, year: 365 * 864e5 };
+
+  function tzPartsFromUtc(utcMs) {
+    const dtf = new Intl.DateTimeFormat('en-US', {
+      timeZone: STATION_TZ, hourCycle: 'h23',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit'
+    });
+    const map = {};
+    dtf.formatToParts(new Date(utcMs)).forEach(p => { if (p.type !== 'literal') map[p.type] = p.value; });
+    return { y: +map.year, mo: +map.month, d: +map.day, h: +map.hour, mi: +map.minute, s: +map.second };
+  }
+
+  // Instant UTC (ms) correspondant à minuit local (station) le y-mo-d donné.
+  // Point fixe itératif : robuste aux transitions DST (jours de 23h/25h).
+  function dayStart(y, mo, d) {
+    const target = Date.UTC(y, mo - 1, d, 0, 0, 0);
+    let utc = target;
+    for (let i = 0; i < 3; i++) {
+      const p = tzPartsFromUtc(utc);
+      const gotUtc = Date.UTC(p.y, p.mo - 1, p.d, p.h, p.mi, p.s);
+      const diff = target - gotUtc;
+      if (diff === 0) break;
+      utc += diff;
+    }
+    return utc;
+  }
+
+  // Arithmétique calendaire pure (Date.UTC normalise les débordements de jour/mois).
+  function addDays(y, mo, d, n) {
+    const dt = new Date(Date.UTC(y, mo - 1, d + n));
+    return { y: dt.getUTCFullYear(), mo: dt.getUTCMonth() + 1, d: dt.getUTCDate() };
+  }
+  function addMonths(y, mo, n) {
+    const total = (mo - 1) + n;
+    const y2 = y + Math.floor(total / 12);
+    const mo2 = ((total % 12) + 12) % 12 + 1;
+    return { y: y2, mo: mo2 };
+  }
+  function weekdayISO(y, mo, d) {
+    const dow = new Date(Date.UTC(y, mo - 1, d)).getUTCDay(); // 0=dim..6=sam
+    return dow === 0 ? 7 : dow; // 1=lun..7=dim
+  }
+  // Saison météorologique. `year` = année d'étiquette (pour l'hiver, l'année de
+  // janvier — ex. l'hiver à cheval déc.2025/jan-fév.2026 s'appelle "2026").
+  function seasonOf(y, mo) {
+    if (mo === 12) return { idx: 0, year: y + 1 };
+    if (mo <= 2)   return { idx: 0, year: y };
+    if (mo <= 5)   return { idx: 1, year: y };
+    if (mo <= 8)   return { idx: 2, year: y };
+    return { idx: 3, year: y };
+  }
+
+  function windowForDay(a) {
+    const nd = addDays(a.y, a.mo, a.d, 1);
+    return { start: dayStart(a.y, a.mo, a.d), end: dayStart(nd.y, nd.mo, nd.d) };
+  }
+  function windowForWeek(a) {
+    const back = weekdayISO(a.y, a.mo, a.d) - 1; // lundi = début de semaine
+    const ws = addDays(a.y, a.mo, a.d, -back);
+    const we = addDays(ws.y, ws.mo, ws.d, 7);
+    return { start: dayStart(ws.y, ws.mo, ws.d), end: dayStart(we.y, we.mo, we.d) };
+  }
+  function windowForMonth(a) {
+    const nm = addMonths(a.y, a.mo, 1);
+    return { start: dayStart(a.y, a.mo, 1), end: dayStart(nm.y, nm.mo, 1) };
+  }
+  function windowForSeason(a) {
+    const s = seasonOf(a.y, a.mo);
+    const startMonth = s.idx === 0 ? 12 : [null, 3, 6, 9][s.idx];
+    const startYear = s.idx === 0 ? s.year - 1 : s.year;
+    const nm = addMonths(startYear, startMonth, 3);
+    return { start: dayStart(startYear, startMonth, 1), end: dayStart(nm.y, nm.mo, 1), seasonIdx: s.idx, seasonYear: s.year };
+  }
+  function windowForYear(a) {
+    return { start: dayStart(a.y, 1, 1), end: dayStart(a.y + 1, 1, 1) };
+  }
+  function windowFor(a, granularity) {
+    if (granularity === 'day')    return windowForDay(a);
+    if (granularity === 'week')   return windowForWeek(a);
+    if (granularity === 'month')  return windowForMonth(a);
+    if (granularity === 'season') return windowForSeason(a);
+    return windowForYear(a);
+  }
+
+  function stepAnchor(a, granularity, dir) {
+    if (granularity === 'day')  return addDays(a.y, a.mo, a.d, dir);
+    if (granularity === 'week') return addDays(a.y, a.mo, a.d, dir * 7);
+    if (granularity === 'month') { const r = addMonths(a.y, a.mo, dir); return { y: r.y, mo: r.mo, d: 1 }; }
+    if (granularity === 'season') {
+      const cur = seasonOf(a.y, a.mo);
+      let idx = cur.idx + dir, year = cur.year;
+      if (idx < 0) { idx = 3; year -= 1; }
+      if (idx > 3) { idx = 0; year += 1; }
+      return { y: year, mo: [1, 4, 7, 10][idx], d: 15 };
+    }
+    return { y: a.y + dir, mo: a.mo, d: a.d }; // year
+  }
+
+  function todayAnchor() {
+    const p = tzPartsFromUtc(Date.now());
+    return { y: p.y, mo: p.mo, d: p.d };
+  }
+
+  // Fenêtre courante ("live") : contient l'instant présent.
+  function isLiveWindow(win) {
+    const now = Date.now();
+    return win.start <= now && now < win.end;
+  }
+
+  // ── Étiquettes de période (FR/EN) ───────────────────────────────────────────
+  // Les composantes y/mo/d de l'ancre sont déjà la bonne date calendaire locale ;
+  // on formate via un Date construit en UTC pour ne plus toucher au fuseau.
+  function fmtMonthYear(y, mo, lang) {
+    const dt = new Date(Date.UTC(y, mo - 1, 1));
+    const s = dt.toLocaleDateString(lang === 'fr' ? 'fr-CA' : 'en-CA', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+  function fmtDayLabel(a, lang) {
+    const dt = new Date(Date.UTC(a.y, a.mo - 1, a.d));
+    return dt.toLocaleDateString(lang === 'fr' ? 'fr-CA' : 'en-CA', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+  }
+  function fmtWeekLabel(win, lang) {
+    const locale = lang === 'fr' ? 'fr-CA' : 'en-CA';
+    const t = i18n[lang];
+    const s = tzPartsFromUtc(win.start);
+    const e = tzPartsFromUtc(win.end - 43200000); // midi de la veille de la fin (abri DST)
+    const dS = new Date(Date.UTC(s.y, s.mo - 1, s.d));
+    const dE = new Date(Date.UTC(e.y, e.mo - 1, e.d));
+    if (s.mo === e.mo) {
+      const mAbbr = dE.toLocaleDateString(locale, { month: 'short', timeZone: 'UTC' }).replace('.', '');
+      return `${t.weekOf} ${s.d}–${e.d} ${mAbbr}${lang === 'fr' ? '.' : ''}`;
+    }
+    const m1 = dS.toLocaleDateString(locale, { month: 'short', timeZone: 'UTC' }).replace('.', '');
+    const m2 = dE.toLocaleDateString(locale, { month: 'short', timeZone: 'UTC' }).replace('.', '');
+    return `${t.weekOf} ${s.d} ${m1} – ${e.d} ${m2}`;
+  }
+  function fmtSeasonLabel(win, lang) {
+    const t = i18n[lang];
+    const name = t.seasonNames[win.seasonIdx];
+    if (win.seasonIdx === 0) return `${name} ${win.seasonYear - 1}–${win.seasonYear}`;
+    return `${name} ${win.seasonYear}`;
+  }
+  function periodLabel(win, granularity, anchor, lang) {
+    if (granularity === 'day')    return fmtDayLabel(anchor, lang);
+    if (granularity === 'week')   return fmtWeekLabel(win, lang);
+    if (granularity === 'month')  return fmtMonthYear(anchor.y, anchor.mo, lang);
+    if (granularity === 'season') return fmtSeasonLabel(win, lang);
+    return String(tzPartsFromUtc(win.start).y); // year
+  }
+
+  // ── Time-travel : état ──────────────────────────────────────────────────────
+  let currentAnchor = todayAnchor();
+  let currentWindow = null;
+  let currentGranularity = 'day';
+  let currentIsLiveDay = true;      // jour courant (24h roulant) — pilote l'axe auto + le fetch limitToLast
+  let currentIsLiveRolling = true;  // jour/semaine/mois roulant (fenêtre se terminant maintenant)
+  let earliestDataMs = null;
+  let fetchToken = 0;
+  const windowCache = new Map();
+
+  // Plage personnalisée (granularité "custom") : {start, end} choisis
+  // librement par l'utilisateur, PAS alignés sur le calendrier — coexiste
+  // avec les granularités alignées plutôt que de les remplacer.
+  let customRange = null;
+  function defaultCustomRange() {
+    const a = todayAnchor();
+    const end = dayStart(a.y, a.mo, a.d + 1); // fin exclusive = minuit après aujourd'hui
+    const s = addDays(a.y, a.mo, a.d, -6);    // 7 jours au total, aujourd'hui inclus
+    return { start: dayStart(s.y, s.mo, s.d), end };
+  }
+  function customRangeLabel(win, lang) {
+    const locale = lang === 'fr' ? 'fr-CA' : 'en-CA';
+    const s = tzPartsFromUtc(win.start);
+    const e = tzPartsFromUtc(win.end - 43200000); // midi de la veille de la fin (abri DST)
+    const dS = new Date(Date.UTC(s.y, s.mo - 1, s.d));
+    const dE = new Date(Date.UTC(e.y, e.mo - 1, e.d));
+    const optsShort = { day: 'numeric', month: 'short', timeZone: 'UTC' };
+    const optsFull = { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' };
+    const startStr = dS.toLocaleDateString(locale, s.y === e.y ? optsShort : optsFull).replace('.', '');
+    const endStr = dE.toLocaleDateString(locale, optsFull).replace('.', '');
+    return `${startStr} – ${endStr}`;
+  }
+  // Étiquette d'une fenêtre roulante se terminant « maintenant » (vue live
+  // semaine/mois). Contrairement à customRangeLabel, la fin n'est PAS une borne
+  // de minuit exclusive → on lit tzParts(win.end) directement (pas de recul 12h).
+  function rollingRangeLabel(win, lang) {
+    const locale = lang === 'fr' ? 'fr-CA' : 'en-CA';
+    const s = tzPartsFromUtc(win.start);
+    const e = tzPartsFromUtc(win.end);
+    const dS = new Date(Date.UTC(s.y, s.mo - 1, s.d));
+    const dE = new Date(Date.UTC(e.y, e.mo - 1, e.d));
+    const optsShort = { day: 'numeric', month: 'short', timeZone: 'UTC' };
+    const optsFull = { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' };
+    const startStr = dS.toLocaleDateString(locale, s.y === e.y ? optsShort : optsFull).replace('.', '');
+    const endStr = dE.toLocaleDateString(locale, optsFull).replace('.', '');
+    return `${startStr} – ${endStr}`;
+  }
 
   // Valeur d'une série pour un point de données.
   // "air" = température véranda (airv) avec repli sur la sonde du quai (air).
   function val(d, key) {
-    if (key === 'air')      return d.airv != null ? d.airv : d.air;
-    if (key === 'humidity') return d.hum;
+    if (key === 'air')      return d.airb != null ? d.airb : (d.airv != null ? d.airv : d.air);
+    if (key === 'humidity') return d.humb != null ? d.humb : d.hum;
+    if (key === 'pressure') return d.press;
+    if (key === 'wind')     return d.wind;
+    if (key === 'rain')     return d.rday;
+    if (key === 'uv')       return d.uv;
+    if (key === 'solar')    return d.solar;
     return d[key];
   }
+
+  // Métriques météo (hors températures/eau) : unité + décimales par mesure
+  const METRIC_UNIT = { humidity:'%', pressure:' hPa', wind:' km/h', rain:' mm', uv:'', solar:' W/m²' };
+  const METRIC_DEC  = { humidity:0, pressure:0, wind:0, rain:1, uv:0, solar:0 };
+  // Seuil « calme » : le WS69 mesure par pas de 0.1 m/s (~0.36 km/h) et la tuile
+  // arrondit à l'entier, donc tout souffle imperceptible (0.2–0.4 m/s) s'affichait
+  // « 1 km/h ». Sous ce seuil → 0, cohérent avec l'étiquette « calme » de la direction.
+  const CALM_KMH = 1.5;
+  // Nettoie le bruit flottant des ticks d'axe (ex. 970.5000000000001 → 970.5)
+  // sans imposer de décimales fixes (les entiers restent entiers).
+  const axisNum = v => Math.round(v * 1000) / 1000;
+  // Rose des vents 8 points depuis un cap en degrés (0 = N, sens horaire).
+  const compassDir = (deg, lang) => i18n[lang].compass[Math.round(deg / 45) % 8];
+  function uvQualifier(v) {
+    if (v == null) return '';
+    const levels = i18n[currentLang].uvLevels;
+    const bands = [
+      { max: 3,  label: levels[0], color: '#22c55e' },
+      { max: 6,  label: levels[1], color: '#eab308' },
+      { max: 8,  label: levels[2], color: '#f97316' },
+      { max: 11, label: levels[3], color: '#ef4444' },
+      { max: Infinity, label: levels[4], color: '#a855f7' },
+    ];
+    const band = bands.find(b => v < b.max);
+    return `<span class="trend-flat" style="color:${band.color}">${band.label}</span>`;
+  }
+  function uvTrendLabel(data) {
+    const last = val(data[data.length - 1], 'uv');
+    const qualifier = uvQualifier(last);
+    const trend = trendLabel(data, 'uv');
+    if (!qualifier) return trend;
+    if (!trend) return qualifier;
+    return `${qualifier}<span class="trend-flat">&nbsp;·&nbsp;</span>${trend}`;
+  }
+  // Séries « solo » (axe unique, exclusives vs le groupe températures) — datasets 3..8
+  const SOLO = [
+    { key:'humidity', color:'#22d3ee' },
+    { key:'pressure', color:'#94a3b8' },
+    { key:'wind',     color:'#2dd4bf' },
+    { key:'rain',     color:'#38bdf8' },
+    { key:'uv',       color:'#a78bfa' },
+    { key:'solar',    color:'#fb923c' },
+  ];
+  const SOLO_KEYS = SOLO.map(m => m.key);
 
   const toF = c => c != null ? c * 9/5 + 32 : null;
 
@@ -665,6 +1580,18 @@
       g.addColorStop(1,   color.replace(')', `,${alpha2})`).replace('rgb', 'rgba'));
       return g;
     };
+
+    // Datasets « solo » (humidité, pression, vent, pluie, UV, luminosité)
+    const soloDatasets = SOLO.map(m => ({
+      label: i18n[currentLang][m.key], soloKey: m.key,
+      borderColor: m.color, backgroundColor: m.color + '22',
+      borderWidth: 2, pointRadius: 0, pointHoverRadius: 5,
+      pointHoverBackgroundColor: m.color, tension: 0.4, fill: true,
+      hidden: true, data: []
+    }));
+
+    // Lac : un segment touchant un jour estimé (/daily est: 1) est tracé en pointillé.
+    const estDash = c => (c.p0.raw && c.p0.raw.est) || (c.p1.raw && c.p1.raw.est) ? [5, 4] : undefined;
 
     chart = new Chart(ctx, {
       type: 'line',
@@ -692,6 +1619,7 @@
             pointHoverBackgroundColor: '#bae6fd',
             tension: 0.4,
             fill: true,
+            segment: { borderDash: estDash },
             data: []
           },
           {
@@ -704,22 +1632,10 @@
             pointHoverBackgroundColor: '#1e40af',
             tension: 0.4,
             fill: true,
+            segment: { borderDash: estDash },
             data: []
           },
-          {
-            label: 'Humidité',
-            humidity: true,
-            borderColor: '#22d3ee',
-            backgroundColor: 'rgba(34,211,238,.12)',
-            borderWidth: 2,
-            pointRadius: 0,
-            pointHoverRadius: 5,
-            pointHoverBackgroundColor: '#22d3ee',
-            tension: 0.4,
-            fill: true,
-            hidden: true,
-            data: []
-          }
+          ...soloDatasets
         ]
       },
       options: {
@@ -739,8 +1655,10 @@
             callbacks: {
               label: ctx => {
                 const v = ctx.parsed.y;
-                if (ctx.dataset.humidity) return ` ${ctx.dataset.label}: ${v.toFixed(0)}%`;
-                return ` ${ctx.dataset.label}: ${v.toFixed(1)}°C  /  ${(v * 9/5 + 32).toFixed(1)}°F`;
+                const sk = ctx.dataset.soloKey;
+                if (sk) return ` ${ctx.dataset.label}: ${v.toFixed(METRIC_DEC[sk])}${METRIC_UNIT[sk] || ''}`;
+                const est = ctx.raw && ctx.raw.est ? `  (${i18n[currentLang].estimated})` : '';
+                return ` ${ctx.dataset.label}: ${v.toFixed(1)}°C  /  ${(v * 9/5 + 32).toFixed(1)}°F${est}`;
               }
             }
           }
@@ -755,7 +1673,7 @@
           y: {
             position: 'left',
             grid: { color: 'rgba(255,255,255,.04)' },
-            ticks: { color: '#4b6280', font: { size: 11 }, callback: v => v + '°C' }
+            ticks: { color: '#4b6280', font: { size: 11 }, callback: v => axisNum(v) + '°C' }
           },
           yF: {
             position: 'right',
@@ -769,99 +1687,479 @@
 
   // ── Fetch data via Firebase Realtime Database (REST, lecture publique) ────────
   const RTDB = 'https://lac-manitou-temperatures-d284a-default-rtdb.firebaseio.com';
-  // ms = fenêtre ; bucket = granularité d'agrégation (0 = brut)
-  //   24h → brut | 7d/30d → moyenne horaire (depuis /readings)
-  //   saison/année → moyennes journalières pré-calculées (depuis /daily)
-  const PERIOD_CFG = {
-    '24h':    { ms: 864e5,     bucket: 0    },
-    '7d':     { ms: 7 * 864e5, bucket: 36e5 },
-    '30d':    { ms: 30 * 864e5, bucket: 36e5 },
-    'season': { ms: 180 * 864e5, daily: true },
-    'year':   { ms: 365 * 864e5, daily: true },
-  };
+  // Fenêtre { start, end } (ms) + granularité :
+  //   day (vue courante) → brut, rolling 24h | day (passé)/week → /readings brut ou horaire
+  //   month/season/year → moyennes journalières pré-calculées (depuis /daily)
 
-  function fetchData(period) {
-    const cfg = PERIOD_CFG[period] || PERIOD_CFG['24h'];
-
-    // Saison/Année : buckets journaliers déjà agrégés (léger, ≤365 clés)
-    if (cfg.daily) {
-      const cutoff = Date.now() - cfg.ms;
-      return fetch(RTDB + '/daily.json')
-        .then(r => r.json())
-        .then(obj => {
-          if (!obj) return [];
-          return Object.keys(obj)
-            .map(k => ({ t: Number(k), air: obj[k].air, surface: obj[k].surface, depth: obj[k].depth, airv: obj[k].airv, hum: obj[k].hum }))
-            .filter(d => d.t >= cutoff)
-            .sort((a, b) => a.t - b.t);
-        })
-        .catch(err => { console.error(err); return []; });
+  // Agrégation par bucket (heure) — airv/hum/météo comptés séparément car
+  // parfois absents (données Ecowitt pas encore branchées, transition avant
+  // le backfill véranda, etc.). RAW_PROP = clé UI → propriété brute écrite
+  // dans le bucket, pour que val() les relise correctement.
+  function bucketRows(rows, bucketMs) {
+    if (!bucketMs) return rows;
+    const RAW_PROP = { pressure: 'press', wind: 'wind', rain: 'rday', uv: 'uv', solar: 'solar' };
+    const buckets = {};
+    for (const d of rows) {
+      const key = Math.floor(d.t / bucketMs) * bucketMs;
+      const b = buckets[key] || (buckets[key] = { air: 0, surface: 0, depth: 0, n: 0, avS: 0, avN: 0, hS: 0, hN: 0, agg: {} });
+      b.air += d.air; b.surface += d.surface; b.depth += d.depth; b.n++;
+      if (d.airv != null) { b.avS += d.airv; b.avN++; }
+      if (d.hum  != null) { b.hS  += d.hum;  b.hN++; }
+      for (const k in RAW_PROP) {
+        const v = val(d, k);
+        if (v == null) continue;
+        const a = b.agg[k] || (b.agg[k] = { sum: 0, n: 0 });
+        a.sum += v; a.n++;
+      }
     }
+    const round1 = v => Math.round(v * 10) / 10;
+    return Object.keys(buckets).sort((a, b) => a - b).map(key => {
+      const b = buckets[key];
+      const out = {
+        t: Number(key),
+        air: round1(b.air / b.n), surface: round1(b.surface / b.n), depth: round1(b.depth / b.n),
+        airv: b.avN ? round1(b.avS / b.avN) : null,
+        hum:  b.hN  ? round1(b.hS / b.hN)   : null
+      };
+      for (const k in RAW_PROP) {
+        const a = b.agg[k];
+        out[RAW_PROP[k]] = a ? round1(a.sum / a.n) : null;
+      }
+      return out;
+    });
+  }
 
-    const limit = Math.ceil(cfg.ms / 3e5 * 1.2); // ~1 lecture / 5 min + marge
+  // Fenêtre arbitraire (passée) sur /readings — clés = epoch-ms en string,
+  // donc l'ordre lexicographique de $key coïncide avec l'ordre numérique.
+  async function fetchReadingsRange(startMs, endMs) {
     const url = RTDB + '/readings.json?orderBy=' + encodeURIComponent('"$key"') +
-                '&limitToLast=' + limit;
-    return fetch(url)
-      .then(r => r.json())
-      .then(obj => {
-        if (!obj) return [];
-        const cutoff = Date.now() - cfg.ms;
-        const rows = Object.keys(obj)
-          .map(k => ({ t: Number(k), air: obj[k].air, surface: obj[k].surface, depth: obj[k].depth, airv: obj[k].airv, hum: obj[k].hum }))
-          .filter(d => d.t >= cutoff)
-          .sort((a, b) => a.t - b.t);
+                '&startAt=' + encodeURIComponent('"' + startMs + '"') +
+                '&endAt=' + encodeURIComponent('"' + (endMs - 1) + '"');
+    const r = await fetch(url);
+    const obj = await r.json();
+    if (!obj) return [];
+    return Object.keys(obj).map(k => ({ t: Number(k), ...obj[k] })).sort((a, b) => a.t - b.t);
+  }
 
-        if (cfg.bucket === 0) return rows;
+  // Vue "24h" courante : fenêtre roulante se terminant maintenant (toujours
+  // pleine), pas alignée sur minuit — comportement historique préservé pour
+  // ne pas afficher un graphique vide en début de journée (section 7 du plan).
+  async function fetchReadingsRolling24h() {
+    const limit = Math.ceil(864e5 / 3e5 * 1.2); // ~1 lecture / 5 min + marge
+    const url = RTDB + '/readings.json?orderBy=' + encodeURIComponent('"$key"') + '&limitToLast=' + limit;
+    const r = await fetch(url);
+    const obj = await r.json();
+    if (!obj) return [];
+    const cutoff = Date.now() - 864e5;
+    return Object.keys(obj).map(k => ({ t: Number(k), ...obj[k] }))
+      .filter(d => d.t >= cutoff).sort((a, b) => a.t - b.t);
+  }
 
-        // Agrégation par bucket (heure ou jour) — airv/hum comptés séparément
-        // car parfois absents (transition avant le backfill/payload véranda)
-        const buckets = {};
-        for (const d of rows) {
-          const key = Math.floor(d.t / cfg.bucket) * cfg.bucket;
-          const b = buckets[key] || (buckets[key] = { air: 0, surface: 0, depth: 0, n: 0, avS: 0, avN: 0, hS: 0, hN: 0 });
-          b.air += d.air; b.surface += d.surface; b.depth += d.depth; b.n++;
-          if (d.airv != null) { b.avS += d.airv; b.avN++; }
-          if (d.hum  != null) { b.hS  += d.hum;  b.hN++; }
+  // /daily entier mis en cache en mémoire (léger, ≤365 clés) — réutilisé pour
+  // mois/saison/année ; rafraîchi si vieux de plus de 5 min (cadence live).
+  let dailyCache = null, dailyCacheTime = 0;
+  async function fetchDailyRaw() {
+    if (dailyCache && Date.now() - dailyCacheTime < 5 * 60 * 1000) return dailyCache;
+    const r = await fetch(RTDB + '/daily.json');
+    const obj = await r.json();
+    dailyCache = obj || {};
+    dailyCacheTime = Date.now();
+    return dailyCache;
+  }
+  async function fetchDailyRange(startMs, endMs) {
+    const obj = await fetchDailyRaw();
+    return Object.keys(obj).map(k => ({ t: Number(k), ...obj[k] }))
+      .filter(d => d.t >= startMs && d.t < endMs)
+      .sort((a, b) => a.t - b.t);
+  }
+
+  // Point d'entrée unique : source + agrégation selon la granularité, avec
+  // cache en mémoire pour les fenêtres passées (immuables → jamais invalidées).
+  async function fetchWindow(win, granularity, isLiveRolling) {
+    const cacheKey = granularity + '|' + win.start + '|' + win.end;
+    // Une fenêtre roulante se termine « maintenant » → jamais mise en cache
+    // (elle change à chaque chargement) ; seules les fenêtres passées immuables
+    // le sont. Les vues live semaine/mois passent par les branches week/month
+    // ci-dessous avec une fenêtre {now-N, now} : source identique, borne roulante.
+    const isPast = win.end <= Date.now();
+    if (!isLiveRolling && isPast && windowCache.has(cacheKey)) return windowCache.get(cacheKey);
+
+    let rows;
+    const isLiveDay = isLiveRolling && granularity === 'day';
+    if (isLiveDay)                    rows = await fetchReadingsRolling24h();
+    else if (granularity === 'day')   rows = await fetchReadingsRange(win.start, win.end);
+    else if (granularity === 'week')  rows = bucketRows(await fetchReadingsRange(win.start, win.end), 36e5);
+    else if (granularity === 'custom') {
+      // Plage libre : source + agrégation selon la longueur choisie, mêmes
+      // seuils que les granularités fixes (day≈brut, week≈horaire, sinon /daily).
+      const spanDays = (win.end - win.start) / 864e5;
+      if (spanDays <= 2)       rows = await fetchReadingsRange(win.start, win.end);
+      else if (spanDays <= 45) rows = bucketRows(await fetchReadingsRange(win.start, win.end), 36e5);
+      else                     rows = await fetchDailyRange(win.start, win.end);
+    }
+    else                               rows = await fetchDailyRange(win.start, win.end);
+
+    if (!isLiveRolling && isPast) windowCache.set(cacheKey, rows);
+    return rows;
+  }
+
+  // Détecte la première clé de /readings pour désactiver « ‹ » avant le début
+  // de l'historique (section 8.3 du plan). Non bloquant : tant que ça n'a pas
+  // résolu, isAtFirstData() renvoie false (le bouton se désactive un peu tard).
+  async function detectEarliestData() {
+    try {
+      const url = RTDB + '/readings.json?orderBy=' + encodeURIComponent('"$key"') + '&limitToFirst=1';
+      const r = await fetch(url);
+      const obj = await r.json();
+      if (obj) {
+        const keys = Object.keys(obj);
+        if (keys.length) {
+          earliestDataMs = Number(keys[0]);
+          if (currentWindow) updateNavUI(currentWindow, currentGranularity, currentIsLiveRolling);
         }
-        const round1 = v => Math.round(v * 10) / 10;
-        return Object.keys(buckets).sort((a, b) => a - b).map(key => {
-          const b = buckets[key];
-          return {
-            t: Number(key),
-            air: round1(b.air / b.n), surface: round1(b.surface / b.n), depth: round1(b.depth / b.n),
-            airv: b.avN ? round1(b.avS / b.avN) : null,
-            hum:  b.hN  ? round1(b.hS / b.hN)   : null
-          };
-        });
-      })
-      .catch(err => { console.error(err); return []; });
+      }
+    } catch (e) { console.error(e); }
   }
 
   // ── Trend helper ─────────────────────────────────────────────────────────────
+  // Paramètres par mesure (défauts : 1h, seuil 0.1, décimales de METRIC_DEC).
+  // La pression suit la convention barométrique : variation sur 3h, seuil
+  // 0.5 hPa. Sur 1h à 0.3 hPa la seule marée atmosphérique semi-diurne
+  // (±1–1.5 hPa deux fois par jour) suffit à faire basculer l'indicateur par
+  // temps parfaitement stable. Elle s'affiche à 1 décimale alors que la grosse
+  // valeur de la tuile reste à l'entier (METRIC_DEC.pressure = 0).
+  const TREND_LOOKBACK = { pressure: 3 * 36e5 };
+  const TREND_THR      = { humidity: 1, pressure: 0.5 };
+  const TREND_DEC      = { pressure: 1 };
+
+  // Pas médian de la série — brut (~5 min), horaire ou journalier selon la vue.
+  function medianStep(data) {
+    const gaps = [];
+    for (let i = 1; i < data.length; i++)
+      gaps.push(new Date(data[i].t).getTime() - new Date(data[i - 1].t).getTime());
+    if (!gaps.length) return 0;
+    gaps.sort((a, b) => a - b);
+    return gaps[Math.floor(gaps.length / 2)];
+  }
+
+  // Point le plus proche de `now - span`, ou null si le meilleur candidat est à
+  // plus d'une demi-fenêtre de la cible (trou de données) : mieux vaut ne rien
+  // afficher que de comparer au premier point de la fenêtre — parfois vieux de
+  // plusieurs semaines — en étiquetant le résultat « vs 1h ».
+  function refPoint(data, key, now, span) {
+    const target = now - span;
+    let best = null, bestGap = Infinity;
+    for (const d of data) {
+      if (val(d, key) == null) continue;
+      const gap = Math.abs(new Date(d.t).getTime() - target);
+      if (gap < bestGap) { bestGap = gap; best = d; }
+    }
+    return bestGap <= span / 2 ? best : null;
+  }
+
   function trendLabel(data, key) {
     if (data.length < 2) return '';
-    const unit = key === 'humidity' ? '%' : '°C';
-    const last = val(data[data.length - 1], key);
-    // find point ~1h ago
-    const now = new Date(data[data.length - 1].t).getTime();
-    let ref = val(data[0], key);
-    for (const d of data) {
-      if (now - new Date(d.t).getTime() <= 60 * 60 * 1000) { ref = val(d, key); break; }
+    // Pluie : rday est un cumul quotidien croissant (reset à minuit) → une
+    // flèche ↑/↓ « vs 1h » n'a pas de sens. On affiche « sec » si rien n'est
+    // tombé aujourd'hui ; sinon le taux instantané rrate s'il pleut (dispo en
+    // vue 24h, données brutes) ; sinon le cumul du jour.
+    if (key === 'rain') {
+      const lastD = data[data.length - 1];
+      const rday  = val(lastD, 'rain');
+      if (rday == null) return '';
+      const tr = i18n[currentLang];
+      if (rday < 0.1) return `<span class="trend-flat">${tr.rainDry}</span>`;
+      const rrate = lastD.rrate;
+      if (rrate != null && rrate > 0)
+        return `<span class="trend-flat" style="color:var(--rain)">${rrate.toFixed(1)} mm/h</span>`;
+      return `<span class="trend-flat">${rday.toFixed(1)} mm ${tr.rainToday}</span>`;
     }
-    if (last == null || ref == null) return '';
-    const diff = last - ref;
+    const isTemp = (key === 'air' || key === 'surface' || key === 'depth');
+    const unit = isTemp ? '°C' : (METRIC_UNIT[key] || '').trim();
+    const dec  = isTemp ? 1 : (TREND_DEC[key] != null ? TREND_DEC[key]
+                            : (METRIC_DEC[key] != null ? METRIC_DEC[key] : 0));
+    const lastD = data[data.length - 1];
+    const last  = val(lastD, key);
+    const now   = new Date(lastD.t).getTime();
+    // Fenêtre de comparaison : jamais plus courte que le pas de la série, sinon
+    // les vues agrégées (mois/saison = 1 point/jour) n'ont aucun point à 1h ou
+    // 3h en arrière et retombaient systématiquement sur « stable ».
+    const span = Math.max(TREND_LOOKBACK[key] || 36e5, medianStep(data));
+    const refD = refPoint(data, key, now, span);
+    if (last == null || refD == null) return '';
+    const diff = last - val(refD, key);
     const t = i18n[currentLang];
-    if (Math.abs(diff) < 0.1) return `<span class="trend-flat">${t.stable}</span>`;
-    const cls  = diff > 0 ? 'trend-up' : 'trend-down';
-    const arr  = diff > 0 ? '↑' : '↓';
-    return `<span class="${cls}">${arr} ${Math.abs(diff).toFixed(1)}${unit} ${t.vsHour}</span>`;
+    const thr = TREND_THR[key] != null ? TREND_THR[key] : 0.1;
+    if (Math.abs(diff) < thr) return `<span class="trend-flat">${t.stable}</span>`;
+    const up = diff > 0;
+    const arr = up ? '↑' : '↓';
+    // Le seuil peut être plus fin que la précision d'affichage de la tuile
+    // (vent : seuil 0.1, METRIC_DEC 0) → une variation retenue s'affichait
+    // « ↑ 0 km/h ». On ajoute des décimales tant que le nombre s'arrondit à 0.
+    let d2 = dec;
+    while (Number(Math.abs(diff).toFixed(d2)) === 0 && d2 < 2) d2++;
+    const txt = `${arr} ${Math.abs(diff).toFixed(d2)}${unit ? ' ' + unit : ''} vs ${Math.round(span / 36e5)}h`;
+    // Températures : rouge (↑) / vert (↓). Pression en baisse : orange (prédictif).
+    // Autres mesures météo : neutre gris.
+    if (isTemp) return `<span class="${up ? 'trend-up' : 'trend-down'}">${txt}</span>`;
+    if (key === 'pressure' && !up) return `<span class="trend-flat" style="color:#fb923c">${txt}</span>`;
+    return `<span class="trend-flat">${txt}</span>`;
+  }
+
+  // ── Lune + solunaire (calcul client via SunCalc) ─────────────────────────────
+  const LAKE = { lat: 46.0471, lon: -74.3739 };
+  function isDaylight(ts) {
+    if (typeof SunCalc === 'undefined') return true;
+    const d = new Date(ts);
+    const s = SunCalc.getTimes(d, LAKE.lat, LAKE.lon);
+    return s.sunrise && s.sunset && d >= s.sunrise && d <= s.sunset;
+  }
+  function fmtT(d) {
+    return (d && !isNaN(d)) ? d.toLocaleTimeString(currentLang === 'fr' ? 'fr-CA' : 'en-CA',
+      { hour: '2-digit', minute: '2-digit' }) : '—';
+  }
+  function segHTML(start, end, dayStart, strong) {
+    if (!start || !end || isNaN(start) || isNaN(end)) return '';
+    const L = Math.max(0, (start - dayStart) / 864e5 * 100);
+    const W = Math.min(100 - L, (end - start) / 864e5 * 100);
+    return `<div class="solunar-seg" style="left:${L}%;width:${W}%;background:rgba(45,212,191,${strong ? '.8' : '.35'})"></div>`;
+  }
+  // Icône de phase lunaire générée en SVG à partir de la fraction éclairée
+  // (formule à base d'arcs elliptiques — précise à tout moment, pas juste 30 paliers).
+  function moonPhaseSVG(phase, size) {
+    const R = 8, C = 10;
+    const theta = phase * 2 * Math.PI;
+    const k = Math.cos(theta);
+    const rx = Math.abs(R * k);
+    const outerSweep = phase < 0.5 ? 1 : 0;
+    const innerSweep = k >= 0 ? outerSweep : 1 - outerSweep;
+    const d = `M${C},${C - R} A${R},${R} 0 0,${outerSweep} ${C},${C + R} A${rx},${R} 0 0,${innerSweep} ${C},${C - R} Z`;
+    return `<svg width="${size}" height="${size}" viewBox="0 0 20 20" aria-hidden="true">` +
+      `<circle cx="${C}" cy="${C}" r="${R}" fill="none" stroke="currentColor" stroke-width="1" opacity=".35"/>` +
+      `<path d="${d}" fill="currentColor"/></svg>`;
+  }
+
+  function updateMoon() {
+    if (typeof SunCalc === 'undefined') return;
+    const t = i18n[currentLang], now = new Date();
+    const ill = SunCalc.getMoonIllumination(now);
+    const pct = Math.round(ill.fraction * 100);
+    // Nom de phase : les 4 phases principales (nouvelle / 1er quartier / pleine
+    // / dernier quartier) ne sont nommées que dans une fenêtre étroite (~±0.6 j)
+    // autour de l'instant exact ; le reste du temps = croissant / gibbeuse.
+    // (Le simple round(phase*8) donnait à chaque nom une tranche de 1/8 ≈ ±1.85 j,
+    //  d'où « dernier quartier » affiché ~1,5 j après le vrai quartier.)
+    const p = ill.phase, TH = 0.02;
+    let pi;
+    if      (p < TH || p > 1 - TH)     pi = 0;  // nouvelle lune
+    else if (Math.abs(p - 0.25) < TH)  pi = 2;  // premier quartier
+    else if (Math.abs(p - 0.5)  < TH)  pi = 4;  // pleine lune
+    else if (Math.abs(p - 0.75) < TH)  pi = 6;  // dernier quartier
+    else if (p < 0.25)                 pi = 1;  // premier croissant
+    else if (p < 0.5)                  pi = 3;  // gibbeuse croissante
+    else if (p < 0.75)                 pi = 5;  // gibbeuse décroissante
+    else                               pi = 7;  // dernier croissant
+    const phase = t.phases[pi];
+    document.getElementById('val-moon').innerHTML = pct + '<span class="card-unit">%</span>';
+    document.getElementById('trend-moon').innerHTML = `<span class="trend-flat">${phase}</span>`;
+    const tileIcon = document.getElementById('moon-tile-icon');
+    if (tileIcon) tileIcon.innerHTML = moonPhaseSVG(ill.phase, 14);
+
+    const dayStart = new Date(now); dayStart.setHours(0, 0, 0, 0);
+    let maxA = -Infinity, minA = Infinity, tMax = now, tMin = now;
+    for (let m = 0; m <= 1440; m += 10) {
+      const d = new Date(dayStart.getTime() + m * 60000);
+      const a = SunCalc.getMoonPosition(d, LAKE.lat, LAKE.lon).altitude;
+      if (a > maxA) { maxA = a; tMax = d; }
+      if (a < minA) { minA = a; tMin = d; }
+    }
+    const mt = SunCalc.getMoonTimes(now, LAKE.lat, LAKE.lon);
+    const st = SunCalc.getTimes(now, LAKE.lat, LAKE.lon);
+    const HR = 3600000;
+    const majors = [[new Date(+tMax - HR), new Date(+tMax + HR)], [new Date(+tMin - HR), new Date(+tMin + HR)]];
+    const minors = [];
+    if (mt.rise) minors.push([new Date(+mt.rise - HR / 2), new Date(+mt.rise + HR / 2)]);
+    if (mt.set)  minors.push([new Date(+mt.set - HR / 2), new Date(+mt.set + HR / 2)]);
+    // La cote ★ purement lunaire a été retirée (SpecsCalendrierActivites §10.B) :
+    // ce panneau redevient purement astronomique. La cote pondérée (lune + météo,
+    // par activité) vit maintenant sur la page /cp.
+    let segs = '';
+    majors.forEach(p => segs += segHTML(p[0], p[1], dayStart, true));
+    minors.forEach(p => segs += segHTML(p[0], p[1], dayStart, false));
+    const per = (times) => `<div style="font-size:13.5px;font-weight:500${times[1] ? '' : ';color:#5f7891'}">${times[0] ? fmtT(times[0][0]) + ' – ' + fmtT(times[0][1]) : '—'}</div>` +
+      `<div style="font-size:13.5px;font-weight:500">${times[1] ? fmtT(times[1][0]) + ' – ' + fmtT(times[1][1]) : '—'}</div>`;
+
+    const el = document.getElementById('solunar');
+    if (!el) return;
+    el.innerHTML =
+      `<div class="solunar-head">
+        <div class="solunar-ic">${moonPhaseSVG(ill.phase, 22)}</div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:600">${phase}</div>
+          <div style="font-size:12px;color:#8aa0b8">${pct} % ${currentLang === 'fr' ? 'éclairée' : 'lit'}</div>
+        </div>
+      </div>
+      <div class="solunar-bar">${segs}</div>
+      <div class="solunar-scale"><span>0 h</span><span>6 h</span><span>12 h</span><span>18 h</span><span>24 h</span></div>
+      <div class="solunar-periods">
+        <div class="solunar-per" style="background:rgba(45,212,191,.08);border:1px solid rgba(45,212,191,.25)">
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#2dd4bf">${t.moonMajor}</div>
+          <div style="margin-top:.3rem">${per(majors)}</div>
+        </div>
+        <div class="solunar-per" style="background:rgba(45,212,191,.04);border:1px solid rgba(45,212,191,.15)">
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#5dcaa5">${t.moonMinor}</div>
+          <div style="margin-top:.3rem">${per(minors)}</div>
+        </div>
+      </div>`;
+
+    const riseTile = document.getElementById('moon-rise-tile');
+    if (riseTile) riseTile.innerHTML =
+      `<span><i class="ti ti-moon" style="color:#cbd5e1"></i>${t.moonrise} ${fmtT(mt.rise)}</span>`;
+
+    const toggle = document.getElementById('moon-toggle');
+    if (toggle) {
+      const tile = document.getElementById('moon-tile');
+      const isOpen = tile && tile.getAttribute('aria-expanded') === 'true';
+      toggle.innerHTML = `<i class="ti ti-chevron-${isOpen ? 'up' : 'down'}"></i><span>${isOpen ? t.moonHide : t.moonDetails}</span>`;
+    }
+
+    const solarEl = document.getElementById('solar-sunrow');
+    if (solarEl) solarEl.innerHTML =
+      `<span><i class="ti ti-sunrise" style="color:#fbbf24"></i>${t.sunrise} ${fmtT(st.sunrise)}</span>
+       <span><i class="ti ti-sunset" style="color:#fb923c"></i>${t.sunset} ${fmtT(st.sunset)}</span>`;
+  }
+
+  // ── Vent au large (modèle GEM d'Environnement Canada, via Open-Meteo) ────────
+  // La sonde du quai est derrière l'île McCall, dans un chenal abrité sous le
+  // vent d'une crête de 50 m : elle ne lit que ~28 % du vent régional et sa
+  // direction est canalisée de 34 à 119° selon le secteur (mesures dans PLAN.md
+  // et SpecsCalendrierActivites.md §18.5). Afficher cette seule valeur induit en
+  // erreur quiconque décide de sortir en bateau — le 2026-07-22 la page annonçait
+  // 1 km/h pendant que 22 stations mesuraient 20 km/h avec des rafales à 41.
+  // D'où la valeur principale au large et la sonde en pied de carte.
+  // `gem_seamless` = HRDPS 2,5 km aux échéances courtes, puis RDPS/GDPS.
+  let openWind = null, openWindAt = 0;
+  async function fetchOpenWind() {
+    if (openWind && Date.now() - openWindAt < 10 * 60 * 1000) return openWind;
+    const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + LAKE.lat +
+      '&longitude=' + LAKE.lon + '&models=gem_seamless' +
+      '&current=wind_speed_10m,wind_gusts_10m,wind_direction_10m' +
+      '&hourly=wind_speed_10m&past_days=1&forecast_days=1&timezone=America%2FToronto';
+    try {
+      const r = await fetch(url);
+      const j = await r.json();
+      if (!j || !j.current || j.current.wind_speed_10m == null) throw new Error('réponse vide');
+      openWind = j; openWindAt = Date.now();
+    } catch (e) { /* échec réseau : on garde le cache périmé s'il existe */ }
+    return openWind;
+  }
+
+  // Tendance 3 h du vent au large. L'heure courante est repérée via `current.time`
+  // plutôt qu'en reparsant les horodatages : ceux d'Open-Meteo sont en heure
+  // locale du lac, qui n'est pas forcément celle du visiteur.
+  function openWindTrend(j) {
+    const t = i18n[currentLang], h = j && j.hourly;
+    if (!h || !h.time || !j.current || !j.current.time) return '';
+    const key = j.current.time.slice(0, 13);
+    const i = h.time.findIndex(x => x.slice(0, 13) === key);
+    if (i < 3) return '';
+    const a = h.wind_speed_10m[i], b = h.wind_speed_10m[i - 3];
+    if (a == null || b == null) return '';
+    const diff = a - b;
+    if (Math.abs(diff) < 1) return `<span class="trend-flat">${t.stable}</span>`;
+    return `<span class="trend-flat">${diff > 0 ? '↑' : '↓'} ${Math.abs(diff).toFixed(0)} km/h vs 3h</span>`;
+  }
+
+  function updateWindCard(data, last) {
+    const t = i18n[currentLang];
+    const lbl = document.getElementById('wind-label');
+    const valEl = document.getElementById('val-wind');
+    const trEl = document.getElementById('trend-wind');
+    const dirEl = document.getElementById('wind-dir');
+    const locEl = document.getElementById('wind-local');
+    if (!valEl || !lbl) return;
+    const card = lbl.closest('.card');
+
+    const spd = last ? val(last, 'wind') : null;
+    const localTxt = spd == null ? '—'
+      : (spd < CALM_KMH ? '0' : spd.toFixed(METRIC_DEC.wind)) + ' km/h';
+    const c = openWind && openWind.current;
+
+    if (c && c.wind_speed_10m != null) {
+      lbl.textContent = t.windOpen;
+      if (card) card.title = t.windSrcEC;
+      valEl.innerHTML = Math.round(c.wind_speed_10m) + '<span class="card-unit"> km/h</span>';
+      trEl.innerHTML = openWindTrend(openWind);
+      const dir = c.wind_direction_10m;
+      let d = '';
+      if (dir != null) {
+        d = `<i class="ti ti-arrow-up wind-arrow" style="transform:rotate(${Math.round(dir)}deg)"></i>` +
+            compassDir(dir, currentLang);
+      }
+      if (c.wind_gusts_10m != null) d += (d ? ' · ' : '') + t.windGust + ' ' + Math.round(c.wind_gusts_10m);
+      dirEl.innerHTML = d;
+      locEl.innerHTML = `<span><i class="ti ti-anchor"></i>${t.windLocal} · ${localTxt}</span>`;
+    } else {
+      // Repli : modèle injoignable → la sonde reprend la vedette, mais nommée
+      // explicitement, pour qu'on ne prenne pas son abri pour le vent du lac.
+      lbl.textContent = t.windLocalOnly;
+      if (card) card.removeAttribute('title');
+      valEl.innerHTML = (spd == null ? '—' : (spd < CALM_KMH ? '0' : spd.toFixed(METRIC_DEC.wind))) +
+                        '<span class="card-unit"> km/h</span>';
+      trEl.innerHTML = (data && data.length) ? trendLabel(data, 'wind') : '';
+      const dir = last && last.wdir;
+      if (dir == null) dirEl.innerHTML = '';
+      else if (spd != null && spd < CALM_KMH) dirEl.innerHTML = `<span class="trend-flat">${t.calm}</span>`;
+      else dirEl.innerHTML =
+        `<i class="ti ti-arrow-up wind-arrow" style="transform:rotate(${Math.round(dir)}deg)"></i>` +
+        compassDir(dir, currentLang) + ' · ' + Math.round(dir) + '°';
+      locEl.innerHTML = '';
+    }
   }
 
   // ── Update UI ────────────────────────────────────────────────────────────────
+  // Vide les tuiles/graphique quand une fenêtre naviguée n'a aucune donnée —
+  // évite d'afficher des chiffres périmés à côté du message « aucune donnée ».
+  function clearCardsAndChart() {
+    ['air', 'surface', 'depth'].forEach(key => {
+      const el = document.getElementById(`val-${key}`);
+      if (el) el.innerHTML = '—';
+      const elF = document.getElementById(`val-${key}-f`);
+      if (elF) elF.textContent = '—';
+      const tr = document.getElementById(`trend-${key}`);
+      if (tr) tr.innerHTML = '';
+    });
+    const metricEl = { humidity: 'hum', pressure: 'press', wind: 'wind', rain: 'rain', uv: 'uv', solar: 'solar' };
+    for (const key in metricEl) {
+      const id = metricEl[key];
+      const el = document.getElementById('val-' + id);
+      if (el) el.innerHTML = '—';
+      const tr = document.getElementById('trend-' + id);
+      if (tr) tr.innerHTML = '';
+    }
+    const wdEl = document.getElementById('wind-dir');
+    if (wdEl) { wdEl.innerHTML = ''; wdEl.removeAttribute('title'); }
+    // Le vent au large reste valable même sans lecture de sonde : il ne vient
+    // pas du RTDB. On le réaffiche donc plutôt que de vider la carte.
+    updateWindCard([], null);
+    if (chart) {
+      SERIES.forEach((key, i) => { chart.data.datasets[i].data = []; });
+      SOLO.forEach((m, j) => { chart.data.datasets[3 + j].data = []; });
+      chart.update('none');
+    }
+    const stats = document.getElementById('chart-stats');
+    if (stats) stats.innerHTML = '';
+  }
+
+  // Dernier jeu de lectures affiché — mémorisé pour que le rafraîchissement du
+  // vent au large (cadence indépendante du RTDB) puisse redessiner sa carte.
+  let lastData = [], lastReading = null;
+
   function updateUI(data, animate = false) {
-    if (!data.length) return;
+    if (!data.length) { clearCardsAndChart(); return; }
 
     const last = data[data.length - 1];
+    lastData = data; lastReading = last;
 
     // Cards
     const fmt = v => v != null ? v.toFixed(1) : '—';
@@ -880,13 +2178,22 @@
     cardDisplay('air',     val(last, 'air'));   // véranda (repli quai)
     cardDisplay('surface', last.surface);
     cardDisplay('depth',   last.depth);
-    document.getElementById('val-hum').innerHTML =
-      (last.hum != null ? Math.round(last.hum) : '—') + '<span class="card-unit">%</span>';
+    // Tuiles météo génériques + tendances. Le vent est traité à part par
+    // updateWindCard() : sa carte combine deux sources (large + sonde locale).
+    const metricEl = { humidity:'hum', pressure:'press', rain:'rain', uv:'uv', solar:'solar' };
+    for (const key in metricEl) {
+      const id = metricEl[key], v = val(last, key), u = METRIC_UNIT[key];
+      const disp = v == null ? '—' : v.toFixed(METRIC_DEC[key]);
+      document.getElementById('val-' + id).innerHTML =
+        disp + (u ? '<span class="card-unit">' + u + '</span>' : '');
+      document.getElementById('trend-' + id).innerHTML = key === 'uv' ? uvTrendLabel(data) : trendLabel(data, key);
+    }
+
+    updateWindCard(data, last);
 
     document.getElementById('trend-air').innerHTML     = trendLabel(data, 'air');
     document.getElementById('trend-surface').innerHTML = trendLabel(data, 'surface');
     document.getElementById('trend-depth').innerHTML   = trendLabel(data, 'depth');
-    document.getElementById('trend-hum').innerHTML     = trendLabel(data, 'humidity');
 
     // Last update
     const ts = new Date(last.t);
@@ -894,26 +2201,36 @@
     document.getElementById('last-update').textContent =
       i18n[currentLang].lastUpdate + ts.toLocaleString(locale, { hour:'2-digit', minute:'2-digit', day:'numeric', month:'short' });
 
-    // Chart — mode humidité (axe %) exclusif vs mode températures (°C/°F)
-    const humMode = seriesVisible.humidity;
-    const mkPoints = key => data.map(d => ({ x: new Date(d.t), y: val(d, key) }));
+    // Chart — une mesure « solo » (axe unique) exclusive vs le groupe températures (°C/°F)
+    updateChartControls(data);
+    const soloKey = SOLO_KEYS.find(k => seriesVisible[k]) || null;
+    // `est` (jours /daily estimés) ne concerne que les sondes du lac.
+    const mkPoints = key => data.map(d => ({ x: new Date(d.t), y: val(d, key),
+      est: !!d.est && LAKE_KEYS.includes(key) }));
     SERIES.forEach((key, i) => {
       chart.data.datasets[i].data = mkPoints(key);
-      chart.data.datasets[i].hidden = humMode || !seriesVisible[key];
+      chart.data.datasets[i].hidden = !!soloKey || !seriesVisible[key];
     });
-    chart.data.datasets[3].data = mkPoints('humidity');
-    chart.data.datasets[3].hidden = !humMode;
+    SOLO.forEach((m, j) => {
+      const ds = chart.data.datasets[3 + j];
+      ds.data = mkPoints(m.key);
+      ds.hidden = (soloKey !== m.key);
+    });
 
-    renderStats(data);
+    renderStats(data, soloKey);
 
-    if (humMode) {
+    if (soloKey) {
+      const unit = METRIC_UNIT[soloKey] || '';
       let lo = Infinity, hi = -Infinity;
-      for (const d of data) { const v = val(d, 'humidity'); if (v == null) continue; if (v < lo) lo = v; if (v > hi) hi = v; }
-      if (lo === Infinity) { lo = 0; hi = 100; }
-      const pad = Math.max(2, (hi - lo) * 0.1);
-      chart.options.scales.y.min = Math.max(0, Math.floor(lo - pad));
-      chart.options.scales.y.max = Math.min(100, Math.ceil(hi + pad));
-      chart.options.scales.y.ticks.callback = v => v + '%';
+      for (const d of data) { const v = val(d, soloKey); if (v == null) continue; if (v < lo) lo = v; if (v > hi) hi = v; }
+      if (lo === Infinity) { lo = 0; hi = 1; }
+      let pad = (hi - lo) * 0.1; if (pad === 0) pad = Math.abs(hi) * 0.1 || 1;
+      let yMin = lo - pad, yMax = hi + pad;
+      if (soloKey === 'humidity') { yMin = Math.max(0, Math.floor(yMin)); yMax = Math.min(100, Math.ceil(yMax)); }
+      else if (['wind', 'rain', 'uv', 'solar'].includes(soloKey)) yMin = Math.max(0, yMin);
+      chart.options.scales.y.min = yMin;
+      chart.options.scales.y.max = yMax;
+      chart.options.scales.y.ticks.callback = v => axisNum(v) + unit;
       chart.options.scales.yF.display = false;
     } else {
       let lo = Infinity, hi = -Infinity;
@@ -931,30 +2248,98 @@
       const yMin = Math.floor(lo - pad), yMax = Math.ceil(hi + pad);
       chart.options.scales.y.min = yMin;
       chart.options.scales.y.max = yMax;
-      chart.options.scales.y.ticks.callback = v => v + '°C';
+      chart.options.scales.y.ticks.callback = v => axisNum(v) + '°C';
       chart.options.scales.yF.display = true;
       chart.options.scales.yF.min = toF(yMin);
       chart.options.scales.yF.max = toF(yMax);
     }
 
-    const timeUnit = currentPeriod === '24h' ? 'hour' : 'day';
+    let timeUnit;
+    if (currentGranularity === 'custom') {
+      const spanDays = (currentWindow.end - currentWindow.start) / 864e5;
+      timeUnit = spanDays <= 2 ? 'hour' : spanDays <= 90 ? 'day' : 'month';
+    } else {
+      timeUnit = currentIsLiveDay || currentGranularity === 'day' ? 'hour'
+        : (currentGranularity === 'season' || currentGranularity === 'year') ? 'month'
+        : 'day';
+    }
     chart.options.scales.x.time.unit = timeUnit;
+    // Format d'infobulle adapté à la granularité (une vue « année » n'a pas
+    // besoin de l'heure ; le format fixe précédent devenait faux au-delà de 24h).
+    chart.options.scales.x.time.tooltipFormat =
+      timeUnit === 'hour' ? 'dd MMM HH:mm' : (timeUnit === 'month' ? 'MMM yyyy' : 'dd MMM yyyy');
+    // Axe pinné sur la fenêtre pour les vues alignées sur le calendrier ; la
+    // 24h roulante garde l'auto-range historique (fenêtre non fixe).
+    if (currentWindow && !currentIsLiveDay) {
+      chart.options.scales.x.min = currentWindow.start;
+      chart.options.scales.x.max = currentWindow.end;
+    } else {
+      delete chart.options.scales.x.min;
+      delete chart.options.scales.x.max;
+    }
     chart.update(animate ? undefined : 'none');
   }
 
   // ── Stats Min/Moy/Max par capteur (séries cochées, période courante) ──────────
-  function renderStats(data) {
+  function renderStats(data, soloKey) {
     const el = document.getElementById('chart-stats');
     if (!el) return;
     const t = i18n[currentLang];
-    const names = { air: t.legendAir, surface: t.legendSurface, depth: t.legendDepth, humidity: t.humidity };
-    // Stats toujours affichées pour les 4 mesures, indépendamment des cases
-    let html = '';
-    ['air', 'surface', 'depth', 'humidity'].forEach(key => {
-      const unit = key === 'humidity' ? '%' : '°C';
-      const dec  = key === 'humidity' ? 0 : 1;
+    const names = {
+      air: t.legendAir, surface: t.legendSurface, depth: t.legendDepth,
+      humidity: t.humidity, pressure: t.pressure, wind: t.wind,
+      rain: t.rain, uv: t.uv, solar: t.solar,
+    };
+    // Cœur toujours affiché (temp/eau/humidité) + la mesure météo « solo »
+    // sélectionnée si elle est en dehors du cœur (pression/vent/pluie/uv/solar).
+    const CORE = ['air', 'surface', 'depth', 'humidity'];
+    const keys = CORE.slice();
+    if (soloKey && !CORE.includes(soloKey)) keys.push(soloKey);
+
+    const block = (key, rows) =>
+      '<div class="stat-sensor">' +
+        '<span class="stat-name" style="color:var(--' + key + ')">' + names[key] + '</span>' +
+        rows +
+      '</div>';
+
+    let html = '', anyEst = false;
+    keys.forEach(key => {
+      const isTemp = (key === 'air' || key === 'surface' || key === 'depth');
+      const unit = isTemp ? '°C' : (METRIC_UNIT[key] || '');
+      const dec  = isTemp ? 1 : (METRIC_DEC[key] != null ? METRIC_DEC[key] : 0);
+      const f = x => x.toFixed(dec);
+
+      // Pluie : Min/Moy/Max n'a pas de sens → un seul « Total » sur la période.
+      // Deux sémantiques selon la vue :
+      //  • saison/année : /daily contient déjà le cumul du jour (max) par point
+      //    → Total = simple somme des points.
+      //  • 24h/7j/30j : rday est un cumul croissant qui se remet à ~0 au reset
+      //    de la station (pas forcément minuit local) → on somme le pic de
+      //    chaque cycle (segment délimité par une baisse = reset). Compte la
+      //    pluie visible une seule fois, additionne les événements distincts.
+      if (key === 'rain') {
+        const daily = (currentGranularity === 'month' || currentGranularity === 'season' || currentGranularity === 'year')
+          || (currentGranularity === 'custom' && (currentWindow.end - currentWindow.start) > 45 * 864e5);
+        let total = 0, seg = 0, prev = null, any = false;
+        for (const d of data) {
+          const v = val(d, 'rain');
+          if (v == null) continue;
+          any = true;
+          if (daily) { total += v; continue; }
+          if (prev != null && v < prev) { total += seg; seg = 0; } // reset
+          if (v > seg) seg = v;
+          prev = v;
+        }
+        if (!any) return;
+        if (!daily) total += seg; // dernier segment
+        html += block(key, '<span class="stat-row"><span>' + t.statTotal + '</span><b>' + f(total) + unit + '</b></span>');
+        return;
+      }
+
       let mn = Infinity, mx = -Infinity, sum = 0, n = 0;
       for (const d of data) {
+        if (key === 'uv' && !isDaylight(d.t)) continue;
+        if (d.est && LAKE_KEYS.includes(key)) { anyEst = true; continue; }  // jours estimés : hors stats
         const v = val(d, key);
         if (v == null) continue;
         if (v < mn) mn = v;
@@ -962,15 +2347,13 @@
         sum += v; n++;
       }
       if (!n) return;
-      const f = x => x.toFixed(dec);
-      html +=
-        '<div class="stat-sensor">' +
-          '<span class="stat-name" style="color:var(--' + key + ')">' + names[key] + '</span>' +
-          '<span class="stat-row"><span>' + t.statMin + '</span><b>' + f(mn) + unit + '</b></span>' +
-          '<span class="stat-row"><span>' + t.statAvg + '</span><b>' + f(sum / n) + unit + '</b></span>' +
-          '<span class="stat-row"><span>' + t.statMax + '</span><b>' + f(mx) + unit + '</b></span>' +
-        '</div>';
+      html += block(key,
+        '<span class="stat-row"><span>' + t.statMin + '</span><b>' + f(mn) + unit + '</b></span>' +
+        '<span class="stat-row"><span>' + t.statAvg + '</span><b>' + f(sum / n) + unit + '</b></span>' +
+        '<span class="stat-row"><span>' + t.statMax + '</span><b>' + f(mx) + unit + '</b></span>'
+      );
     });
+    if (anyEst) html += '<div class="stat-note">' + t.estNote + '</div>';
     el.innerHTML = html;
   }
 
@@ -984,11 +2367,14 @@
     cb.addEventListener('change', () => {
       const key = cb.dataset.series;
       if (cb.checked) {
-        if (key === 'humidity') {
-          ['air', 'surface', 'depth'].forEach(k => setToggle(k, false));  // exclusif
-          seriesVisible.humidity = true;
+        if (SOLO_KEYS.includes(key)) {
+          // mesure solo exclusive : coupe les températures ET les autres mesures solo
+          ['air', 'surface', 'depth'].forEach(k => setToggle(k, false));
+          SOLO_KEYS.forEach(k => { if (k !== key) setToggle(k, false); });
+          seriesVisible[key] = true;
         } else {
-          setToggle('humidity', false);   // une température → coupe l'humidité
+          // une température : coupe toutes les mesures solo
+          SOLO_KEYS.forEach(k => setToggle(k, false));
           seriesVisible[key] = true;
         }
       } else {
@@ -1003,26 +2389,486 @@
     });
   });
 
-  // ── Period subtitles ─────────────────────────────────────────────────────────
-  // ── Load ─────────────────────────────────────────────────────────────────────
-  async function load(period, animate = true) {
-    currentPeriod = period;
-    const subKeys = { '24h': 'sub24h', '7d': 'sub7d', '30d': 'sub30d', 'season': 'subSeason', 'year': 'subYear' };
-    document.getElementById('chart-subtitle').textContent = i18n[currentLang][subKeys[period]];
-    try {
-      const data = await fetchData(period);
-      allData = data;
-      updateUI(data, animate);
-    } catch (e) {
-      console.error(e);
+  // Affiche une case seulement si la mesure a des données ; désactive si vide
+  function updateChartControls(data) {
+    SOLO.forEach(m => {
+      const has = data.some(d => val(d, m.key) != null);
+      const el = document.querySelector('.series-toggle[data-series="' + m.key + '"]');
+      if (!el) return;
+      const item = el.closest('.legend-item');
+      if (item) item.style.display = has ? '' : 'none';
+      if (!has && seriesVisible[m.key]) setToggle(m.key, false);  // données disparues → repli
+    });
+  }
+
+  // ── Time-travel : navigation (étiquette, boutons, URL) ──────────────────────
+  function isAtFirstData(win, granularity) {
+    if (earliestDataMs == null) return false;
+    const ep = tzPartsFromUtc(earliestDataMs);
+    const earliestWin = windowFor({ y: ep.y, mo: ep.mo, d: ep.d }, granularity);
+    return win.start <= earliestWin.start;
+  }
+
+  function updateNavUI(win, granularity, isLiveRolling) {
+    const t = i18n[currentLang];
+    // Semaine/mois en vue live roulante : la fenêtre n'est plus une semaine
+    // calendaire ni « Août 2026 » → on montre la plage de dates roulante et un
+    // sous-titre « N derniers jours ». Le jour live garde sa date + « 24 h ».
+    const rollingRange = isLiveRolling && granularity !== 'day';
+    document.getElementById('period-label').textContent =
+        granularity === 'custom' ? customRangeLabel(win, currentLang)
+      : rollingRange             ? rollingRangeLabel(win, currentLang)
+      :                            periodLabel(win, granularity, currentAnchor, currentLang);
+    document.getElementById('chart-subtitle').textContent = !isLiveRolling ? ''
+      : granularity === 'week'  ? t.sub7d
+      : granularity === 'month' ? t.sub30d
+      : granularity === 'year'  ? t.sub365
+      : t.sub24h;
+
+    if (granularity === 'custom') {
+      document.getElementById('step-next').disabled = win.end > Date.now();
+      document.getElementById('step-prev').disabled = earliestDataMs != null && win.start <= earliestDataMs;
+      const def = defaultCustomRange();
+      document.getElementById('today-btn').disabled = (win.start === def.start && win.end === def.end);
+    } else {
+      const live = isLiveRolling || isLiveWindow(win);
+      document.getElementById('step-next').disabled = live;
+      document.getElementById('today-btn').disabled = live;
+      document.getElementById('step-prev').disabled = isAtFirstData(win, granularity);
     }
   }
 
+  function setChartStatus(state) {
+    const el = document.getElementById('chart-status');
+    if (!el) return;
+    const t = i18n[currentLang];
+    if (state === 'ok') { el.style.display = 'none'; return; }
+    el.className = 'chart-status' + (state === 'error' ? ' chart-status-error' : '');
+    el.textContent = state === 'loading' ? t.loading : state === 'empty' ? t.noData : t.loadError;
+    el.style.display = '';
+  }
+
+  // ── Time-travel : sélecteur de période (popover, section 4 du plan) ────────
+  // La grille s'adapte à la granularité active : calendrier de jours pour
+  // 24h/7j (cliquer un jour sélectionne sa semaine entière en mode 7j),
+  // grille 3×4 de mois pour Mois, 4 blocs pour Saison, liste pour Année.
+  let pickerOpen = false;
+  // Navigation interne du calendrier/de la grille — indépendante de
+  // currentAnchor tant qu'aucune case n'a été choisie (parcourir n'affiche
+  // rien tant qu'on n'a pas cliqué une case sélectionnable).
+  let pickerViewY = null, pickerViewMo = null;
+
+  const MONTH_ABBR = {
+    fr: ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc'],
+    en: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+  };
+  const WEEKDAY_ABBR = { fr: ['L','M','M','J','V','S','D'], en: ['M','T','W','T','F','S','S'] };
+
+  function earliestAnchorOrFallback() {
+    if (earliestDataMs == null) return currentAnchor;
+    const p = tzPartsFromUtc(earliestDataMs);
+    return { y: p.y, mo: p.mo, d: p.d };
+  }
+
+  function selectPeriod(anchor) {
+    currentAnchor = anchor;
+    load(currentPeriod);
+    closePicker();
+  }
+
+  function renderPickerHeader(label, disablePrev, disableNext) {
+    return `<div class="picker-head">
+      <button type="button" class="picker-nav" data-nav="prev" ${disablePrev ? 'disabled' : ''}><i class="ti ti-chevron-left"></i></button>
+      <span class="picker-head-label">${label}</span>
+      <button type="button" class="picker-nav" data-nav="next" ${disableNext ? 'disabled' : ''}><i class="ti ti-chevron-right"></i></button>
+    </div>`;
+  }
+
+  // Calendrier de jours — partagé par 24h (sélection = un jour) et 7j
+  // (sélection = la semaine entière contenant le jour cliqué, puisque
+  // windowForWeek() aligne toute ancre sur le lundi de sa semaine).
+  function renderDayCalendar() {
+    const lang = currentLang;
+    const y = pickerViewY, mo = pickerViewMo;
+    const first = weekdayISO(y, mo, 1); // 1=lun..7=dim, position du 1er du mois
+    const nm = addMonths(y, mo, 1);
+    const lastDay = addDays(nm.y, nm.mo, 1, -1).d; // dernier jour du mois (jour 0 du suivant)
+    const todayA = todayAnchor();
+    const earliest = earliestAnchorOrFallback();
+    const earliestWinStart = dayStart(earliest.y, earliest.mo, earliest.d);
+    const isWeekMode = GRAN[currentPeriod] === 'week';
+    const selWin = isWeekMode ? windowForWeek(currentAnchor) : null;
+
+    let cells = '';
+    for (let i = 1; i < first; i++) cells += '<span class="picker-day picker-day-empty"></span>';
+    for (let d = 1; d <= lastDay; d++) {
+      const cellStart = dayStart(y, mo, d);
+      const disabled = cellStart > Date.now() || cellStart < earliestWinStart;
+      const isToday = (y === todayA.y && mo === todayA.mo && d === todayA.d);
+      const isSelected = isWeekMode
+        ? (cellStart >= selWin.start && cellStart < selWin.end)
+        : (y === currentAnchor.y && mo === currentAnchor.mo && d === currentAnchor.d);
+      const cls = ['picker-day'];
+      if (isToday) cls.push('picker-day-today');
+      if (isSelected) cls.push('picker-day-selected');
+      if (disabled) cls.push('picker-day-disabled');
+      cells += `<button type="button" class="${cls.join(' ')}" ${disabled ? 'disabled' : ''} data-y="${y}" data-mo="${mo}" data-d="${d}">${d}</button>`;
+    }
+    const weekdayRow = WEEKDAY_ABBR[lang].map(w => `<span class="picker-weekday">${w}</span>`).join('');
+    const label = fmtMonthYear(y, mo, lang);
+    const disablePrev = y < earliest.y || (y === earliest.y && mo <= earliest.mo);
+    const disableNext = y > todayA.y || (y === todayA.y && mo >= todayA.mo);
+    return renderPickerHeader(label, disablePrev, disableNext) +
+      `<div class="picker-grid picker-grid-days">${weekdayRow}${cells}</div>`;
+  }
+
+  function renderMonthGrid() {
+    const lang = currentLang;
+    const y = pickerViewY;
+    const todayA = todayAnchor();
+    const earliest = earliestAnchorOrFallback();
+    const earliestStart = dayStart(earliest.y, earliest.mo, 1);
+    let cells = '';
+    for (let mo = 1; mo <= 12; mo++) {
+      const cellStart = dayStart(y, mo, 1);
+      const disabled = cellStart > Date.now() || cellStart < earliestStart;
+      const isSelected = (y === currentAnchor.y && mo === currentAnchor.mo);
+      const isToday = (y === todayA.y && mo === todayA.mo);
+      const cls = ['picker-month'];
+      if (isSelected) cls.push('picker-day-selected');
+      if (isToday) cls.push('picker-day-today');
+      if (disabled) cls.push('picker-day-disabled');
+      cells += `<button type="button" class="${cls.join(' ')}" ${disabled ? 'disabled' : ''} data-y="${y}" data-mo="${mo}">${MONTH_ABBR[lang][mo - 1]}</button>`;
+    }
+    const disablePrev = y <= earliest.y;
+    const disableNext = y >= todayA.y;
+    return renderPickerHeader(String(y), disablePrev, disableNext) +
+      `<div class="picker-grid picker-grid-months">${cells}</div>`;
+  }
+
+  function renderSeasonGrid() {
+    const lang = currentLang, t = i18n[lang];
+    const y = pickerViewY; // année d'étiquette (celle de janvier pour l'hiver)
+    const todayA = todayAnchor();
+    const nowSeason = seasonOf(todayA.y, todayA.mo);
+    const curSeason = seasonOf(currentAnchor.y, currentAnchor.mo);
+    const earliest = earliestAnchorOrFallback();
+    const earliestSeason = seasonOf(earliest.y, earliest.mo);
+    const MID = [1, 4, 7, 10];
+    let cells = '';
+    for (let idx = 0; idx < 4; idx++) {
+      const win = windowForSeason({ y, mo: MID[idx], d: 15 });
+      const beforeFirst = y < earliestSeason.year || (y === earliestSeason.year && idx < earliestSeason.idx);
+      const disabled = win.start > Date.now() || beforeFirst;
+      const isSelected = (y === curSeason.year && idx === curSeason.idx);
+      const cls = ['picker-season'];
+      if (isSelected) cls.push('picker-day-selected');
+      if (disabled) cls.push('picker-day-disabled');
+      cells += `<button type="button" class="${cls.join(' ')}" ${disabled ? 'disabled' : ''} data-y="${y}" data-idx="${idx}">${t.seasonNames[idx]}</button>`;
+    }
+    const disablePrev = y <= earliestSeason.year;
+    const disableNext = y >= nowSeason.year;
+    return renderPickerHeader(String(y), disablePrev, disableNext) +
+      `<div class="picker-grid picker-grid-seasons">${cells}</div>`;
+  }
+
+  function renderYearList() {
+    const earliest = earliestAnchorOrFallback();
+    const nowY = todayAnchor().y;
+    let cells = '';
+    for (let y = nowY; y >= earliest.y; y--) {
+      const cls = ['picker-year'];
+      if (y === currentAnchor.y) cls.push('picker-day-selected');
+      cells += `<button type="button" class="${cls.join(' ')}" data-y="${y}">${y}</button>`;
+    }
+    return `<div class="picker-grid picker-grid-years">${cells}</div>`;
+  }
+
+  // Plage libre : deux champs date natifs + bouton Appliquer. Bornés par la
+  // première donnée et « aujourd'hui » via min/max — pas de saisie invalide
+  // possible pour ces deux bornes (l'ordre début/fin est normalisé à l'apply).
+  function renderCustomPicker() {
+    const t = i18n[currentLang];
+    const pad2 = n => String(n).padStart(2, '0');
+    const fmt = ms => { const p = tzPartsFromUtc(ms); return `${p.y}-${pad2(p.mo)}-${pad2(p.d)}`; };
+    const r = customRange || defaultCustomRange();
+    const startVal = fmt(r.start);
+    const endVal = fmt(r.end - 43200000); // borne de fin exclusive -> dernier jour inclus affiché
+    const maxVal = fmt(Date.now());
+    const minVal = earliestDataMs != null ? fmt(earliestDataMs) : '';
+    return `
+      <div class="picker-custom">
+        <label class="picker-custom-field">
+          <span>${t.customStart}</span>
+          <input type="date" id="custom-start-input" value="${startVal}" min="${minVal}" max="${maxVal}">
+        </label>
+        <label class="picker-custom-field">
+          <span>${t.customEnd}</span>
+          <input type="date" id="custom-end-input" value="${endVal}" min="${minVal}" max="${maxVal}">
+        </label>
+        <button type="button" class="picker-apply-btn" id="picker-custom-apply">${t.customApply}</button>
+      </div>`;
+  }
+
+  function renderPicker() {
+    const granularity = GRAN[currentPeriod];
+    const t = i18n[currentLang];
+    let body;
+    if (granularity === 'custom') body = renderCustomPicker();
+    else if (granularity === 'day' || granularity === 'week') body = renderDayCalendar();
+    else if (granularity === 'month')  body = renderMonthGrid();
+    else if (granularity === 'season') body = renderSeasonGrid();
+    else                                body = renderYearList();
+    document.getElementById('picker-popover').innerHTML = body +
+      `<div class="picker-foot"><button type="button" class="picker-today-btn" id="picker-today">` +
+      `<i class="ti ti-clock-hour-4"></i>${t.todayBtn}</button></div>`;
+  }
+
+  function onDocClickForPicker(e) {
+    const pop = document.getElementById('picker-popover');
+    const label = document.getElementById('period-label');
+    if (pop.contains(e.target) || label.contains(e.target)) return;
+    closePicker();
+  }
+  function onKeydownForPicker(e) {
+    if (e.key === 'Escape') closePicker();
+  }
+  function openPicker() {
+    const granularity = GRAN[currentPeriod];
+    pickerViewY = granularity === 'season' ? seasonOf(currentAnchor.y, currentAnchor.mo).year : currentAnchor.y;
+    pickerViewMo = currentAnchor.mo;
+    renderPicker();
+    document.getElementById('picker-popover').style.display = '';
+    document.getElementById('period-label').setAttribute('aria-expanded', 'true');
+    pickerOpen = true;
+    document.addEventListener('click', onDocClickForPicker, true);
+    document.addEventListener('keydown', onKeydownForPicker, true);
+  }
+  function closePicker() {
+    if (!pickerOpen) return;
+    document.getElementById('picker-popover').style.display = 'none';
+    document.getElementById('period-label').setAttribute('aria-expanded', 'false');
+    pickerOpen = false;
+    document.removeEventListener('click', onDocClickForPicker, true);
+    document.removeEventListener('keydown', onKeydownForPicker, true);
+  }
+
+  document.getElementById('period-label').addEventListener('click', () => {
+    if (pickerOpen) closePicker(); else openPicker();
+  });
+
+  // Délégation d'événements : le contenu du popover est régénéré à chaque
+  // navigation/ouverture, un seul écouteur (posé une fois) suffit.
+  document.getElementById('picker-popover').addEventListener('click', (e) => {
+    if (e.target.closest('#picker-today')) {
+      if (GRAN[currentPeriod] === 'custom') customRange = defaultCustomRange();
+      else currentAnchor = todayAnchor();
+      load(currentPeriod);
+      closePicker();
+      return;
+    }
+    if (e.target.closest('#picker-custom-apply')) {
+      const startVal = document.getElementById('custom-start-input').value;
+      const endVal = document.getElementById('custom-end-input').value;
+      const m1 = /^(\d{4})-(\d{2})-(\d{2})$/.exec(startVal);
+      const m2 = /^(\d{4})-(\d{2})-(\d{2})$/.exec(endVal);
+      if (!m1 || !m2) return; // champ vide/invalide — ne rien faire
+      const msA = dayStart(+m1[1], +m1[2], +m1[3]);
+      const msB = dayStart(+m2[1], +m2[2], +m2[3]);
+      const lo = Math.min(msA, msB), hiInclusive = Math.max(msA, msB);
+      const hp = tzPartsFromUtc(hiInclusive);
+      const hiNext = addDays(hp.y, hp.mo, hp.d, 1);
+      customRange = { start: lo, end: dayStart(hiNext.y, hiNext.mo, hiNext.d) };
+      load('custom');
+      closePicker();
+      return;
+    }
+    const navBtn = e.target.closest('.picker-nav');
+    if (navBtn) {
+      if (navBtn.disabled) return;
+      const dir = navBtn.dataset.nav === 'prev' ? -1 : 1;
+      const granularity = GRAN[currentPeriod];
+      if (granularity === 'day' || granularity === 'week') {
+        const r = addMonths(pickerViewY, pickerViewMo, dir);
+        pickerViewY = r.y; pickerViewMo = r.mo;
+      } else {
+        pickerViewY += dir;
+      }
+      renderPicker();
+      return;
+    }
+    const dayBtn = e.target.closest('.picker-day:not(.picker-day-empty)');
+    if (dayBtn) { if (!dayBtn.disabled) selectPeriod({ y: +dayBtn.dataset.y, mo: +dayBtn.dataset.mo, d: +dayBtn.dataset.d }); return; }
+    const monthBtn = e.target.closest('.picker-month');
+    if (monthBtn) { if (!monthBtn.disabled) selectPeriod({ y: +monthBtn.dataset.y, mo: +monthBtn.dataset.mo, d: 1 }); return; }
+    const seasonBtn = e.target.closest('.picker-season');
+    if (seasonBtn) {
+      if (seasonBtn.disabled) return;
+      const idx = +seasonBtn.dataset.idx;
+      selectPeriod({ y: +seasonBtn.dataset.y, mo: [1, 4, 7, 10][idx], d: 15 });
+      return;
+    }
+    const yearBtn = e.target.closest('.picker-year');
+    if (yearBtn) selectPeriod({ y: +yearBtn.dataset.y, mo: 6, d: 15 });
+  });
+
+  // Formats section 7 du plan : ?g=day&start=YYYY-MM-DD, ?g=week&start=<lundi>,
+  // ?g=month&start=YYYY-MM, ?g=season&start=YYYY-{hiver|printemps|ete|automne},
+  // ?g=year&start=YYYY. replaceState (pas pushState) pour ne pas polluer
+  // l'historique du navigateur à chaque pas. Vue live par défaut → URL propre.
+  const SEASON_SLUGS = ['hiver', 'printemps', 'ete', 'automne'];
+  function urlStartParam(win, granularity) {
+    const pad2 = n => String(n).padStart(2, '0');
+    if (granularity === 'day')   return `${currentAnchor.y}-${pad2(currentAnchor.mo)}-${pad2(currentAnchor.d)}`;
+    if (granularity === 'week')  { const p = tzPartsFromUtc(win.start); return `${p.y}-${pad2(p.mo)}-${pad2(p.d)}`; }
+    if (granularity === 'month') return `${currentAnchor.y}-${pad2(currentAnchor.mo)}`;
+    if (granularity === 'season') return `${win.seasonYear}-${SEASON_SLUGS[win.seasonIdx]}`;
+    return String(currentAnchor.y);
+  }
+  function updateUrlState(win, granularity, isLiveDay) {
+    const url = new URL(location.href);
+    if (isLiveDay && granularity === 'day') {
+      url.search = '';
+    } else if (granularity === 'custom') {
+      const pad2 = n => String(n).padStart(2, '0');
+      const s = tzPartsFromUtc(win.start);
+      const e = tzPartsFromUtc(win.end - 43200000);
+      url.searchParams.set('g', 'custom');
+      url.searchParams.set('start', `${s.y}-${pad2(s.mo)}-${pad2(s.d)}`);
+      url.searchParams.set('end', `${e.y}-${pad2(e.mo)}-${pad2(e.d)}`);
+    } else {
+      url.searchParams.set('g', granularity);
+      url.searchParams.set('start', urlStartParam(win, granularity));
+      url.searchParams.delete('end');
+    }
+    history.replaceState(null, '', url.pathname + url.search);
+  }
+  function parseUrlState() {
+    const qs = new URLSearchParams(location.search);
+    const g = qs.get('g'), start = qs.get('start');
+    if (!g || !start) return null;
+    const period = Object.keys(GRAN).find(k => GRAN[k] === g);
+    if (!period) return null;
+    let m;
+    if (g === 'custom') {
+      const end = qs.get('end');
+      const m1 = /^(\d{4})-(\d{2})-(\d{2})$/.exec(start);
+      const m2 = end && /^(\d{4})-(\d{2})-(\d{2})$/.exec(end);
+      if (!m1 || !m2) return null;
+      const startMs = dayStart(+m1[1], +m1[2], +m1[3]);
+      const endAnchor = addDays(+m2[1], +m2[2], +m2[3], 1);
+      return { period, customRange: { start: startMs, end: dayStart(endAnchor.y, endAnchor.mo, endAnchor.d) } };
+    }
+    if (g === 'day' || g === 'week') {
+      m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(start);
+      if (!m) return null;
+      return { period, anchor: { y: +m[1], mo: +m[2], d: +m[3] } };
+    }
+    if (g === 'month') {
+      m = /^(\d{4})-(\d{2})$/.exec(start);
+      if (!m) return null;
+      return { period, anchor: { y: +m[1], mo: +m[2], d: 1 } };
+    }
+    if (g === 'season') {
+      m = new RegExp(`^(\\d{4})-(${SEASON_SLUGS.join('|')})$`).exec(start);
+      if (!m) return null;
+      const idx = SEASON_SLUGS.indexOf(m[2]);
+      return { period, anchor: { y: +m[1], mo: [1, 4, 7, 10][idx], d: 15 } };
+    }
+    // year
+    m = /^(\d{4})$/.exec(start);
+    if (!m) return null;
+    return { period, anchor: { y: +m[1], mo: 6, d: 15 } };
+  }
+
+  // ── Load ─────────────────────────────────────────────────────────────────────
+  async function load(period, animate = true) {
+    currentPeriod = period;
+    const granularity = GRAN[period];
+    let win, calWin = null;
+    if (granularity === 'custom') {
+      if (!customRange) customRange = defaultCustomRange();
+      win = customRange;
+    } else {
+      calWin = windowFor(currentAnchor, granularity);
+      win = calWin;
+    }
+    // Vue live roulante (jour/semaine/mois) : la fenêtre calendaire contient
+    // l'instant présent → on affiche les N derniers jours se terminant maintenant.
+    // Le jour (24h) garde son chemin historique (fenêtre auto, fetch limitToLast) ;
+    // semaine/mois remplacent la fenêtre par {now-N, now} et réutilisent les
+    // branches week/month existantes (readings horaires / daily) sur cette plage.
+    const rollingSpan = ROLLING_SPAN[granularity];
+    const isLiveRolling = rollingSpan != null && calWin != null && isLiveWindow(calWin);
+    const isLiveDay = isLiveRolling && granularity === 'day';
+    if (isLiveRolling && granularity !== 'day') {
+      win = { start: Date.now() - rollingSpan, end: Date.now() };
+    }
+
+    currentWindow = win;
+    currentGranularity = granularity;
+    currentIsLiveDay = isLiveDay;
+    currentIsLiveRolling = isLiveRolling;
+    updateNavUI(win, granularity, isLiveRolling);
+    // URL basée sur l'ancre calendaire (pas la fenêtre roulante) : un rechargement
+    // restaure le même onglet/position et redétecte le mode live → roulant.
+    updateUrlState(calWin || win, granularity, isLiveDay);
+
+    const token = ++fetchToken;
+    setChartStatus('loading');
+    try {
+      const data = await fetchWindow(win, granularity, isLiveRolling);
+      if (token !== fetchToken) return; // une navigation plus récente a eu lieu entre-temps
+      allData = data;
+      setChartStatus(data.length ? 'ok' : 'empty');
+      updateUI(data, animate);
+    } catch (e) {
+      if (token !== fetchToken) return;
+      console.error(e);
+      setChartStatus('error');
+    }
+  }
+
+  function stepPeriod(dir) {
+    const granularity = GRAN[currentPeriod];
+    if (granularity === 'custom') {
+      // Avance par la longueur de la plage choisie plutôt qu'une unité fixe.
+      const span = customRange.end - customRange.start;
+      const newStart = customRange.start + dir * span;
+      const newEnd = customRange.end + dir * span;
+      if (dir > 0 && newStart > Date.now()) return;
+      customRange = { start: newStart, end: newEnd };
+      load(currentPeriod);
+      return;
+    }
+    const proposed = stepAnchor(currentAnchor, granularity, dir);
+    if (dir > 0 && windowFor(proposed, granularity).start > Date.now()) return; // rien à afficher dans le futur
+    currentAnchor = proposed;
+    load(currentPeriod);
+  }
+  document.getElementById('step-prev').addEventListener('click', () => stepPeriod(-1));
+  document.getElementById('step-next').addEventListener('click', () => stepPeriod(1));
+  document.getElementById('today-btn').addEventListener('click', () => {
+    if (GRAN[currentPeriod] === 'custom') customRange = defaultCustomRange();
+    else currentAnchor = todayAnchor();
+    load(currentPeriod);
+  });
+
+  // Rangée de granularité scrollable sur mobile (section 6) : ramène l'onglet
+  // actif en vue. No-op sans overflow (desktop), donc appelé sans condition.
+  function scrollActiveTabIntoView() {
+    const active = document.querySelector('.tab.active');
+    if (active) active.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+  }
+
   // ── Tab click ────────────────────────────────────────────────────────────────
+  // Changer de granularité ne réinitialise pas l'ancre : on atterrit sur la
+  // période qui contient la même date, pas sur « aujourd'hui » (section 7).
   document.querySelectorAll('.tab').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       btn.classList.add('active');
+      scrollActiveTabIntoView();
       load(btn.dataset.period);
     });
   });
@@ -1036,6 +2882,8 @@
       currentLang = btn.dataset.lang;
       LS.set('lm_lang', currentLang);
       applyLang();
+      updateMoon();
+      renderForecast();
       if (allData.length) updateUI(allData);
     });
   });
@@ -1065,14 +2913,226 @@
     });
   }
 
+  // ── Accordéon lunaire : clic sur la tuile Lune ⇄ panneau solunaire ────────────
+  (function() {
+    const tile = document.getElementById('moon-tile');
+    const label = document.getElementById('solunar-label');
+    const panel = document.getElementById('solunar');
+    if (!tile || !panel) return;
+    function toggleOpen() {
+      const open = tile.getAttribute('aria-expanded') !== 'true';
+      panel.style.display = open ? '' : 'none';
+      label.style.display = open ? '' : 'none';
+      tile.setAttribute('aria-expanded', String(open));
+      updateMoon();  // rafraîchit le libellé du badge (Détails/Masquer)
+      if (open) panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    tile.addEventListener('click', toggleOpen);
+    tile.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleOpen(); }
+    });
+
+    // ── Porte cachée : appui long (1,2 s) sur la tuile Lune → /cp ──────────────
+    // (SpecsCalendrierActivites §10.C). Clic court = accordéon comme d'habitude ;
+    // seul le maintien complet navigue. Les Pointer Events couvrent souris ET
+    // tactile — à la souris, maintenir le bouton gauche ~1,2 s.
+    const HOLD_MS = 1200, PULSE_MS = 1000;
+    let holdTimer = null, pulseTimer = null, longFired = false;
+
+    function cancelHold() {
+      clearTimeout(holdTimer); clearTimeout(pulseTimer);
+      holdTimer = pulseTimer = null;
+      tile.classList.remove('cp-arming');
+    }
+    function openCP() {
+      LS.set('lm_cp_unlocked', '1');
+      revealCpLink();
+      const toast = document.createElement('div');
+      toast.className = 'cp-toast';
+      toast.textContent = '🎣 ' + i18n[currentLang].cpToast;
+      document.body.appendChild(toast);
+      setTimeout(() => { window.location.href = '/cp'; }, 420);
+    }
+
+    tile.addEventListener('pointerdown', e => {
+      // Bouton principal seulement : un clic droit ne doit pas armer la porte.
+      if (!e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
+      longFired = false;
+      pulseTimer = setTimeout(() => tile.classList.add('cp-arming'), PULSE_MS);
+      holdTimer  = setTimeout(() => { longFired = true; cancelHold(); openCP(); }, HOLD_MS);
+    });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => tile.addEventListener(ev, cancelHold));
+    tile.addEventListener('contextmenu', e => { if (holdTimer || longFired) e.preventDefault(); });
+    // Capture : intercepte le clic AVANT toggleOpen, pour qu'un appui long
+    // n'ouvre pas aussi l'accordéon au relâchement.
+    tile.addEventListener('click', e => {
+      if (longFired) { longFired = false; e.preventDefault(); e.stopPropagation(); }
+    }, true);
+  })();
+
+  // Lien discret au footer, une fois la page /cp découverte (§10.C).
+  // Réversible : retirer `lm_cp_unlocked` du localStorage re-cache le lien.
+  function revealCpLink() {
+    const el = document.getElementById('cp-footer-link');
+    if (el && LS.get('lm_cp_unlocked', '') === '1') el.hidden = false;
+  }
+  revealCpLink();
+
+  // ── Accordéon radar : clic sur la tuile Radar ⇄ carte Windy ───────────────────
+  // L'iframe n'est injectée qu'à la première ouverture (économie de bande passante).
+  (function() {
+    const tile = document.getElementById('radar-tile');
+    const panel = document.getElementById('radar-panel');
+    const toggle = document.getElementById('radar-toggle');
+    if (!tile || !panel || !toggle) return;
+    let loaded = false;
+    function toggleOpen() {
+      const open = tile.getAttribute('aria-expanded') !== 'true';
+      if (open && !loaded) {
+        panel.innerHTML = '<div class="radar-frame-wrap"><iframe src="https://embed.windy.com/embed2.html?lat=46.060000&lon=-74.371944&detailLat=46.060000&detailLon=-74.371944&zoom=15&level=surface&overlay=radar" loading="lazy" title="Radar météo — Lac Manitou"></iframe></div>';
+        loaded = true;
+      }
+      panel.style.display = open ? '' : 'none';
+      tile.setAttribute('aria-expanded', String(open));
+      const t = i18n[currentLang];
+      toggle.innerHTML = `<i class="ti ti-chevron-${open ? 'up' : 'down'}"></i><span>${open ? t.radarClose : t.radarOpen}</span>`;
+      // Centre le viewport sur la carte à l'ouverture — évite que l'utilisateur
+      // scrolle manuellement et finisse avec la souris sur l'iframe (le zoom
+      // interne de la carte capte alors la molette au lieu du scroll de page).
+      if (open) panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    tile.addEventListener('click', toggleOpen);
+    tile.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleOpen(); }
+    });
+  })();
+
+  // ── Accordéon « Externe » : liens prévisions tierces qui s'ouvrent dans un
+  // NOUVEL onglet (jamais en iframe — leurs CGU/X-Frame-Options l'interdisent). ──
+  (function() {
+    const toggle = document.getElementById('forecast-ext-toggle');
+    const panel = document.getElementById('forecast-ext-panel');
+    if (!toggle || !panel) return;
+    function toggleExt() {
+      const open = toggle.getAttribute('aria-expanded') !== 'true';
+      panel.style.display = open ? '' : 'none';
+      toggle.setAttribute('aria-expanded', String(open));
+    }
+    toggle.addEventListener('click', toggleExt);
+    toggle.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExt(); }
+    });
+  })();
+
   // GA4 : le tag client (gtag) dans le <head> envoie page_view automatiquement
   // sur Firebase Hosting (l'iframe sandbox de GAS bloquait ces requêtes).
+
+  // ── Prévisions 7 jours (Environnement Canada — api.weather.gc.ca) ────────────
+  // Site le plus proche du lac : Sainte-Agathe (qc-33). Payload bilingue {en,fr}.
+  const WX_API  = 'https://api.weather.gc.ca/collections/citypageweather-realtime/items/qc-33?f=json';
+  let forecastData = null;
+
+  // Code d'icône Environnement Canada → icône Tabler + couleur.
+  function wxIcon(code) {
+    const M = {
+      0:['ti-sun','#fbbf24'], 1:['ti-sun','#fbbf24'],
+      2:['ti-cloud','#94a3b8'], 3:['ti-cloud','#94a3b8'], 4:['ti-cloud','#94a3b8'], 5:['ti-cloud','#94a3b8'],
+      6:['ti-cloud-rain','#38bdf8'], 7:['ti-cloud-rain','#38bdf8'], 8:['ti-cloud-snow','#93c5fd'],
+      9:['ti-cloud-rain','#38bdf8'], 10:['ti-cloud','#94a3b8'], 11:['ti-cloud-rain','#38bdf8'],
+      12:['ti-cloud-rain','#38bdf8'], 13:['ti-cloud-rain','#38bdf8'],
+      14:['ti-cloud-snow','#93c5fd'], 15:['ti-cloud-snow','#93c5fd'],
+      16:['ti-cloud-snow','#e0f2fe'], 17:['ti-cloud-snow','#e0f2fe'], 18:['ti-cloud-snow','#e0f2fe'],
+      19:['ti-cloud-storm','#a78bfa'], 23:['ti-cloud-fog','#94a3b8'], 24:['ti-cloud-fog','#94a3b8'],
+      27:['ti-cloud-snow','#93c5fd'], 28:['ti-cloud-rain','#38bdf8'],
+      30:['ti-moon','#cbd5e1'], 31:['ti-moon','#cbd5e1'],
+      32:['ti-cloud','#94a3b8'], 33:['ti-cloud','#94a3b8'], 34:['ti-cloud','#94a3b8'],
+      35:['ti-cloud','#94a3b8'], 36:['ti-cloud-rain','#38bdf8'], 37:['ti-cloud-snow','#93c5fd'],
+      38:['ti-cloud-snow','#e0f2fe'], 39:['ti-cloud-rain','#38bdf8'], 40:['ti-cloud-snow','#e0f2fe'],
+      41:['ti-cloud-storm','#a78bfa'], 43:['ti-wind','#2dd4bf'], 44:['ti-cloud-fog','#94a3b8'],
+      45:['ti-cloud-fog','#94a3b8'], 46:['ti-cloud-storm','#a78bfa'], 47:['ti-cloud-storm','#a78bfa'],
+    };
+    return M[code] || ['ti-cloud', '#94a3b8'];
+  }
+
+  function renderForecast() {
+    const card = document.getElementById('forecast-card');
+    const el = document.getElementById('forecast-week');
+    if (!card || !el || !forecastData) return;
+    const L = currentLang, locale = L === 'fr' ? 'fr-CA' : 'en-CA';
+    const days = [];
+    let cur = null;
+    for (const p of (forecastData.forecasts || [])) {
+      const tt = p.temperatures && p.temperatures.temperature && p.temperatures.temperature[0];
+      if (!tt) continue;
+      const val = Math.round(tt.value[L]);
+      const code = p.abbreviatedForecast ? p.abbreviatedForecast.icon.value : null;
+      const summ = p.abbreviatedForecast ? p.abbreviatedForecast.textSummary[L] : '';
+      if (tt.class.en === 'high') { cur = { high: val, low: null, code, summ }; days.push(cur); }
+      else if (cur && cur.low == null) { cur.low = val; }
+      else { days.push({ high: null, low: val, code, summ }); cur = null; }
+    }
+    const midnight = new Date(); midnight.setHours(0, 0, 0, 0);
+    el.innerHTML = days.slice(0, 7).map((d, i) => {
+      const [ic, col] = wxIcon(d.code);
+      const label = new Date(midnight.getTime() + i * 86400000).toLocaleDateString(locale, { weekday: 'short' }).replace('.', '');
+      const hi = d.high != null ? `<b>${d.high}°</b>` : '';
+      const lo = d.low != null ? `<span class="fc-lo">${d.low}°</span>` : '';
+      return `<div class="fc-day" title="${(d.summ || '').replace(/"/g, '')}">
+        <div class="fc-name">${label}</div>
+        <i class="ti ${ic} fc-icon" style="color:${col}"></i>
+        <div class="fc-temps">${hi}${lo}</div>
+      </div>`;
+    }).join('');
+    document.getElementById('forecast-attrib').textContent = i18n[L].fcSource;
+    card.style.display = '';
+  }
+
+  async function loadForecast() {
+    try {
+      const r = await fetch(WX_API);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const j = await r.json();
+      forecastData = (j.properties && j.properties.forecastGroup) || null;
+      if (forecastData) renderForecast();
+    } catch (e) {
+      const card = document.getElementById('forecast-card');
+      if (card) card.style.display = 'none';   // échec silencieux : masquer la carte
+    }
+  }
 
   initChart();
   applyLang();
   applyPrefsToButtons();
-  load('24h');
-  setInterval(() => load(currentPeriod, false), 5 * 60 * 1000);
+  updateMoon();
+  detectEarliestData();
+  (function initTimeTravel() {
+    const restored = parseUrlState();
+    if (restored) {
+      if (restored.anchor) currentAnchor = restored.anchor;
+      if (restored.customRange) customRange = restored.customRange;
+      document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.period === restored.period));
+      scrollActiveTabIntoView();
+      load(restored.period);
+    } else {
+      load('24h');
+    }
+  })();
+  loadForecast();
+  // Vent au large : premier chargement, puis rafraîchissement aux 10 min.
+  // Indépendant du RTDB — la carte reste utile même si la sonde se tait.
+  const refreshOpenWind = () => fetchOpenWind().then(() => updateWindCard(lastData, lastReading));
+  refreshOpenWind();
+  setInterval(refreshOpenWind, 10 * 60 * 1000);
+  // Rafraîchit seulement si la fenêtre affichée contient l'instant présent —
+  // une navigation vers le passé ne doit jamais être ramenée au présent
+  // (section 7 du plan : "auto-refresh must respect time-travel").
+  setInterval(() => {
+    const granularity = GRAN[currentPeriod];
+    const win = granularity === 'custom' ? customRange : windowFor(currentAnchor, granularity);
+    if (win && isLiveWindow(win)) load(currentPeriod, false);
+  }, 5 * 60 * 1000);
+  setInterval(updateMoon, 30 * 60 * 1000);
+  setInterval(loadForecast, 60 * 60 * 1000);   // prévisions : rafraîchies chaque heure
 </script>
 </body>
 </html>

@@ -1,0 +1,561 @@
+<title>Activité solunaire — 2 propositions UX</title>
+<style>
+  :root{
+    --bg:#07111e; --bg2:#0c1a2e; --panel:rgba(255,255,255,.045);
+    --panel2:rgba(255,255,255,.025); --hover:rgba(255,255,255,.08);
+    --border:rgba(255,255,255,.09); --border2:rgba(255,255,255,.14);
+    --text:#e2eaf4; --muted:#6b82a0; --dim:#3a4a5f;
+    --fish:#2dd4bf; --deer:#e0913f; --moon:#cbd5e1;
+    --live:#34d399; --warn:#fbbf24; --bad:#fb7185; --radius:16px;
+    --accent:var(--fish);
+    font-synthesis:none;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--text); line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  body::before{
+    content:''; position:fixed; inset:0; z-index:0; pointer-events:none;
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 8%, rgba(14,80,130,.28) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 85% 85%, rgba(56,189,248,.10) 0%, transparent 55%);
+  }
+  .wrap{position:relative; z-index:1; max-width:940px; margin:0 auto; padding:2.2rem 1.15rem 4rem}
+
+  .kicker{font-size:.66rem; letter-spacing:.22em; text-transform:uppercase; color:var(--accent); font-weight:700; transition:color .3s}
+  h1.lead{font-size:clamp(1.5rem,4vw,2.1rem); font-weight:700; letter-spacing:-.02em; margin:.35rem 0 .5rem; text-wrap:balance}
+  .sub{color:var(--muted); font-size:.92rem; max-width:64ch}
+
+  .prop-switch{display:flex; gap:.5rem; margin:1.6rem 0 .4rem; flex-wrap:wrap}
+  .prop-btn{
+    flex:1; min-width:220px; text-align:left; cursor:pointer;
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    padding:.85rem 1rem; color:var(--muted); font-family:inherit; transition:.18s;
+  }
+  .prop-btn:hover{border-color:var(--border2); background:var(--hover)}
+  .prop-btn.on{border-color:var(--accent); background:rgba(45,212,191,.07); color:var(--text)}
+  body[data-mode=deer] .prop-btn.on{background:rgba(224,145,63,.08)}
+  .prop-btn .pn{font-size:.62rem; letter-spacing:.16em; text-transform:uppercase; font-weight:700; color:var(--accent); transition:color .3s}
+  .prop-btn .pt{font-size:1.02rem; font-weight:650; margin:.1rem 0 .15rem; color:var(--text)}
+  .prop-btn .pd{font-size:.78rem; line-height:1.35}
+
+  .stage{margin-top:1.5rem}
+  .frame-note{font-size:.72rem; color:var(--dim); text-align:center; margin:.9rem 0 1.4rem; letter-spacing:.02em}
+
+  .app{
+    background:linear-gradient(180deg, rgba(12,26,46,.6), rgba(7,17,30,.4));
+    border:1px solid var(--border); border-radius:22px; padding:1.2rem;
+    box-shadow:0 24px 60px rgba(0,0,0,.4);
+  }
+  .app-head{display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:1rem}
+  .app-title{display:flex; align-items:center; gap:.55rem; font-weight:650}
+  .app-title .ic{width:26px; height:26px; color:var(--accent); transition:color .3s}
+  .app-title small{display:block; font-size:.66rem; letter-spacing:.13em; text-transform:uppercase; color:var(--muted); font-weight:600}
+  .back-lmt{display:inline-flex; align-items:center; gap:.1rem; color:var(--muted); text-decoration:none; font-size:.8rem; font-weight:600; padding:.25rem .5rem .25rem .3rem; border-radius:8px; border:1px solid var(--border); margin-right:.2rem; transition:.15s}
+  .back-lmt:hover{color:var(--text); background:var(--hover); border-color:var(--border2)}
+  .back-lmt svg{width:16px; height:16px}
+
+  .mode-toggle{display:inline-flex; background:var(--bg2); border:1px solid var(--border); border-radius:999px; padding:.22rem}
+  .mode-toggle button{
+    display:flex; align-items:center; gap:.4rem; cursor:pointer; font-family:inherit;
+    border:0; background:transparent; color:var(--muted); font-weight:600; font-size:.82rem;
+    padding:.4rem .8rem; border-radius:999px; transition:.18s;
+  }
+  .mode-toggle button svg{width:17px; height:17px}
+  .mode-toggle button.on{color:#07131f}
+  .mode-toggle button[data-m=fish].on{background:var(--fish)}
+  .mode-toggle button[data-m=deer].on{background:var(--deer)}
+
+  .seg{display:inline-flex; background:var(--bg2); border:1px solid var(--border); border-radius:10px; overflow:hidden}
+  .seg button{
+    cursor:pointer; font-family:inherit; border:0; background:transparent; color:var(--muted);
+    font-weight:600; font-size:.8rem; padding:.42rem .85rem; transition:.15s;
+  }
+  .seg button.on{background:var(--accent); color:#07131f}
+  body[data-mode=deer] .seg button.on{color:#1c1206}
+
+  .rating{display:inline-flex; gap:3px; align-items:center}
+  .rating svg{width:var(--rs,17px); height:var(--rs,17px); color:var(--accent); transition:color .3s}
+  .rating svg.off{color:var(--dim)}
+  .rating.lg{--rs:26px}
+  .rating.sm{--rs:13px; gap:2px}
+
+  /* ── Facteurs (Lune / Pression / Vent → total) ── */
+  .factors{margin-top:.9rem; border:1px solid var(--border); border-radius:12px; background:var(--panel); padding:.75rem .85rem}
+  .fx-head{display:flex; justify-content:space-between; align-items:center; font-size:.6rem; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); font-weight:700; margin-bottom:.5rem}
+  .fx-src{color:var(--accent); letter-spacing:.03em; transition:color .3s}
+  .fx-row{display:flex; align-items:center; gap:.6rem; padding:.32rem 0}
+  .fx-row.muted{opacity:.5}
+  .fx-lead{display:flex; align-items:center; gap:.42rem; min-width:96px; font-size:.82rem}
+  .fx-lead b{font-weight:600}
+  .fx-lead svg{width:14px; height:14px; color:var(--muted); flex-shrink:0}
+  .dots{display:inline-flex; gap:3px; flex-shrink:0; min-width:40px}
+  .dots i{width:7px; height:7px; border-radius:50%; background:var(--dim)}
+  .dots i.on{background:var(--accent); box-shadow:0 0 5px color-mix(in srgb,var(--accent) 55%,transparent)}
+  .dots.na{color:var(--dim); font-weight:700; letter-spacing:3px; font-size:.8rem}
+  .fx-read{flex:1; font-size:.78rem; color:var(--muted); min-width:0}
+  .fx-wt{font-size:.72rem; color:var(--dim); font-weight:600; font-variant-numeric:tabular-nums; min-width:34px; text-align:right}
+  .fx-note{font-size:.72rem; color:var(--dim); margin:.35rem 0 .1rem; font-style:italic}
+  .fx-total{display:flex; align-items:center; gap:.7rem; margin-top:.55rem; padding-top:.6rem; border-top:1px solid var(--border)}
+  .ft-lab{font-size:.66rem; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); font-weight:700}
+  .fx-verdict{font-size:.85rem; font-weight:650; color:var(--accent); margin-left:auto; text-align:right}
+
+  /* ══ PROPOSAL A — calendar ══ */
+  .cal-legend{display:flex; gap:1rem; flex-wrap:wrap; font-size:.72rem; color:var(--muted); margin-bottom:.7rem; align-items:center}
+  .cal-legend b{color:var(--text); font-weight:600}
+  .dow{display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-bottom:6px}
+  .dow span{text-align:center; font-size:.62rem; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); font-weight:600}
+  .cal{display:grid; grid-template-columns:repeat(7,1fr); gap:6px}
+  .cell{
+    position:relative; aspect-ratio:1/1.08; border:1px solid var(--border); border-radius:11px;
+    background:var(--panel2); cursor:pointer; padding:.4rem .35rem; display:flex; flex-direction:column;
+    align-items:center; justify-content:space-between; transition:.15s; overflow:hidden;
+  }
+  .cell:hover{border-color:var(--border2); background:var(--hover); transform:translateY(-1px)}
+  .cell.blank{opacity:.2; cursor:default; background:transparent; border-color:transparent}
+  .cell.today{border-color:var(--accent)}
+  .cell.sel{border-color:var(--accent); background:rgba(45,212,191,.10)}
+  body[data-mode=deer] .cell.sel{background:rgba(224,145,63,.10)}
+  .cell.nohorizon::after{content:''; position:absolute; bottom:4px; right:5px; width:4px; height:4px; border-radius:50%; background:var(--dim)}
+  .cell .dnum{font-size:.82rem; font-weight:650; align-self:flex-start; font-variant-numeric:tabular-nums}
+  .cell .glow{position:absolute; inset:0; opacity:calc(var(--sc,0)/4*.22); background:radial-gradient(circle at 50% 120%, var(--accent), transparent 70%); pointer-events:none}
+  .cell .mn{position:absolute; top:.34rem; right:.34rem; width:12px; height:12px; color:var(--moon); opacity:.65}
+  .cell .rating{margin-bottom:.05rem; flex-wrap:wrap; justify-content:center; max-width:100%}
+  .cell-sc{display:none; font-variant-numeric:tabular-nums}
+
+  .wk{display:flex; flex-direction:column; gap:8px}
+  .wk-row{display:grid; grid-template-columns:auto auto 1fr; gap:.8rem; align-items:center;
+    border:1px solid var(--border); border-radius:12px; background:var(--panel2); padding:.6rem .8rem; cursor:pointer; transition:.15s}
+  .wk-row:hover{border-color:var(--border2); background:var(--hover)}
+  .wk-row.sel{border-color:var(--accent)}
+  .wk-day{min-width:74px}
+  .wk-day b{display:block; font-size:.9rem; font-weight:650; text-transform:capitalize}
+  .wk-day span{font-size:.7rem; color:var(--muted)}
+
+  /* ══ Shared 24h timeline ══ */
+  .tl{position:relative; height:38px; border-radius:9px; background:linear-gradient(90deg,#0a1524,#0d1c30); border:1px solid var(--border); overflow:hidden}
+  .tl.slim{height:26px}
+  .tl .night{position:absolute; top:0; bottom:0; background:rgba(0,0,0,.28)}
+  .tl .band{position:absolute; top:0; bottom:0; border-radius:3px}
+  .tl .maj{background:color-mix(in srgb, var(--accent) 78%, transparent); box-shadow:0 0 12px color-mix(in srgb,var(--accent) 60%, transparent)}
+  .tl .min{background:color-mix(in srgb, var(--accent) 32%, transparent)}
+  .tl .now{position:absolute; top:-2px; bottom:-2px; width:2px; background:var(--live); box-shadow:0 0 8px var(--live)}
+  .tl .now::after{content:''; position:absolute; top:-3px; left:-3px; width:8px; height:8px; border-radius:50%; background:var(--live)}
+  .tl-scale{display:flex; justify-content:space-between; font-size:.6rem; color:var(--dim); margin-top:3px; font-variant-numeric:tabular-nums}
+
+  .detail{margin-top:1rem; border:1px solid var(--border); border-radius:var(--radius); background:var(--panel2); padding:1rem 1.1rem}
+  .detail-head{display:flex; align-items:center; justify-content:space-between; gap:.8rem; flex-wrap:wrap; margin-bottom:.8rem}
+  .detail-head .dh-date{font-size:1.05rem; font-weight:650; text-transform:capitalize}
+  .detail-head .dh-phase{font-size:.76rem; color:var(--muted); display:flex; align-items:center; gap:.4rem; margin-top:.1rem}
+  .detail-head .dh-phase svg{width:14px; height:14px; color:var(--moon)}
+  .day-step{display:flex; align-items:center; gap:.4rem}
+  .day-step button{width:34px; height:34px; border-radius:9px; border:1px solid var(--border); background:var(--bg2); color:var(--muted); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:.15s; font-family:inherit; padding:0}
+  .day-step button:hover{color:var(--text); background:var(--hover); border-color:var(--border2)}
+  .day-step button svg{width:18px; height:18px}
+  .day-step .today-reset{width:auto; gap:.35rem; padding:0 .65rem; font-size:.76rem; font-weight:600}
+  .day-step .today-reset svg{width:15px; height:15px}
+  .win-grid{display:grid; grid-template-columns:1fr 1fr; gap:.6rem; margin:.9rem 0 .2rem}
+  .win{border:1px solid var(--border); border-radius:11px; padding:.55rem .75rem; background:var(--panel)}
+  .win .wl{font-size:.6rem; letter-spacing:.1em; text-transform:uppercase; font-weight:700; display:flex; align-items:center; gap:.35rem}
+  .win.major .wl{color:var(--accent)}
+  .win.minor .wl{color:color-mix(in srgb,var(--accent) 65%, var(--muted))}
+  .win .wt{font-size:.92rem; font-weight:600; margin-top:.25rem; font-variant-numeric:tabular-nums}
+  .astro{display:flex; gap:1.2rem; flex-wrap:wrap; font-size:.78rem; color:var(--muted); margin-top:.7rem}
+  .astro span{display:flex; align-items:center; gap:.35rem}
+  .astro svg{width:14px; height:14px}
+  .tip{margin-top:.9rem; border-left:2px solid var(--accent); background:rgba(45,212,191,.05); padding:.6rem .8rem; border-radius:0 8px 8px 0; font-size:.82rem}
+  body[data-mode=deer] .tip{background:rgba(224,145,63,.06)}
+  .tip b{color:var(--text)}
+
+  /* ══ PROPOSAL B — dashboard ══ */
+  .hero{border:1px solid var(--border); border-radius:var(--radius); background:linear-gradient(160deg, rgba(45,212,191,.06), var(--panel2)); padding:1.1rem 1.2rem}
+  body[data-mode=deer] .hero{background:linear-gradient(160deg, rgba(224,145,63,.07), var(--panel2))}
+  .hero-top{display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; flex-wrap:wrap}
+  .hero-when{font-size:.68rem; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); font-weight:600}
+  .hero-date{font-size:1.15rem; font-weight:650; text-transform:capitalize; margin-top:.1rem}
+  .hero-score{text-align:right}
+  .hero-score .lab{font-size:.66rem; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); font-weight:600; margin-bottom:.2rem}
+  .verdict{font-size:.82rem; font-weight:650; margin-top:.35rem; color:var(--accent)}
+  .next-win{border:1px solid var(--border); border-radius:12px; background:var(--panel); padding:.6rem .85rem; margin-top:.9rem; display:flex; align-items:baseline; gap:.6rem; flex-wrap:wrap}
+  .next-win .nl{font-size:.62rem; letter-spacing:.1em; text-transform:uppercase; color:var(--accent); font-weight:700}
+  .next-win .nt{font-size:1.25rem; font-weight:700; font-variant-numeric:tabular-nums}
+  .next-win .ns{font-size:.74rem; color:var(--muted)}
+  .hero-tl-wrap{margin-top:.9rem}
+  .hero-tl-lab{display:flex; justify-content:space-between; align-items:center; font-size:.68rem; color:var(--muted); margin-bottom:.35rem}
+
+  .strip-label{font-size:.64rem; letter-spacing:.13em; text-transform:uppercase; color:var(--muted); font-weight:600; margin:1.3rem 0 .5rem; display:flex; align-items:center; gap:.5rem}
+  .strip-label::after{content:''; flex:1; height:1px; background:var(--border)}
+  .week-strip{display:grid; grid-template-columns:repeat(7,1fr); gap:6px}
+  .ws-cell{border:1px solid var(--border); border-radius:11px; background:var(--panel2); padding:.55rem .3rem; text-align:center; cursor:pointer; transition:.15s}
+  .ws-cell:hover{border-color:var(--border2); background:var(--hover)}
+  .ws-cell.sel{border-color:var(--accent); background:rgba(45,212,191,.09)}
+  body[data-mode=deer] .ws-cell.sel{background:rgba(224,145,63,.10)}
+  .ws-cell .wd{font-size:.62rem; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); font-weight:600}
+  .ws-cell .wn{font-size:.95rem; font-weight:650; margin:.15rem 0 .3rem; font-variant-numeric:tabular-nums}
+
+  .heat{display:grid; grid-template-columns:repeat(auto-fill,minmax(24px,1fr)); gap:5px}
+  .heat .hc{aspect-ratio:1; border-radius:6px; cursor:pointer; position:relative; border:1px solid transparent; transition:.12s;
+    background:color-mix(in srgb, var(--accent) calc(var(--sc,0)/4*80%), rgba(255,255,255,.03))}
+  .heat .hc:hover{border-color:var(--border2); transform:scale(1.12)}
+  .heat .hc.sel{border-color:var(--text)}
+  .heat .hc.nohorizon{outline:1px dashed var(--dim); outline-offset:-3px}
+  .heat .hc .hd{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:.58rem; font-weight:600; color:rgba(7,17,30,.75); font-variant-numeric:tabular-nums}
+  .heat-scale{display:flex; align-items:center; gap:.4rem; font-size:.66rem; color:var(--muted); margin-top:.5rem; justify-content:flex-end}
+  .heat-scale i{width:13px; height:13px; border-radius:3px; display:inline-block}
+
+  .caption{font-size:.75rem; color:var(--muted); text-align:center; margin-top:2rem; padding-top:1.2rem; border-top:1px solid var(--border); line-height:1.6}
+  .caption b{color:var(--text); font-weight:600}
+
+  @media (max-width:560px){
+    .win-grid{grid-template-columns:1fr}
+    .app{padding:.9rem}
+    .prop-btn{min-width:100%}
+    /* Cases calendrier trop petites à 7 colonnes pour 4 icônes → score numérique */
+    .cell{aspect-ratio:1/1.15; padding:.3rem .3rem}
+    .cell .rating{display:none}
+    .cell .dnum{font-size:.72rem}
+    .cell-sc{display:block; font-size:.9rem; font-weight:700; color:var(--accent); line-height:1}
+    .fx-lead{min-width:82px}
+    .fx-read{flex-basis:100%; order:5; padding-left:.3rem}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
+</style>
+
+<div class="wrap">
+  <div class="kicker" id="kicker">Refonte · Panneau « Activité lunaire »</div>
+  <h1 class="lead">Activité solunaire pour le chasseur-pêcheur</h1>
+  <p class="sub">Contenu de la <b>page cachée <code>/cp</code></b> (Proposition A retenue). Le bascule
+    <b>Pêcheur / Chasseur</b> recalcule la cote — <b>Lune · Pression · Vent · Direction</b> comptent
+    chacun (poids configurables, défaut 35/35/10/20). Chaque facteur a son propre score&nbsp;; seul
+    le <b>total</b> porte les poissons ou les cerfs. Météo hybride&nbsp;: capteur du lac + Environnement
+    Canada pour aujourd'hui, Open-Meteo pour les jours à venir, lune seule au-delà de ~14 j.
+    Vues Jour · Semaine · Mois, clic sur une journée + flèches ‹ › pour naviguer.</p>
+
+  <div class="prop-switch" id="propSwitch">
+    <button class="prop-btn on" data-prop="A">
+      <span class="pn">Proposition A</span>
+      <span class="pt">Calendrier d'activité</span>
+      <span class="pd">Planification d'abord — une grille mensuelle où chaque jour porte sa cote. Idéal pour choisir « quand y aller ».</span>
+    </button>
+    <button class="prop-btn" data-prop="B">
+      <span class="pn">Proposition B</span>
+      <span class="pt">Tableau de bord vivant</span>
+      <span class="pd">Le moment présent d'abord — grande cote du jour, décomposée en Lune · Pression · Vent, prochaine fenêtre et timeline 24 h.</span>
+    </button>
+  </div>
+
+  <div class="frame-note" id="frameNote">Maquette interactive · données solunaires et météo illustratives (modèle simplifié) · thème réel du site</div>
+
+  <div class="stage" id="stage"></div>
+
+  <p class="caption">
+    <b>Cote = 4 facteurs pondérés.</b> Poids par défaut (configurables et persistés)&nbsp;:
+    Lune 35 % · Pression 35 % · Vent 10 % · Direction 20 %. C'est le <b>scoring</b> de chaque facteur
+    qui change selon l'activité&nbsp;: à la pêche, pic de lune à la nouvelle <i>et</i> à la pleine lune,
+    « ride » légère idéale, vent d'ouest favorable&nbsp;; à la chasse, la nouvelle lune favorise le
+    mouvement diurne et un vent modéré porte l'odeur. Les deux profitent d'une <b>chute de pression</b>
+    avant un front.
+  </p>
+</div>
+
+<script>
+/* ───────── Icônes ───────── */
+const ICON = {
+  fish:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4.2 12c1.1-2.9 5.6-4.8 9.4-4.8 3.9 0 7 1.9 8 4.8-1 2.9-4.1 4.8-8 4.8-3.8 0-8.3-1.9-9.4-4.8z"/><path d="M4.2 12 .8 8.4c-.3-.3-.8 0-.7.4l.7 3.2-.7 3.2c-.1.4.4.7.7.4L4.2 12z"/><circle cx="16.4" cy="10.5" r="1.05" fill="#07131f"/></svg>',
+  deer:'<svg viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 10.5C7.2 8.9 7 6.2 5.6 4.3M9 10.5C6.9 10.2 5.4 9.7 4 8.2M9 10.5C8.6 8.6 8.7 7 8 5.4"/><path d="M15 10.5c1.8-1.6 2-4.3 3.4-6.2M15 10.5c2.1-.3 3.6-.8 5-2.3M15 10.5c.4-1.9.3-3.5 1-5.1"/></g><path d="M9 10.4c.5 1 1.6 1.8 3 1.8s2.5-.8 3-1.8c1 1 1.4 2.7 1 4.4-.5 2.3-2 4.2-4 4.2s-3.5-1.9-4-4.2c-.4-1.7 0-3.4 1-4.4z" fill="currentColor"/></svg>',
+  moon:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a7 7 0 1 0 10.5 10.5z"/></svg>',
+  gauge:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 14l3-3M4.5 18a9 9 0 1 1 15 0"/></svg>',
+  wind:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h10a2.5 2.5 0 1 0-2.5-2.5M3 16h13a2.5 2.5 0 1 1-2.5 2.5M3 12h7"/></svg>',
+  compass:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2.2 5.3-5.3 2.2 2.2-5.3z"/></svg>',
+  sunrise:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 18h18M12 3v4M6 9l1.5 1.5M18 9l-1.5 1.5"/><path d="M8 18a4 4 0 0 1 8 0"/></svg>',
+  sunset:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 18h18M12 10V4M6 8l1.5 1.5M18 8l-1.5 1.5"/><path d="M8 18a4 4 0 0 1 8 0"/></svg>',
+  chevL:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>',
+  chevR:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>',
+  clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l2.5 1.5"/></svg>',
+};
+
+/* ───────── Astronomie (SunCalc simplifié) ───────── */
+const DAY_MS=864e5;
+const NEW_MOON=Date.UTC(2026,5,25,2,50)/1000, SYN=29.53058867;
+function phaseOf(date){ let p=((date.getTime()/1000-NEW_MOON)/86400/SYN)%1; if(p<0)p+=1; return p; }
+function illum(p){ return Math.round((1-Math.cos(p*2*Math.PI))/2*100); }
+function moonGlyph(p){
+  const R=7,C=9,th=p*2*Math.PI,k=Math.cos(th),rx=Math.abs(R*k), os=p<0.5?1:0, is=k>=0?os:1-os;
+  const d=`M${C},${C-R} A${R},${R} 0 0,${os} ${C},${C+R} A${rx},${R} 0 0,${is} ${C},${C-R} Z`;
+  return `<svg viewBox="0 0 18 18"><circle cx="${C}" cy="${C}" r="${R}" fill="none" stroke="currentColor" stroke-width="1" opacity=".35"/><path d="${d}" fill="currentColor"/></svg>`;
+}
+function windows(date){
+  const idx=Math.floor(date.getTime()/DAY_MS);
+  const transit=(6.5*60+idx*50.4)%1440, anti=(transit+720)%1440;
+  const rise=(transit-345+1440)%1440, set=(transit+345)%1440;
+  return {majors:[transit,anti].sort((a,b)=>a-b), minors:[rise,set].sort((a,b)=>a-b), rise, set};
+}
+function sun(){ return {rise:5*60+18, set:20*60+42}; }
+
+/* ───────── Météo illustrative ───────── */
+function pressureOf(date){
+  const idx=Math.floor(date.getTime()/DAY_MS);
+  const f=i=>1010+Math.round(6*Math.sin(i/2.3)+3*Math.sin(i/5.1));
+  return {val:f(idx), delta:f(idx)-f(idx-1)};
+}
+function windOf(date){
+  const idx=Math.floor(date.getTime()/DAY_MS);
+  const spd=Math.max(1,Math.round(11+9*Math.sin(idx/1.7)+5*Math.sin(idx/3.3)));
+  const gust=spd+Math.round(5+5*Math.abs(Math.sin(idx/2.1)));
+  const dir=['N','NE','E','SE','S','SO','O','NO'][((idx*3)%8+8)%8];
+  return {spd,gust,dir};
+}
+const NOW=new Date(2026,6,14,10,30);
+function weatherSource(date){
+  const d0=new Date(NOW); d0.setHours(0,0,0,0);
+  const dt=new Date(date); dt.setHours(0,0,0,0);
+  const dd=Math.round((dt-d0)/DAY_MS);
+  if(dd===0)return'Capteur + EC'; if(dd<0)return'Mesuré'; if(dd<=14)return'Open-Meteo'; return null;
+}
+
+/* ───────── Scores par facteur ───────── */
+const MODE={m:'fish'};
+const isFish=()=>MODE.m==='fish';
+const accentName=()=>isFish()?'fish':'deer';
+function fishMoon(p){ const d=Math.min(p,1-p,Math.abs(p-.5)); return d<.035?4:d<.10?3:d<.17?2:1; }
+function deerMoon(p){ const dn=Math.min(p,1-p); return dn<.06?4:dn<.16?3:dn<.32?2:1; }
+function pressScore(pr){ return pr.delta<=-3?4:pr.delta<=-1?3:pr.delta<2?2:1; }
+function windScore(wd){ const s=wd.spd;
+  return isFish() ? ((s>=8&&s<=15)?4:(s>=5&&s<20)?3:(s<28)?2:1)
+                  : ((s>=8&&s<=18)?4:(s>=5&&s<24)?3:(s<30)?2:1); }
+function pressRead(pr){ return pr.delta<=-3?['▼','chute · front qui arrive']:pr.delta<=-1?['▼','en baisse']:pr.delta<2?['→','stable']:['▲','en hausse']; }
+function windRead(wd){ const s=wd.spd;
+  const q=isFish() ? (s<5?'calme plat':s<=15?'ride idéale':s<=25?'clapot':'trop fort')
+                   : (s<5?'trop calme':s<=20?'porte l\'odeur':s<=28?'soutenu':'gibier au sol');
+  return `${q} · ${wd.spd} km/h`; }
+function dirScore(dir){ return isFish() ? ({O:4,SO:4,S:3,SE:3,N:2,NO:2,E:1,NE:1}[dir]??2)
+                                        : ({N:4,NO:4,O:3,NE:3,E:2,SO:2,S:1,SE:1}[dir]??2); }
+function dirRead(dir){ const s=dirScore(dir);
+  const q=isFish() ? (s>=4?'vent d\'ouest favorable':s>=3?'favorable':s>=2?'neutre':'vent d\'est défavorable')
+                   : (s>=4?'quadrant froid favorable':s>=3?'favorable':s>=2?'neutre':'air chaud défavorable');
+  return `${q} · ${dir}`; }
+function moonRead(p){
+  const d=isFish()?Math.min(p,1-p,Math.abs(p-.5)):Math.min(p,1-p);
+  const lvl=isFish() ? (d<.10?'fort':d<.17?'moyen':'faible') : (d<.16?'fort':d<.32?'moyen':'faible');
+  return `${lvl} · ${phaseName(p).toLowerCase()}`;
+}
+// Poids partagés aux deux modes, configurables/persistés (défaut). Voir spec §2.5.
+function weights(){ return {moon:.35, press:.35, wind:.10, dir:.20}; }
+function breakdown(date){
+  const p=phaseOf(date), moon=isFish()?fishMoon(p):deerMoon(p), src=weatherSource(date), wt=weights();
+  if(!src) return {moon, press:null, wind:null, dir:null, total:moon, src:null, wt, p};
+  const pr=pressureOf(date), wd=windOf(date), press=pressScore(pr), wind=windScore(wd), dir=dirScore(wd.dir);
+  const total=moon*wt.moon+press*wt.press+wind*wt.wind+dir*wt.dir;
+  return {moon, press, wind, dir, total, src, pr, wd, wt, p};
+}
+const score=date=>Math.max(1,Math.min(4,Math.round(breakdown(date).total)));
+
+/* ───────── Formats ───────── */
+function fmtMin(m){ m=Math.round(m); return `${Math.floor(m/60)%24}:${(''+(m%60)).padStart(2,'0')}`; }
+function ratingHTML(n,cls=''){ const ic=ICON[accentName()]; let s=`<span class="rating ${cls}">`;
+  for(let i=0;i<4;i++) s+=ic.replace('<svg',`<svg class="${i<n?'':'off'}"`); return s+'</span>'; }
+function dots(n){ if(n==null)return`<span class="dots na">— —</span>`;
+  let s='<span class="dots">'; for(let i=0;i<4;i++)s+=`<i class="${i<n?'on':''}"></i>`; return s+'</span>'; }
+const DOW=['dim','lun','mar','mer','jeu','ven','sam'], DOWU=['DIM','LUN','MAR','MER','JEU','VEN','SAM'];
+const MON=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+const cap=s=>s[0].toUpperCase()+s.slice(1);
+const longDate=d=>`${DOW[d.getDay()]} ${d.getDate()} ${MON[d.getMonth()]}`;
+function phaseName(p){
+  if(p<.03||p>.97)return'Nouvelle lune'; if(Math.abs(p-.25)<.03)return'Premier quartier';
+  if(Math.abs(p-.5)<.03)return'Pleine lune'; if(Math.abs(p-.75)<.03)return'Dernier quartier';
+  if(p<.25)return'Premier croissant'; if(p<.5)return'Gibbeuse croissante';
+  if(p<.75)return'Gibbeuse décroissante'; return'Dernier croissant';
+}
+function verdict(n){ return isFish()?['Journée creuse','Activité modérée','Bonne journée','Journée exceptionnelle'][n-1]
+                                    :['Peu favorable','Passable','Favorable','Très favorable'][n-1]; }
+
+const NOWDATE=new Date(NOW);
+const STATE={prop:'A', gran:'month', sel:new Date(NOW), anchorB:new Date(NOW)};
+
+/* ───────── Timeline 24h ───────── */
+function timelineHTML(date,slim){
+  const w=windows(date), s=sun(), pct=m=>`${m/1440*100}%`; let b='';
+  b+=`<div class="night" style="left:0;width:${pct(s.rise)}"></div>`;
+  b+=`<div class="night" style="left:${pct(s.set)};right:0"></div>`;
+  w.majors.forEach(m=>{b+=`<div class="band maj" style="left:${pct((m-60+1440)%1440)};width:${120/1440*100}%"></div>`;});
+  w.minors.forEach(m=>{b+=`<div class="band min" style="left:${pct((m-30+1440)%1440)};width:${60/1440*100}%"></div>`;});
+  if(date.toDateString()===NOW.toDateString()) b+=`<div class="now" style="left:${pct(NOW.getHours()*60+NOW.getMinutes())}"></div>`;
+  return `<div class="tl ${slim?'slim':''}">${b}</div>
+    <div class="tl-scale"><span>0h</span><span>6h</span><span>12h</span><span>18h</span><span>24h</span></div>`;
+}
+
+/* ───────── Bloc facteurs (partagé) ───────── */
+function factorsHTML(date, showTotal=true){
+  const b=breakdown(date);
+  const pc=v=>Math.round(v*100)+'%';
+  const moonRow=`<div class="fx-row"><span class="fx-lead">${ICON.moon}<b>Lune</b></span>${dots(b.moon)}<span class="fx-read">${moonRead(b.p)}</span><span class="fx-wt">${pc(b.wt.moon)}</span></div>`;
+  let pRow,wRow,dRow,note='';
+  if(b.src){
+    const pr=pressRead(b.pr);
+    pRow=`<div class="fx-row"><span class="fx-lead">${ICON.gauge}<b>Pression</b></span>${dots(b.press)}<span class="fx-read">${pr[0]} ${pr[1]} · ${b.pr.val} hPa</span><span class="fx-wt">${pc(b.wt.press)}</span></div>`;
+    wRow=`<div class="fx-row"><span class="fx-lead">${ICON.wind}<b>Vent</b></span>${dots(b.wind)}<span class="fx-read">${windRead(b.wd)}</span><span class="fx-wt">${pc(b.wt.wind)}</span></div>`;
+    dRow=`<div class="fx-row"><span class="fx-lead">${ICON.compass}<b>Direction</b></span>${dots(b.dir)}<span class="fx-read">${dirRead(b.wd.dir)}</span><span class="fx-wt">${pc(b.wt.dir)}</span></div>`;
+  } else {
+    pRow=`<div class="fx-row muted"><span class="fx-lead">${ICON.gauge}<b>Pression</b></span>${dots(null)}<span class="fx-read">hors horizon</span><span class="fx-wt">—</span></div>`;
+    wRow=`<div class="fx-row muted"><span class="fx-lead">${ICON.wind}<b>Vent</b></span>${dots(null)}<span class="fx-read">hors horizon</span><span class="fx-wt">—</span></div>`;
+    dRow=`<div class="fx-row muted"><span class="fx-lead">${ICON.compass}<b>Direction</b></span>${dots(null)}<span class="fx-read">hors horizon</span><span class="fx-wt">—</span></div>`;
+    note=`<div class="fx-note">Pression, vent et direction non prévisibles au-delà de ~14 jours — cote sur la lune seule.</div>`;
+  }
+  const tot=Math.max(1,Math.min(4,Math.round(b.total)));
+  const totalRow=showTotal?`<div class="fx-total"><span class="ft-lab">Total</span>${ratingHTML(tot,'lg')}<span class="fx-verdict">${verdict(tot)}</span></div>`:'';
+  return `<div class="factors">
+    <div class="fx-head"><span>Facteurs de la cote${isFish()?' · pêche':' · chasse'}</span><span class="fx-src">${b.src||'Lune seule'}</span></div>
+    ${moonRow}${pRow}${wRow}${dRow}${note}${totalRow}</div>`;
+}
+
+/* ───────── Détail journée (Proposition A) ───────── */
+function detailHTML(date){
+  const w=windows(date), s=sun(), p=phaseOf(date);
+  const win=(cls,lab,m,dur)=>`<div class="win ${cls}"><div class="wl">${lab}</div><div class="wt">${fmtMin(m-dur)}–${fmtMin(m+dur)}</div></div>`;
+  const tip=isFish()
+    ? `<b>Pêche.</b> Cale tes sorties sur les <b>majeures</b> (passage de la lune) et surveille une pression en baisse — c'est là que ça mord en salves.`
+    : `<b>Chasse.</b> ${illum(p)<25?'Nuits sombres → le cerf bouge de jour : bonne fenêtre diurne.':illum(p)>75?'Nuits claires → activité repoussée la nuit : chasse de jour plus difficile.':'Mise sur les mineures près de l\'aube et du crépuscule.'} Un vent modéré et une chute de pression décuplent le mouvement.`;
+  const isToday=date.toDateString()===NOW.toDateString();
+  return `<div class="detail">
+    <div class="detail-head">
+      <div><div class="dh-date">${longDate(date)} ${date.getFullYear()}</div>
+      <div class="dh-phase">${moonGlyph(p)} ${phaseName(p)} · ${illum(p)}% éclairée</div></div>
+      <div class="day-step">
+        ${isToday?'':`<button class="today-reset" data-step="today" title="Revenir à aujourd'hui">${ICON.clock} Aujourd'hui</button>`}
+        <button data-step="-1" aria-label="Jour précédent">${ICON.chevL}</button>
+        <button data-step="1" aria-label="Jour suivant">${ICON.chevR}</button>
+      </div>
+    </div>
+    ${factorsHTML(date,true)}
+    ${timelineHTML(date)}
+    <div class="win-grid">
+      ${win('major','Majeure 1',w.majors[0],60)}${win('major','Majeure 2',w.majors[1],60)}
+      ${win('minor','Mineure 1',w.minors[0],30)}${win('minor','Mineure 2',w.minors[1],30)}
+    </div>
+    <div class="astro">
+      <span style="color:var(--warn)">${ICON.sunrise} Lever ${fmtMin(s.rise)}</span>
+      <span style="color:#fb923c">${ICON.sunset} Coucher ${fmtMin(s.set)}</span>
+      <span style="color:var(--moon)">${ICON.moon} Lune ${fmtMin(w.rise)} / ${fmtMin(w.set)}</span>
+    </div>
+    <div class="tip">${tip}</div>
+  </div>`;
+}
+
+/* ───────── Contrôles ───────── */
+function modeToggleHTML(){ return `<div class="mode-toggle" data-role="mode">
+  <button data-m="fish" class="${isFish()?'on':''}">${ICON.fish} Pêcheur</button>
+  <button data-m="deer" class="${!isFish()?'on':''}">${ICON.deer} Chasseur</button></div>`; }
+function appHead(){ return `<div class="app-head">
+  <div class="app-title"><a class="back-lmt" href="#" title="Retour à lmt.bcourchesne.com">${ICON.chevL}<span>lmt</span></a><span class="ic">${ICON[accentName()]}</span><div>Activité solunaire<small>${isFish()?'Mode pêche':'Mode chasse'}</small></div></div>
+  ${modeToggleHTML()}</div>`; }
+
+/* ───────── PROPOSITION A ───────── */
+function renderA(){
+  const g=STATE.gran; let body='';
+  if(g==='month'){
+    const Y=STATE.sel.getFullYear(), M=STATE.sel.getMonth();  // la grille suit le jour sélectionné
+    const start=new Date(Y,M,1).getDay(), dim=new Date(Y,M+1,0).getDate();
+    let cells='';
+    for(let i=0;i<start;i++) cells+=`<div class="cell blank"></div>`;
+    for(let d=1;d<=dim;d++){
+      const date=new Date(Y,M,d), n=score(date), b=breakdown(date), p=phaseOf(date);
+      const today=date.toDateString()===NOW.toDateString(), sel=date.toDateString()===STATE.sel.toDateString();
+      cells+=`<div class="cell ${today?'today':''} ${sel?'sel':''} ${b.src?'':'nohorizon'}" style="--sc:${n}" data-day="${d}">
+        <div class="glow"></div><div class="mn">${moonGlyph(p)}</div><div class="dnum">${d}</div>${ratingHTML(n,'sm')}<span class="cell-sc">${n}</span></div>`;
+    }
+    body=`<div class="cal-legend"><span><b>${cap(MON[M])} ${Y}</b></span>
+      <span style="margin-left:auto">${ratingHTML(4,'sm')} excellente · ${ratingHTML(1,'sm')} faible · <span style="color:var(--dim)">•</span> hors horizon météo</span></div>
+      <div class="dow">${DOWU.map(d=>`<span>${d}</span>`).join('')}</div>
+      <div class="cal" data-role="calA">${cells}</div>`;
+  } else if(g==='week'){
+    const ws=new Date(STATE.sel); ws.setDate(ws.getDate()-ws.getDay()); let rows='';
+    for(let i=0;i<7;i++){ const date=new Date(ws); date.setDate(ws.getDate()+i);
+      const n=score(date), sel=date.toDateString()===STATE.sel.toDateString();
+      rows+=`<div class="wk-row ${sel?'sel':''}" data-date="${date.getTime()}">
+        <div class="wk-day"><b>${DOW[date.getDay()]}</b><span>${date.getDate()} ${MON[date.getMonth()].slice(0,4)}</span></div>
+        ${ratingHTML(n)}<div>${timelineHTML(date,true)}</div></div>`; }
+    body=`<div class="cal-legend"><span><b>Semaine du ${ws.getDate()} ${MON[ws.getMonth()].slice(0,4)}</b></span></div><div class="wk">${rows}</div>`;
+  } else { body=detailHTML(STATE.sel); }
+  const detail = g!=='day' ? detailHTML(STATE.sel) : '';
+  return `<div class="app" data-prop="A">${appHead()}
+    <div style="display:flex;justify-content:center;margin-bottom:1rem">
+      <div class="seg" data-role="gran">
+        <button data-g="day" class="${g==='day'?'on':''}">Jour</button>
+        <button data-g="week" class="${g==='week'?'on':''}">Semaine</button>
+        <button data-g="month" class="${g==='month'?'on':''}">Mois</button></div></div>
+    ${body}${detail}</div>`;
+}
+
+/* ───────── PROPOSITION B ───────── */
+function nextWindow(date){
+  const w=windows(date), nowM=NOW.getHours()*60+NOW.getMinutes();
+  const all=[...w.majors.map(m=>({m,t:'Majeure',d:120})),...w.minors.map(m=>({m,t:'Mineure',d:60}))]
+    .map(o=>({...o,start:o.m-(o.d/2)})).sort((a,b)=>a.start-b.start);
+  const up=all.find(o=>o.start>nowM)||all[0];
+  return {label:up.t, time:fmtMin(up.start), end:fmtMin(up.start+up.d)};
+}
+function renderB(){
+  const date=STATE.anchorB, n=score(date), p=phaseOf(date), nw=nextWindow(date);
+  const ws=new Date(date); ws.setDate(ws.getDate()-ws.getDay()); let strip='';
+  for(let i=0;i<7;i++){ const d=new Date(ws); d.setDate(ws.getDate()+i);
+    const sc=score(d), sel=d.toDateString()===date.toDateString();
+    strip+=`<div class="ws-cell ${sel?'sel':''}" data-date="${d.getTime()}"><div class="wd">${DOWU[d.getDay()]}</div><div class="wn">${d.getDate()}</div>${ratingHTML(sc,'sm')}</div>`; }
+  const Y=date.getFullYear(), M=date.getMonth(), dim=new Date(Y,M+1,0).getDate(); let heat='';
+  for(let d=1;d<=dim;d++){ const dt=new Date(Y,M,d), sc=score(dt), b=breakdown(dt), sel=dt.toDateString()===date.toDateString();
+    heat+=`<div class="hc ${sel?'sel':''} ${b.src?'':'nohorizon'}" style="--sc:${sc}" data-date="${dt.getTime()}"><span class="hd">${d}</span></div>`; }
+  return `<div class="app" data-prop="B">${appHead()}
+    <div class="hero">
+      <div class="hero-top">
+        <div><div class="hero-when">${date.toDateString()===NOW.toDateString()?'Aujourd\'hui':'Journée sélectionnée'}</div>
+          <div class="hero-date">${longDate(date)}</div>
+          <div class="dh-phase" style="font-size:.76rem;color:var(--muted);display:flex;gap:.4rem;align-items:center;margin-top:.25rem">${moonGlyph(p)} ${phaseName(p)} · ${illum(p)}%</div></div>
+        <div class="hero-score"><div class="lab">Cote ${isFish()?'pêche':'chasse'}</div>${ratingHTML(n,'lg')}<div class="verdict">${verdict(n)}</div></div>
+      </div>
+      ${factorsHTML(date,false)}
+      <div class="next-win"><span class="nl">Prochaine fenêtre · ${nw.label}</span><span class="nt">${nw.time}</span><span class="ns">jusqu'à ${nw.end}</span></div>
+      <div class="hero-tl-wrap"><div class="hero-tl-lab"><span>Fenêtres d'activité · 24 h</span><span style="color:var(--live)">● maintenant</span></div>${timelineHTML(date)}</div>
+    </div>
+    <div class="strip-label">7 jours — clique une journée</div>
+    <div class="week-strip" data-role="stripB">${strip}</div>
+    <div class="strip-label">${cap(MON[M])} — vue mois</div>
+    <div class="heat" data-role="heatB">${heat}</div>
+    <div class="heat-scale">faible
+      <i style="background:color-mix(in srgb,var(--accent) 20%,rgba(255,255,255,.03))"></i>
+      <i style="background:color-mix(in srgb,var(--accent) 45%,rgba(255,255,255,.03))"></i>
+      <i style="background:color-mix(in srgb,var(--accent) 70%,rgba(255,255,255,.03))"></i>
+      <i style="background:var(--accent)"></i> excellente</div></div>`;
+}
+
+/* ───────── Mount ───────── */
+function render(){
+  document.body.dataset.mode=accentName();
+  document.documentElement.style.setProperty('--accent', isFish()?'var(--fish)':'var(--deer)');
+  document.getElementById('stage').innerHTML = STATE.prop==='A'?renderA():renderB();
+}
+document.getElementById('propSwitch').addEventListener('click',e=>{
+  const b=e.target.closest('.prop-btn'); if(!b)return; STATE.prop=b.dataset.prop;
+  document.querySelectorAll('.prop-btn').forEach(x=>x.classList.toggle('on',x===b)); render();
+});
+document.getElementById('stage').addEventListener('click',e=>{
+  const mode=e.target.closest('[data-role=mode] button'); if(mode){MODE.m=mode.dataset.m; render(); return;}
+  const gran=e.target.closest('[data-role=gran] button'); if(gran){STATE.gran=gran.dataset.g; render(); return;}
+  const step=e.target.closest('.day-step button[data-step]');
+  if(step){ const s=step.dataset.step;
+    if(s==='today') STATE.sel=new Date(NOW);
+    else { const d=new Date(STATE.sel); d.setDate(d.getDate()+(+s)); STATE.sel=d; }
+    render(); return; }
+  const cell=e.target.closest('[data-role=calA] .cell[data-day]'); if(cell){STATE.sel=new Date(STATE.sel.getFullYear(),STATE.sel.getMonth(),+cell.dataset.day); STATE.gran='day'; render(); return;}
+  const wkrow=e.target.closest('.wk-row[data-date]'); if(wkrow){STATE.sel=new Date(+wkrow.dataset.date); STATE.gran='day'; render(); return;}
+  const cellB=e.target.closest('[data-role=stripB] .ws-cell[data-date], [data-role=heatB] .hc[data-date]'); if(cellB){STATE.anchorB=new Date(+cellB.dataset.date); render(); return;}
+});
+// Clavier ←/→ : parcourir les jours dans la vue Jour (Proposition A)
+document.addEventListener('keydown',e=>{
+  if(STATE.prop!=='A'||STATE.gran!=='day') return;
+  if(e.key==='ArrowLeft'||e.key==='ArrowRight'){
+    const d=new Date(STATE.sel); d.setDate(d.getDate()+(e.key==='ArrowRight'?1:-1)); STATE.sel=d; render(); e.preventDefault();
+  }
+});
+render();
+</script>

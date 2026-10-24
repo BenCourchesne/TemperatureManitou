@@ -3,6 +3,10 @@
     ".read": false,
     ".write": "auth.uid === '51jJyJAiWGTnUJZAaK9FgbzH6sA2'",
     "readings": { ".read": true },
-    "daily":    { ".read": true }
+    "daily":    { ".read": true },
+    "journal": {
+      ".read":  "auth.uid === 'iOYEm4Ptr2b0sVLgAgrU9korOAt2'",
+      ".write": "auth.uid === 'iOYEm4Ptr2b0sVLgAgrU9korOAt2'"
+    }
   }
 }

@@ -3,6 +3,14 @@
 Document de référence à consulter avant et pendant l'implémentation.
 Cases à cocher pour suivre l'avancement.
 
+> **Ce fichier est la source de vérité pour le backlog** (consolidé le
+> 2026-07-11). `ECOWITT_HANDOFF.md` est désormais **obsolète** — c'était le
+> brief pour Phase B (branchement Ecowitt + WN32), et Phase B est maintenant
+> **100 % terminée** (WN32/`airb`/`humb` confirmé en prod le 2026-07-10). Il
+> reste consultable pour l'historique (pièges rencontrés, noms d'entités,
+> conversions d'unités) mais n'a plus aucune action en attente — ne pas y
+> chercher de TODO à jour, tout est ici.
+
 ---
 
 ## Contexte
@@ -28,8 +36,32 @@ tuile phase de lune et un panneau solunaire (activité pêche/faune).
   de lune + panneau solunaire (calcul 100 % client). Les tuiles des métriques
   Ecowitt pas encore branchées affichent `—` et s'allumeront en Phase B.
 - **Phase B — quand les entités Ecowitt sont dans HA.** Brancher
-  vent/pluie/UV/luminosité/pression de bout en bout. **Bloqué** sur les noms
-  d'entités HA (à fournir après config de l'intégration Ecowitt).
+  vent/pluie/UV/luminosité/pression de bout en bout. ✅ **Fait et déployé**
+  (voir statut ci-dessous) — seuls `airb`/`humb` (WN32) restent en attente.
+
+---
+
+## Statut au 2026-07-08 — Phases A + B déployées en prod
+
+Phase A **et** Phase B sont **en production** (`firebase deploy --only
+hosting` ; dernier commit `b83f8f5` sur la branche `weather-station`).
+
+- Station Ecowitt configurée dans HA sous le nom de device **`gw3000b`**
+  (unités déjà en métrique). Elle pousse **vent, rafale, direction, taux de
+  pluie, cumul jour, UV, luminosité, pression** toutes les 5 min via
+  `manitou_firebase`. Les tuiles s'allument, le graphique et `/daily`
+  fonctionnent pour chaque mesure.
+- **Backfill** de 132 lectures depuis 21 h la veille effectué à partir de
+  l'historique recorder de HA (`backfill_ecowitt.py`).
+- Polish frontend livré : tendance pluie « sec / taux », stats généralisées,
+  alignement Solaire/Lune, nettoyage des étiquettes d'axe Y.
+
+**Seul point bloqué** : `airb`/`humb` (température/humidité abritées du
+boathouse, capteur **WN32 pas encore reçu par HA**). Placeholders prêts à
+décommenter dans `home_assistant.yaml`.
+
+**Reste faisable maintenant (sans matériel)** : — (audit responsive ≤ 480 px ✅
+fait ; vérif solunaire ✅ faite). Il ne reste que `airb`/`humb` (matériel WN32).
 
 ---
 
@@ -77,86 +109,119 @@ sonde quai**. Le helper `val(d,'air')` implémente la priorité.
 
 ## Tâches — UX / Design
 
-- [ ] Confirmer les **coordonnées GPS du lac** (lat/lon) pour lune/solunaire —
-      lisibles depuis la config HA (`latitude`/`longitude`) ou à coder en dur.
-- [ ] Valider l'ordre final des tuiles dans « Ciel & conditions ».
-- [ ] Décider du comportement des stats sous le graphique quand une seule mesure
-      est affichée (garder les 4 principales vs stats de la mesure choisie).
+- [x] Confirmer les **coordonnées GPS du lac** — ✅ fait : 46.0471, -74.3739
+      (lues depuis la config HA), en dur dans la constante `LAKE`.
+- [x] Valider l'ordre final des tuiles dans « Ciel & conditions » — ✅ Vent,
+      Pluie, UV, Luminosité, Lune (phase).
+- [x] **Comportement des stats sous le graphique** — ✅ tranché et implémenté
+      (2026-07-08) : **cœur fixe** (`air/surface/depth/humidity`) **+ la mesure
+      météo sélectionnée** ajoutée quand elle est en mode solo. La **pluie**
+      affiche un **« Total »** (somme reset-aware : pic par cycle en 24h/7j/30j,
+      somme des totaux quotidiens en saison/année) au lieu de Min/Moy/Max.
 
 ## Tâches — Front End (`index.html`)
 
-Réutiliser l'existant : helper `val(d,key)`, cartes `.card-*`, `renderStats`,
-`trendLabel`, i18n `i18n.fr/.en`, logique `humMode` de `updateUI`.
+- [x] **Variables CSS couleur** — ✅ `--wind --rain --uv --solar --pressure
+      --moon` (+ `--radar` ajouté depuis pour la section Prévisions).
+- [x] **Sections catégorisées** — ✅ Air & atmosphère / Eau du lac / Ciel &
+      conditions, chacune avec en-tête de section.
+- [x] **Nouvelles tuiles** — ✅ Pression, Vent, Pluie, UV, Luminosité, Lune
+      toutes présentes, affichent `—` tant que Phase B n'a pas de données.
+- [x] **Tendances généralisées** — ✅ `trendLabel` gère les unités par mesure,
+      couleurs neutres pour la météo, mise en évidence pression en baisse.
+- [x] **Tendance pluie — cas spécial** — ✅ fait (2026-07-08) : la tuile Pluie
+      affiche **« sec »** si `rday ≈ 0`, sinon le taux/cumul, au lieu de la
+      flèche générique ↑/↓ inadaptée à un cumul croissant.
+- [x] **Sélecteur de mesure du graphique** — ✅ fait, mais avec des **cases à
+      cocher exclusives** (pas des pilules comme prévu à l'origine) : logique
+      généralisée `SOLO`/`seriesVisible` qui bascule axe Y + unité. Fonctionne,
+      juste un choix visuel différent de l'esquisse initiale.
+- [x] **`fetchData`** — ✅ **complet** : le brut (24h) et `/daily` transportent
+      tous les champs (spread `...obj[k]`) ; le bucket horaire (7j/30j) agrège
+      maintenant aussi pression/vent/pluie/UV/luminosité (moyenne, via `val()`
+      généralisé + `RAW_PROP`), plus seulement air/surface/depth/airv/hum.
+      Bloquant Phase B résolu.
+- [x] **Étiquettes d'axe Y propres** — ✅ fait (2026-07-08) : helper `axisNum`
+      qui supprime le bruit flottant des ticks (ex. `970.4000000000001 hPa` →
+      `970.4`) sans imposer de décimales fixes.
+- [x] **Tuile phase de lune** — ✅ icône SVG dynamique (voir section Lune).
+- [x] **Panneau solunaire** — ✅ accordéon (voir section Lune).
+- [x] **i18n FR/EN** — ✅ tous les libellés mesures/phases/majeures-mineures/
+      lever-coucher présents dans les deux langues.
+- [x] **Responsive ≤480px** : ✅ audité (2026-07-08) sur 320/360/375/414/480px,
+      accordéons ouverts. Aucun débordement horizontal de page. Corrigés :
+      onglets de période (`min-width:0` pour que `flex:1` rétrécisse), toggle
+      °C/°F qui débordait des tuiles Eau (`.cards-2 .card-temp` 1.7rem + gap
+      réduit — spécificité requise car le bloc media est AVANT les règles de
+      base dans le CSS), et largeur des tuiles prévisions (min-width 38→34 pour
+      tenir 7 jours à 360px).
 
-- [ ] **Variables CSS couleur** : ajouter `--wind --rain --uv --solar
-      --pressure --moon` (comme `--humidity`).
-- [ ] **Sections catégorisées** : remplacer la grille `.cards` unique par
-      3 blocs avec en-têtes de section (Air & atmosphère / Eau du lac / Ciel &
-      conditions).
-- [ ] **Nouvelles tuiles** : Pression, Vent, Pluie, UV, Luminosité, Lune(phase)
-      — icône + libellé + valeur + tendance. Champs Ecowitt = `null` → `—` en
-      Phase A.
-- [ ] **Tendances généralisées** : étendre `trendLabel(data,key)` aux unités
-      km/h, mm, index, W/m², hPa ; couleurs neutres pour météo ; cas spécial
-      pluie ; mise en évidence pression en baisse.
-- [ ] **Sélecteur de mesure du graphique** : remplacer les cases exclusives par
-      des **pilules** (`Températures` = groupe air/surface/4pieds ; puis une
-      pilule par mesure mono-axe : Humidité, Vent, Pluie, UV, Luminosité,
-      Pression). Généraliser `humMode` → `chartMetric` (bascule axe Y + unité,
-      masque l'axe °F hors températures).
-- [ ] **`fetchData`** : transporter `wind/gust/rain/uv/solar/press` dans les
-      3 branches (raw / bucket horaire / `/daily`), avec garde `!= null` comme
-      `airv/hum`.
-- [ ] **Tuile phase de lune** (SunCalc, voir section Lune).
-- [ ] **Panneau solunaire** (SunCalc + calcul majeures/mineures).
-- [ ] **i18n FR/EN** : nouveaux libellés (mesures, phases, majeures/mineures,
-      lever/coucher).
-- [ ] **Responsive** : grilles auto-fit ; mobile conserve le comportement
-      actuel (vertical). Tester ≤480 px.
+## Tâches — Lune + Solunaire (calcul 100 % client) — ✅ TOUT FAIT
 
-## Tâches — Lune + Solunaire (calcul 100 % client)
-
-- [ ] Charger **SunCalc** depuis cdnjs (`.../suncalc/1.9.0/suncalc.min.js` —
-      CDN autorisé).
-- [ ] Constante `LAKE = { lat, lon }`.
-- [ ] **Tuile phase** : `getMoonIllumination` → fraction + phase → icône +
-      « 78 % · gibbeuse ».
-- [ ] **Solunaire** :
-  - [ ] Majeures = ±1 h autour du transit (altitude lune max) et de
-        l'anti-transit (min) — balayage journalier via `getMoonPosition`.
-  - [ ] Mineures = ±0.5 h autour de `getMoonTimes` (lever/coucher lune).
-  - [ ] Cote du jour (★) selon proximité nouvelle/pleine lune.
-  - [ ] Barre 24 h positionnant majeures/mineures + marqueurs soleil
-        (`getTimes`) et lune.
-- [ ] Vérifier les heures contre une table solunaire en ligne pour la date.
+- [x] SunCalc chargé depuis cdnjs.
+- [x] Constante `LAKE = { lat: 46.0471, lon: -74.3739 }`.
+- [x] Tuile phase : icône SVG (croissant/gibbeuse) générée depuis la fraction
+      exacte + %.
+- [x] Solunaire complet : majeures (transit/anti-transit ±1h), mineures
+      (lever/coucher lune ±0.5h), cote ★, barre 24h, lever/coucher soleil
+      (déplacés dans la tuile Solaire) et lune (dans la tuile Lune).
+      Affiché en **accordéon** au clic sur la tuile Lune (badge Détails/
+      Masquer, clavier-accessible), pas dans le flux par défaut.
+- [x] Vérifier les heures contre une source en ligne — ✅ fait (2026-07-08),
+      comparé à **USNO** (aa.usno.navy.mil, coordonnées exactes) et
+      sunrise-sunset.org pour le soleil :
+  - **Soleil** (lever/coucher/transit) : ~1 min d'écart → excellent.
+  - **Lever de lune** + période mineure associée : ~2 min → excellent.
+  - **Transit lune** (→ majeures) et **coucher de lune** (→ 2ᵉ mineure) :
+    ~12–17 min de retard vs USNO. C'est le plafond du modèle lunaire de SunCalc
+    (une recherche de transit à la minute donne toujours ~12 min d'écart, donc
+    ce n'est pas la résolution ni un bug de code). **Acceptable** pour un
+    tableau solunaire (fenêtres ±1 h = heuristique). Aucun bug de fuseau.
+- [x] **Nom de phase lunaire** — ✅ corrigé (2026-07-08) : `round(phase*8)`
+      donnait à « dernier quartier » une tranche de ±1.85 j (affiché ~1,5 j après
+      le vrai quartier). Remplacé par un nommage à fenêtre étroite (~±0.6 j) pour
+      les 4 phases principales, croissant/gibbeuse le reste du temps. Ex.
+      40 % décroissant = « Dernier croissant » (et non « Dernier quartier »).
 
 ## Tâches — Firebase
 
-- [ ] **Modèle de données** `readings/{ms}` : nouveaux champs optionnels
-      `airb, humb, wind, gust, wdir, rrate, rday, uv, solar, press`
-      (rétro-compat : absents gérés côté frontend).
-- [ ] **`/daily/{ms}`** : ajouter les agrégats avec **règles par métrique** :
-  - moyenne : temp, pression, UV, luminosité, humidité
-  - **somme** : pluie cumul (`rday`)
-  - **moyenne + max** : vent (`wind` moy, `gustmax`)
-- [ ] Étendre `firebase_put_daily` + le calcul du script (selectattr-guarded,
-      comme `airv/hum`) — dépend de la Phase B (données présentes).
-- [ ] Supprimer + reconstruire `/daily` une fois l'agrégation étendue (comme
-      fait pour véranda/humidité).
-- [ ] Règles RTDB : inchangées (lecture publique `readings`+`daily`, écriture
-      `ha-writer`) — rien à faire.
+- [x] **Modèle de données** `readings/{ms}` — ✅ champs `wind, gust, wdir,
+      rrate, rday, uv, solar, press` écrits en prod. ✅ **`airb, humb` branchés
+      ET VÉRIFIÉS EN PROD (2026-07-10)** — WN32 reçu et enregistré sur `gw3000b`
+      (id `0x9E`, a pris le rôle « outdoor » principal, devant le T/H intégré au
+      WS69). Entités confirmées : `sensor.gw3000b_outdoor_temperature` /
+      `sensor.gw3000b_humidity`. Piège rencontré : le placeholder `<WN32>` du
+      commentaire d'origine avait été laissé tel quel après le décommenter (donc
+      `sensor.<WN32>_temperature` — entité inexistante, `num()` renvoyait `null`
+      silencieusement, pas d'erreur visible) — corrigé en remplaçant par les
+      vrais noms d'entité. Confirmé dans `/readings` : `airb: 26.6, humb: 51`,
+      cohérent avec la lecture native du gateway (~26.8 °C / 53 %). Rétro-compat
+      OK (absents gérés côté front pour l'historique pré-WN32).
+- [x] **`/daily/{ms}`** — ✅ agrégats avec **règles par métrique** implémentés :
+  - moyenne : temp, pression, UV, luminosité, humidité (+ `airb`/`humb` ✅ branchés)
+  - **max** : pluie cumul (`rday`) — le max du jour = total du jour
+  - **moyenne + max** : vent (`wind` moy, `gustmax` = rafale max du jour)
+- [x] Étendre `firebase_put_daily` + le script (selectattr-guarded, comme
+      `airv/hum`, avec `rejectattr('none')` pour les `null` du macro `num()`) — ✅.
+- [x] Reconstruire `/daily` — ✅ automatique : le script auto-réparant recalcule
+      les 10 derniers jours manquants à chaque run.
+- [x] Règles RTDB : inchangées — ✅ rien à faire (confirmé).
 
 ## Tâches — Home Assistant (`home_assistant.yaml`) — Phase B
 
-- [ ] Configurer l'**intégration Ecowitt** (Settings → Devices → Ecowitt ;
-      pointer WSView Plus « Customized » vers l'IP de HA). Passerelle GW3002
-      dans le boathouse (WiFi + 120 V) — **même réseau que HA** requis.
-- [ ] **Fournir les noms d'entités** `sensor.<ecowitt>_*` (débloque le reste).
-- [ ] `manitou_firebase` payload : ajouter
-      `airb/humb/wind/gust/wdir/rrate/rday/uv/solar/press`. `airb`/`humb` (WN32)
-      deviennent la source primaire d'air/humidité.
-- [ ] Adapter le helper `val('air')` frontend à la nouvelle priorité
-      WN32 → véranda → quai.
+- [x] Configurer l'**intégration Ecowitt** — ✅ déjà en place (device HA
+      `gw3000b`), unités métriques confirmées.
+- [x] **Noms d'entités** — ✅ capturés : `sensor.gw3000b_wind_speed`,
+      `_wind_gust`, `_wind_direction`, `_rain_rate`, `_daily_rain`, `_uv_index`,
+      `_solar_radiation`, `_relative_pressure`. WN32 (2026-07-10) : id `0x9E`,
+      remplace le T/H intégré du WS69 comme capteur « outdoor » principal du
+      gateway → `sensor.gw3000b_outdoor_temperature` / `_humidity` — ✅ confirmé
+      en prod (2026-07-10, voir la tâche Firebase ci-dessus pour le détail du
+      piège de nom d'entité rencontré et corrigé).
+- [x] `manitou_firebase` payload — ✅ **10 champs** ajoutés via macro `num()`
+      null-safe, `airb`/`humb` (WN32) branchés (2026-07-10).
+- [x] Helper `val('air')` priorité WN32 → véranda → quai — ✅ déjà codé
+      (`airb ?? airv ?? air`) ; s'activera dès que `airb` sera écrit.
 - [ ] **NE PAS** intégrer `sensor.chalet_*` (Honeywell) pour l'instant —
       l'analyse a montré qu'à l'emplacement #1 la sonde est amortie par la masse
       du mur (biais opposé à la véranda, pas meilleure). À réévaluer après
@@ -165,8 +230,12 @@ Réutiliser l'existant : helper `val(d,key)`, cartes `.card-*`, `renderStats`,
 ## Tâches — Backfill des données
 
 - [x] **Véranda/humidité** : déjà fait (`backfill_veranda.py`).
-- [ ] **Ecowitt** : PAS de backfill possible (données inexistantes avant
-      l'installation). L'historique météo démarre à l'installation.
+- [x] **Ecowitt** : ✅ fait (2026-07-08) — contrairement à la note initiale, un
+      backfill EST possible via l'**historique recorder de HA** (~10 j de
+      rétention). `backfill_ecowitt.py` (réutilise les helpers/secrets de
+      `backfill_veranda.py`, idempotent, mode dry-run par défaut) a rempli 132
+      lectures depuis 21 h la veille. Extensible : baisser `START_LOCAL` pour
+      remonter plus loin dans la rétention.
 - [ ] **Optionnel — sonde chalet** : si un jour on l'intègre après déplacement,
       backfill via le même pattern (`/api/history` HA → PATCH `readings`), en
       respectant la rétention recorder (~10 j).
@@ -190,10 +259,386 @@ s'allument, et que graphique + `/daily` marchent pour chaque mesure.
 
 ---
 
+## Bugs connus
+
+- [ ] **Sonde de vent non représentative du flux régional — à valider par
+      observation visuelle.** Constaté le 2026-07-22 : la sonde lit ~28 % de la
+      vitesse régionale et sa direction s'écarte de 34° à 119° selon le secteur
+      (tout le quadrant ouest est lu comme N/NNO). Diagnostic actuel : **effet
+      d'abri**, la sonde étant derrière l'île McCall, sous le vent d'une colline
+      de 50 m au sud-ouest. Mesures détaillées dans
+      [`SpecsCalendrierActivites.md`](SpecsCalendrierActivites.md) §18.5.
+      Confirmé par 5 sources indépendantes (comparaison sur 14 jours, modèle
+      d'élévation, géométrie du site, 22 stations METAR, observation directe du
+      2026-07-22 à 14 h).
+      **Doute subsistant : défaut de calibration ou d'installation ?** À trancher
+      par le protocole ci-dessous.
+
+  **Matériel** : Ecowitt **WS69** (7-en-1, anémomètre à coupelles + girouette
+  séparée, toutes deux noires) sur passerelle **GW3000**. Installée vers le
+  **2026-07-08**, ce qui correspond au début des données de vent — tout
+  l'échantillon vient donc du même capteur, sans changement en cours de route.
+
+  ### Hypothèses testées et éliminées
+
+  | Hypothèse | Verdict | Preuve |
+  |---|---|---|
+  | Roulements usés, toiles d'araignée, saletés | **Éliminée** | Capteur installé depuis 2 semaines |
+  | Girouette bloquée ou bridée | **Éliminée** | Sur 3 018 lectures, la girouette visite **36/36 secteurs de 10°** (35/36 au-dessus de 5 km/h). Elle tourne librement sur 360°. |
+  | Rotation constante au montage | **Éliminée** | L'écart varie de −5° (SE) à +119° (SO) selon le secteur réel. Surtout, la distribution est **comprimée** et non **décalée** : 90° de directions réelles (SO→NO) s'écrasent dans 30° de lectures (320-350°). Une erreur d'orientation déplacerait toutes les lectures du même angle en conservant leur étalement. |
+  | **Canalisation par le relief** | **Seule debout** | Modèle d'élévation (crête à +14° d'horizon au SO), géométrie du site (chenal étroit + colline de 50 m), ratio de vitesse de 28 %, et pic de direction à 320-340° coïncidant avec l'axe du chenal. Au-dessus de 5 km/h, **80 % des lectures tombent entre 290° et 20°**, alors que le vent régional venait surtout de l'ouest et du sud-ouest. |
+
+  Reste possible : un **décalage d'orientation de 13-14°** superposé, si
+  l'alignement a été fait au nord magnétique (déclinaison locale ~14° ouest).
+  À corriger — c'est gratuit — mais ça n'explique pas le phénomène principal.
+
+  Sur la **vitesse**, le seuil de démarrage des coupelles (de l'ordre de 2 à
+  4 km/h, à confirmer dans la fiche technique) explique une part de la
+  sous-lecture en vent léger. Ce n'est pas un défaut mais la limite du principe
+  mécanique. Il se voit dans le ratio sonde/régional, qui **monte** avec la
+  vitesse : 0,13 entre 5 et 10 km/h, 0,26 entre 10 et 15, 0,37 entre 15 et 20,
+  0,43 entre 20 et 30. Une sonde ultrasonique (WS80/WS90) supprimerait ce seuil
+  — mais pas l'abri, qui reste dominant pour la direction.
+
+  > **Protocole d'observation — le point décisif**
+  >
+  > Observer le vent **au pied du mât**, et non au large. C'est ce qui distingue
+  > les deux hypothèses :
+  > - le vent observé **au mât** diffère de ce qu'affiche la sonde → **défaut de
+  >   la sonde** (calibration, orientation, obstruction) ;
+  > - il **correspond** à la sonde alors que le large est différent → **effet
+  >   d'exposition**, la sonde est bonne.
+  >
+  > Noter à chaque fois : heure à la minute près, direction observée (ruban sur
+  > une canne, fumée, ou visage face au vent), force approximative, lieu exact
+  > de l'observation, et la valeur affichée par la sonde au même instant.
+  > Répéter sur plusieurs jours, en cherchant à couvrir aussi un vent venant du
+  > secteur dégagé (nord-est à est).
+  >
+  > La comparaison se fait ensuite contre le modèle GEM (Environnement Canada,
+  > `gem_seamless` via Open-Meteo) et les METAR listés ci-dessous.
+
+  ### Stations de référence
+
+  ⚠️ **CYFJ (Mont-Tremblant) ne diffuse pas de METAR** — vérifié par balayage
+  d'un rectangle de 2,5° autour du lac : 22 stations remontent, Mont-Tremblant
+  n'en fait pas partie. **Aucune station au nord du lac**, toutes sont au sud,
+  sud-est ou sud-ouest.
+
+  | Station | Distance | Intérêt |
+  |---|---|---|
+  | **CWMJ** Maniwaki | 128 km | **La plus pertinente** — seule en terrain comparable (Laurentides/Gatineau, relief vallonné). Le 2026-07-22 à 18 h Z elle donnait 17 km/h, exactement la valeur du modèle HRDPS au lac. |
+  | CYMX Mirabel | 48 km | La plus proche, mais en basses terres |
+  | CYUL Trudeau | 81 km | Basses terres |
+  | CYND Gatineau | 109 km | Basses terres |
+
+  Requête pour retrouver toutes les stations d'un coup :
+  `https://aviationweather.gov/api/data/metar?bbox=45.0,-76.5,47.5,-72.5&format=json`
+
+  #### Lac Devenyns (47,0496 N / −73,8241 O, altitude 402 m)
+
+  Relevé le 2026-07-22 : `bbox=45.5,-76.0,49.0,-71.0`
+
+  | Station | Distance | Altitude | Rôle |
+  |---|---|---|---|
+  | **CWPK Parent** | 115 km | **443 m** | **Analogue de terrain — pour la VITESSE.** Même plateau de la Haute-Mauricie, même forêt boréale, 41 m d'écart d'altitude seulement. |
+  | **CWDQ La Tuque** | **88 km** | 174 m | La plus proche — pour la **direction** et le régime. Mais dans la vallée du Saint-Maurice, 228 m plus bas. |
+  | CXSH Shawinigan | 99 km | 106 m | Contrôle du gradient |
+  | CYRQ Trois-Rivières | 116 km | 58 m | Contrôle du gradient |
+
+  > ⚠️ **La direction se transporte, la vitesse non.** Le 2026-07-22 à 20 h Z,
+  > toutes les stations de la région donnaient 210-250° — le flux régional est
+  > uniforme sur 200 km. Mais la vitesse passait de **7 km/h à 443 m** (Parent) à
+  > **46 km/h à 3 m** (Lac Saint-Pierre), soit un facteur **six** sur des stations
+  > distantes de moins de 120 km. C'est le relief et la rugosité, pas la météo.
+  >
+  > Conséquence pratique : valider une **direction** avec n'importe quelle station
+  > voisine est légitime ; valider une **vitesse** exige un analogue d'altitude et
+  > de couvert. D'où Parent plutôt que La Tuque, malgré les 27 km de plus.
+  >
+  > Contrôle de cohérence du modèle au même instant : `gem_seamless` donnait
+  > **17,3 km/h à Devenyns** pour une maille à 402 m — soit exactement l'altitude
+  > du lac —, entre les 7 km/h de Parent et les 20 de La Tuque. Plausible : l'eau
+  > libre oppose moins de résistance que la forêt entourant une piste.
+
+  ⚠️ Écarter **CWTA (McTavish)** : station sur un toit au centre-ville de
+  Montréal, valeurs aberrantes (180° à 7 km/h quand tout le reste donnait
+  240° à 20 km/h).
+
+  > **Réserve de fond** : aucune observation réelle en terrain comparable à
+  > moins de 128 km. Pour le lac lui-même, le modèle reste la meilleure
+  > **estimation** disponible — pas une mesure. C'est précisément la valeur du
+  > ruban témoin : ce serait la première mesure réelle dans ce relief.
+
+  > **Méthode recommandée : ruban témoin dans le champ de la caméra**
+  >
+  > La caméra Imou du quai voit le mât. Y attacher un **ruban de flagging
+  > d'arpenteur de couleur vive** (orange ou rose) transforme chaque
+  > enregistrement en mesure horodatée de la direction locale, sans avoir à
+  > sortir. La girouette elle-même est **noire et invisible à la caméra** sur
+  > fond de forêt — d'où l'exigence de couleur vive, et de placer le ruban
+  > assez haut pour qu'il se découpe sur le ciel.
+  >
+  > Il suffit ensuite d'enregistrer un clip par temps venteux : le ruban donne
+  > la direction au quai, à comparer à la valeur de la sonde à la seconde près.
+  > Ruban et sonde d'accord → la sonde est bonne, c'est l'exposition. Ruban et
+  > sonde en désaccord → défaut de montage ou d'orientation.
+
+  **Analyse vidéo du 2026-07-22 14 h 18** (clip Imou de 20 s, 590 images) :
+  cimes des conifères oscillantes, parasol replié qui bat, eau lisse près de la
+  rive et texturée au large — motif d'un vent quittant la rive. Cohérent avec
+  les rafales de 11 à 15 km/h enregistrées par la sonde au même moment.
+  **Conclusion : sur la vitesse, à son emplacement, la sonde est crédible.**
+  La direction reste indéterminée — le flux optique sur l'eau est au niveau du
+  bruit et la girouette n'est pas visible.
+
+  Relevés :
+
+  | Date | Heure | Lieu d'observation | Direction observée | Force observée | Sonde | Modèle | METAR |
+  |---|---|---|---|---|---|---|---|
+  | 2026-07-22 | 14 h 10 | depuis la fenêtre | 250° (confirmé de visu) | très léger sur place | 1,4 km/h · 277° | 17 km/h · 250° · raf. 44 | 20-33 km/h · 240-270° · raf. 41-46 |
+
+- [x] **Radar : le scroll de la souris déclenche le zoom de la carte au lieu du
+      scroll de la page.** ✅ fait (fix rapide) — `panel.scrollIntoView(
+      {behavior:'smooth', block:'center'})` appelé à l'ouverture des deux
+      accordéons (Radar et Lune), centre le viewport automatiquement, plus
+      besoin de scroller manuellement dessus. Le fix plus robuste (calque
+      « cliquez pour interagir » bloquant le scroll résiduel) reste optionnel
+      si le souci revient malgré l'auto-scroll.
+
+---
+
+## Tâches — Suites de la panne du quai (sept.–oct. 2026)
+
+Contexte : lien NanoBeam coupé du 2026-09-18 au 2026-10-22, puis Pi débranché
+par accident la nuit du 22 au 23 oct. Fichiers de rattrapage dans
+`D:\Claude desktop\ESPHome\recup\` (hors dépôt).
+
+Fait :
+- [x] Météo de la panne récupérée de la SD du GW3000 (horloge remise au
+      2024-12-31 à chaque reboot → recalée par midi solaire + pression EC
+      Mont-Tremblant) et écrite dans `/readings` (9718 lectures) + `/daily`
+      (2026-09-18 → 2026-10-21) via `recup/backfill.py`.
+- [x] Correctifs HA : `airv`/`hum` via `num()` (plus de faux 0.0) et agrégation
+      `/daily` tolérante aux lectures sans sondes du lac.
+- [x] Site remis en service (revert du mode hors service, commit `e235d01`) ;
+      watchdog Pushover réactivé.
+- [x] Switch quai TL-SG108PE : IP fixe 192.168.11.253 dans le switch, ESP32 sur
+      le port 2 avec PoE Auto Recovery (ping .250).
+
+À faire :
+- [x] **ESP32 flashé** avec `api: reboot_timeout: 0s` — firmware ESPHome 2026.10.0
+      compilé le 2026-10-23 07:01, revenu en ligne.
+- [x] **Météo de la nuit du 22-23 oct. rattrapée** (19 h 37 → 6 h 42, 134 lectures)
+      depuis la SD du GW3000 via `recup/backfill_nuit.py`. Sondes du lac perdues.
+- [x] **`/daily` du 2026-10-22 nettoyé** (plus de `airv`/`hum` à 0.0, n=288) et
+      derniers faux 0.0 retirés de `/readings`.
+- [x] **Température du lac estimée** (2026-10-24) via `recup/estime_lac.py` :
+      modèle air→eau à pas de 24 h glissant + correction du cycle jour/nuit,
+      pontage entre ancres mesurées. 33 jours `est: 1` dans `/daily`
+      (18 sept. → 21 oct., sauf le 21 sept. mesuré) ; `/readings` intact.
+      Paramètres du calage : `recup/estime_lac_params.json`.
+- [x] **Front end** : jours `est: 1` en pointillé (Surface/4 pieds), « (estimé) »
+      dans l'infobulle, exclus des Min/Moy/Max + note (commit `e759e20`).
+- [ ] **Revoir le modèle du lac dans quelques jours** avec plus d'historique
+      d'automne : rafraîchir `recup/readings_all.json`, relancer
+      `recup/estime_lac.py` (recalage auto, mêmes jours réécrits), comparer avec
+      `recup/estime_lac_params.json` du calage précédent. Relancer aussi
+      `recup/modele_variantes.py` (air seul / air + soleil / + humidité) en
+      ajoutant des trous d'automne cachés. État au 2026-10-24 : air + soleil
+      gagne en automne (1er-3 oct. : 0,23 °C surface vs 0,38 air seul) mais perd
+      en été ; humidité et vent rejetés (pas assez de signal en été). Conclusions
+      fondées sur 2 périodes d'automne seulement.
+- [x] **Poussé** sur GitHub (branche `weather-station`, jusqu'à `395b114`).
+- [ ] Rebrancher le capteur de la véranda après les rénos.
+- [ ] Renommer les capteurs ESPHome « Delta surface / 4 pi » et « Delta surface /
+      air » (le « / » deviendra une erreur dans ESPHome 2027.7.0).
+- [ ] Optionnel : retirer le POST vers le téléphone (.251) de la config ESPHome si
+      le téléphone collecteur est récupéré.
+
+---
+
+## Tâches — Idées futures (non implémentées, à planifier)
+
+Backlog capturé le 2026-07-07, rien de ceci n'est implémenté — à détailler et
+prioriser avant de commencer.
+
+- [x] **Tuile Lune → icône de phase + %** : ✅ fait (2026-07-07) — icône SVG de
+      croissant/gibbeuse générée dynamiquement depuis la fraction éclairée
+      exacte (formule à arcs elliptiques), pas un set statique de 30 images.
+- [x] **Panneau solunaire caché par défaut** : ✅ fait (2026-07-07) — implémenté
+      en **accordéon** (pas modal) : clic sur la tuile Lune (badge « Détails ▾ »,
+      bordure teal, clavier-accessible) révèle le panneau juste en dessous dans
+      le flux de la page ; reclique pour le masquer. Moonrise déplacé de
+      l'ancien panneau vers la tuile Lune elle-même.
+- [x] **Aligner les séparateurs Solaire/Lune** : ✅ fait (2026-07-08). Cause
+      identifiée en preview : le bloc-valeur Solaire fait 2 lignes (l'unité
+      `W/m²` passe sous le chiffre) contre 1 ligne pour la Lune, décalant la
+      rangée Lever soleil de ~25 px sous Lever lune. Fix : `min-height: 3.4rem`
+      sur `.card-solar .card-value-row, .card-moon .card-value-row` → rangées
+      alignées (vérifié à 2 px près, desktop ; en mobile les tuiles s'empilent,
+      pas d'adjacence).
+- [x] **Renommer la section graphique** : ✅ fait (2026-07-07) — renommé en
+      « Historique des données » / « Historical data ».
+- [ ] **Photo horaire (webcam)** : capturer une photo à chaque heure et l'afficher
+      sur le site (dernière photo, ou petite galerie/timelapse).
+
+  **Matériel choisi (2026-07-10)** : **Reolink RLC-510A**, objectif **4 mm**
+  (PAS le 2.8 mm fisheye — le 4 mm est plus serré/plat, plus facile à cadrer pour
+  **exclure les bateaux** du champ), PoE, IP66 (extérieur, hiver). ~**85 $ CAD +
+  tx** (~98 $ tout inclus). ONVIF/RTSP natif → s'intègre directement à HA.
+  Monter **haut, légèrement vers le haut** (eau + horizon + ciel) pour la valeur
+  météo/ambiance sans montrer le quai ni les bateaux (vie privée/sécurité).
+  - Rejeté : **ESP32-CAM** (OV2640 2 MP, mauvaise plage dynamique → massacre les
+    levers de soleil dans la brume ; pas étanche ; WiFi). Bon pour le thème DIY,
+    mauvais outil pour la photo « hero ».
+
+  **Alimentation — ⚠️ plus de port PoE libre.** Le switch **TP-Link 8 ports
+  (4 PoE)** du boathouse est saturé côté PoE : 2 caméras sécurité + PTP Ubiquiti
+  + AP WiFi Ubiquiti + ESP32-POE (+ base Arlo, non-PoE, sur port data). Certains
+  Ubiquiti sont déjà sur leur propre injecteur.
+  - **Solution** : **injecteur PoE actif autonome** — TP-Link **TL-PoE160S**
+    (802.3af/at, gigabit, ~25 $). Il se branche sur un **port data ordinaire**
+    (pas un port PoE) + une prise murale → **n'utilise aucun port PoE ni le
+    budget PoE du switch**.
+  - ⚠️ **NE PAS réutiliser un injecteur Ubiquiti passif 24 V/48 V** : mauvais
+    standard, **endommagerait** la Reolink (802.3af). Injecteur **actif**
+    obligatoire.
+  - ⏳ **À VÉRIFIER physiquement au boathouse** : reste-t-il un **port data
+    libre** sur le switch 8 ports ? (analyse : ~6/8 ports utilisés → 1–2 libres
+    probables, mais à confirmer sur place — switch non-managé, invérifiable à
+    distance). Si tout est plein : ajouter un petit switch 5 ports (~20 $) pour
+    gagner des ports, puis brancher l'injecteur dessus.
+  - Coût total estimé : cam ~98 $ + injecteur ~28 $ ≈ **126 $ CAD**.
+
+  **Pipeline (option A, sans Cloud Functions, cohérent avec l'archi actuelle)** :
+  1. HA récupère la cam via l'intégration **ONVIF / Generic Camera** (URL RTSP).
+  2. Automation horaire → service **`camera.snapshot`** (JPEG).
+  3. HA **upload le JPEG vers Firebase Storage** (auth compte `ha-writer`, même
+     token que `manitou_firebase`). Storage, PAS RTDB (image trop grosse).
+  4. Le front affiche la **dernière photo** dans une tuile « conditions
+     actuelles » (à côté des tuiles capteurs).
+  - À définir : activer Firebase Storage (Spark = 5 Go gratuits), règles de
+    sécurité Storage (lecture publique de la dernière photo), **rétention**
+    (combien de photos garder — écraser une seule « latest.jpg » vs
+    galerie/timelapse horodatée).
+
+  **Prérequis avant de commencer** : (1) commander la cam **variante 4 mm** +
+  injecteur actif ; (2) confirmer un port data libre sur le switch ; (3) capturer
+  l'URL RTSP + l'ajouter à HA.
+- [x] **Navigation temporelle sur le graphique — étapes 1-3** : ✅ fait et
+      déployé (2026-07-11, commit `88476bf`). Spec complète dans
+      [`TIME_TRAVEL_SPEC.md`](TIME_TRAVEL_SPEC.md) (déplacée dans le dépôt le
+      2026-07-14 — l'ancienne copie hors-dépôt `D:\Claude desktop\ESPHome\plan.md`
+      est maintenant un simple pointeur vers ce fichier). Livré :
+  - Fenêtres alignées sur le calendrier (jour/semaine/mois/saison/année,
+    fuseau America/Toronto, DST-safe) remplaçant les fenêtres glissantes
+    « derniers N ».
+  - Couche de données : `startAt`/`endAt` sur `/readings` (jour/semaine),
+    `/daily` filtré (mois/saison/année), cache mémoire + annulation des
+    requêtes en vol pour un stepping rapide sans fenêtre périmée.
+  - Stepper `‹ label ›` + bouton « Aujourd'hui », état dans l'URL (restaure au
+    rechargement), changement de granularité préserve la position visée.
+  - Sélecteur de période adaptatif (calendrier jour / grille mois / blocs
+    saison / liste année), cases futures ou avant-première-donnée désactivées
+    mais visibles.
+  - Mobile : rangée de granularité scrollable, cibles tactiles 44px, le
+    sélecteur devient une feuille ancrée en bas.
+  - Auto-refresh 5 min ignore le fetch du graphique quand on visite une
+    fenêtre passée (ne ramène jamais au présent).
+
+- [x] **Calendrier d'activité chasse-pêche** (page cachée `cp.html`, route `/cp`)
+      — ✅ **v1 livrée le 2026-07-22, remplacée par le modèle v2 le 2026-07-23**
+      (déployé). Suivi détaillé des phases dans
+      [`SpecsCalendrierActivites.md`](SpecsCalendrierActivites.md) §19 et §0.
+      - **v1 (livrée)** : page `/cp` (rewrite Firebase), accès par appui long
+        1,2 s sur la tuile Lune ; le panneau lunaire de `index.html` a perdu sa
+        cote ★ (§10.B/C).
+      - **v2 (le cœur actuel)** : cote 1-4 journalière remplacée par un **indice
+        horaire 0-100 par régime météo** (§15). La bascule Pêcheur/**Chasseur est
+        retirée** — pêche uniquement, la chasse reviendra avec son propre modèle
+        (§14.1-6). Le **régime vient d'Open-Meteo**, plus du capteur canalisé
+        (§16.3, §18.5). Facteurs, anti-double-comptage, meilleures fenêtres,
+        réétalonnage : Phase 1. Sélecteur de lac (Manitou/Devenyns), bandeau
+        « Prochaines fenêtres », courbe d'indice, décomposition régime-en-tête :
+        Phase 2.
+      - **Reste** : Phase 3 (journal Firebase authentifié + vue calibration, §17)
+        et Phase 4 (calibration continue, dès ~30-50 sorties). Deux questions en
+        attente de terrain : §20.1 (échelle de vent) et §20.2 (le nord ou l'ouest
+        déçoit-il au Manitou ?).
+- [ ] **Navigation temporelle — polish : séries absentes d'une fenêtre passée**
+      — pas encore fait. Actuellement le bloc de stats est **omis entièrement**
+      quand une série n'a pas de données dans la fenêtre visitée, au lieu de
+      l'afficher grisée avec `—` (comportement voulu, critère d'acceptation non
+      coché dans [`TIME_TRAVEL_SPEC.md`](TIME_TRAVEL_SPEC.md) §10 / §8.5).
+- [ ] **Navigation temporelle — étape 4 : mode comparaison (année sur année)**
+      — différé, pas commencé. Spec détaillée (à ne pas perdre) :
+  - Un seul toggle **« Comparer »** superpose la **même fenêtre alignée de
+    l'année précédente** derrière la ligne courante.
+  - Ligne courante = pleine, poids visuel normal (style actuel inchangé).
+    Ligne de comparaison = **fine, pointillée, gris/atténuée**, dessinée
+    **derrière** la courante — ne doit jamais rivaliser visuellement avec
+    « maintenant ».
+  - La légende affiche les deux années.
+  - **Les deltas sont la vraie valeur ajoutée** : sous chaque stat résumé,
+    afficher l'écart vs la période de comparaison, ex.
+    `Moy 21.4 °C (+2.4 °C vs 2025)`. Beaucoup d'utilisateurs lisent les
+    tuiles, pas les lignes.
+  - **Off par défaut** (ça ajoute du bruit visuel) — opt-in.
+  - Grâce aux fenêtres alignées sur le calendrier, « l'année précédente » est
+    **non ambiguë** pour chaque granularité (même semaine-de-l'année, même
+    saison, etc.).
+  - N'a de sens que pour les granularités « période » (semaine/mois/saison/
+    année). Pour « 24 h », soit comparer à la même date l'an dernier, soit
+    masquer le toggle — **décision produit à confirmer**.
+  - **Bloquant actuel — données insuffisantes** : la base ne remonte qu'au
+    28 juin 2026, donc « vs l'an dernier » n'a rien à montrer avant
+    **mi-2027**. Prévoir dès maintenant l'état vide : toggle **désactivé**
+    avec infobulle (« données historiques insuffisantes ») quand la fenêtre
+    de comparaison n'a aucune donnée ; si données **partielles**, dessiner ce
+    qui existe et afficher `—` pour les deltas incalculables.
+  - **Note d'implémentation** : pour superposer les deux périodes sur le même
+    axe temporel, décaler les timestamps de la série de comparaison d'un an
+    en avant pour qu'elles s'alignent visuellement.
+  - **Extension future** (hors scope v1) : remplacer « vs l'an dernier » par
+    une bande de **moyenne mobile multi-année** (« la normale », moyenne
+    5-10 ans ± plage) — même emplacement d'overlay, plus crédible pour un
+    public météo.
+  - Mobile : la rangée d'actions secondaires devait avoir « Aujourd'hui » et
+    « Comparer » en deux moitiés égales (section 6 de la spec) — différé
+    puisque Comparer n'existe pas encore ; à faire quand ce toggle sera
+    implémenté.
+- [x] **Radar météo embarqué** : ✅ fait (2026-07-07) — nouvelle section
+      « Prévisions » (entre Ciel & conditions et les onglets de période),
+      positionnée délibérément comme catégorie « ce qui s'en vient » (externe/
+      prédictif) distincte des mesures propres au site. Tuile Radar en
+      accordéon (même pattern que la Lune), carte Windy centrée sur le lac,
+      **iframe chargée seulement à la première ouverture** (économie de bande
+      passante). `.forecast-row` (flex, pas grille) déjà dimensionné pour
+      accueillir les tuiles de prévisions 7 jours à côté, sans réorganisation.
+- [x] **Prévisions météo 7 jours (forecast)** : ✅ fait (2026-07-08). Source =
+      **Environnement Canada** via `api.weather.gc.ca` (collection
+      `citypageweather-realtime`, site le plus proche = Sainte-Agathe `qc-33`,
+      CORS OK, payload bilingue). Carte « Prévisions 7 jours » à droite du radar
+      dans `.forecast-row` (passe sous le radar sur petit écran) : 7 tuiles jour
+      avec icône (mapping code EC → Tabler, vérifié contre le CSV officiel),
+      max (rouge) / min (bleu) empilés, résumé en infobulle, attribution EC.
+      Rafraîchi chaque heure ; échec réseau = carte masquée silencieusement.
+
+---
+
 ## Questions ouvertes / à confirmer
 
-- Coordonnées GPS exactes du lac (solunaire).
-- Noms d'entités Ecowitt (Phase B).
-- Stats du graphique en mode mono-mesure : 4 cartes fixes vs mesure affichée.
-- Sonde chalet : à réévaluer après déplacement au #2.
-- WiFi boathouse = même sous-réseau que HA ? (requis pour le push local Ecowitt).
+- ✅ ~~Coordonnées GPS exactes du lac~~ — résolu : 46.0471, -74.3739.
+- ✅ ~~Noms d'entités Ecowitt~~ — résolu : device `gw3000b` (WN32 à capturer à
+  sa réception pour `airb`/`humb`).
+- ✅ ~~Stats du graphique mono-mesure~~ — résolu : cœur fixe + mesure sélectionnée.
+- ✅ ~~WiFi boathouse = même sous-réseau que HA ?~~ — résolu : la station pousse
+  bien les données, le push local fonctionne.
+- ✅ ~~WN32~~ — résolu (2026-07-10) : reçu, branché, vérifié en prod. Phase B
+  est maintenant **entièrement terminée** ; `ECOWITT_HANDOFF.md` est obsolète
+  (voir note en tête de ce fichier).
+- ⏳ **Sonde chalet** : à réévaluer après déplacement au #2.
+- ✅ ~~Responsive ≤ 480 px~~ — audité 320–480px, débordements corrigés.
+- ✅ ~~Vérif solunaire~~ — faite (USNO) : soleil/lever-lune ~1–2 min, transit/
+  coucher-lune ~12–17 min (plafond SunCalc, acceptable). Nom de phase corrigé.
