@@ -449,7 +449,7 @@ Fait :
       gagne en automne (1er-3 oct. : 0,23 °C surface vs 0,38 air seul) mais perd
       en été ; humidité et vent rejetés (pas assez de signal en été). Conclusions
       fondées sur 2 périodes d'automne seulement.
-- [ ] **Pousser** le commit `e235d01` (branche `weather-station`).
+- [x] **Poussé** sur GitHub (branche `weather-station`, jusqu'à `395b114`).
 - [ ] Rebrancher le capteur de la véranda après les rénos.
 - [ ] Renommer les capteurs ESPHome « Delta surface / 4 pi » et « Delta surface /
       air » (le « / » deviendra une erreur dans ESPHome 2027.7.0).
