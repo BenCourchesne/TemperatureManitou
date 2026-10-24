@@ -752,6 +752,7 @@
     .stat-name { font-size: .78rem; font-weight: 600; margin-bottom: .1rem; }
     .stat-row { display: flex; justify-content: space-between; font-size: .72rem; color: var(--muted); }
     .stat-row b { color: var(--text); font-weight: 600; }
+    .stat-note { grid-column: 1 / -1; font-size: .7rem; color: var(--muted); }
     @media (max-width: 560px) {
       .chart-stats { grid-template-columns: 1fr; }
     }
@@ -1163,6 +1164,8 @@
       statAvg:       'Moy',
       statMax:       'Max',
       statTotal:     'Total',
+      estimated:     'estimé',
+      estNote:       'Pointillé = température du lac estimée (sondes hors ligne), exclue des statistiques du lac.',
       footer:        'Mise à jour toutes les 5 minutes',
       cpLink:        'Chasse-pêche',
       cpToast:       'Chasse-pêche',
@@ -1244,6 +1247,8 @@
       statAvg:       'Avg',
       statMax:       'Max',
       statTotal:     'Total',
+      estimated:     'estimated',
+      estNote:       'Dashed = estimated lake temperature (probes offline), excluded from lake statistics.',
       footer:        'Updated every 5 minutes',
       cpLink:        'Hunt & fish',
       cpToast:       'Hunt & fish',
@@ -1292,6 +1297,7 @@
   let chart = null;
   let allData = [];
   const SERIES = ['air', 'surface', 'depth'];   // datasets 0/1/2 (températures)
+  const LAKE_KEYS = ['surface', 'depth'];       // séries pouvant être estimées dans /daily (est: 1)
   // dataset 3 = humidité (exclusive vs le groupe températures)
   let seriesVisible = { air: true, surface: true, depth: true, humidity: false, pressure: false, wind: false, rain: false, uv: false, solar: false };
 
@@ -1584,6 +1590,9 @@
       hidden: true, data: []
     }));
 
+    // Lac : un segment touchant un jour estimé (/daily est: 1) est tracé en pointillé.
+    const estDash = c => (c.p0.raw && c.p0.raw.est) || (c.p1.raw && c.p1.raw.est) ? [5, 4] : undefined;
+
     chart = new Chart(ctx, {
       type: 'line',
       data: {
@@ -1610,6 +1619,7 @@
             pointHoverBackgroundColor: '#bae6fd',
             tension: 0.4,
             fill: true,
+            segment: { borderDash: estDash },
             data: []
           },
           {
@@ -1622,6 +1632,7 @@
             pointHoverBackgroundColor: '#1e40af',
             tension: 0.4,
             fill: true,
+            segment: { borderDash: estDash },
             data: []
           },
           ...soloDatasets
@@ -1646,7 +1657,8 @@
                 const v = ctx.parsed.y;
                 const sk = ctx.dataset.soloKey;
                 if (sk) return ` ${ctx.dataset.label}: ${v.toFixed(METRIC_DEC[sk])}${METRIC_UNIT[sk] || ''}`;
-                return ` ${ctx.dataset.label}: ${v.toFixed(1)}°C  /  ${(v * 9/5 + 32).toFixed(1)}°F`;
+                const est = ctx.raw && ctx.raw.est ? `  (${i18n[currentLang].estimated})` : '';
+                return ` ${ctx.dataset.label}: ${v.toFixed(1)}°C  /  ${(v * 9/5 + 32).toFixed(1)}°F${est}`;
               }
             }
           }
@@ -2192,7 +2204,9 @@
     // Chart — une mesure « solo » (axe unique) exclusive vs le groupe températures (°C/°F)
     updateChartControls(data);
     const soloKey = SOLO_KEYS.find(k => seriesVisible[k]) || null;
-    const mkPoints = key => data.map(d => ({ x: new Date(d.t), y: val(d, key) }));
+    // `est` (jours /daily estimés) ne concerne que les sondes du lac.
+    const mkPoints = key => data.map(d => ({ x: new Date(d.t), y: val(d, key),
+      est: !!d.est && LAKE_KEYS.includes(key) }));
     SERIES.forEach((key, i) => {
       chart.data.datasets[i].data = mkPoints(key);
       chart.data.datasets[i].hidden = !!soloKey || !seriesVisible[key];
@@ -2288,7 +2302,7 @@
         rows +
       '</div>';
 
-    let html = '';
+    let html = '', anyEst = false;
     keys.forEach(key => {
       const isTemp = (key === 'air' || key === 'surface' || key === 'depth');
       const unit = isTemp ? '°C' : (METRIC_UNIT[key] || '');
@@ -2325,6 +2339,7 @@
       let mn = Infinity, mx = -Infinity, sum = 0, n = 0;
       for (const d of data) {
         if (key === 'uv' && !isDaylight(d.t)) continue;
+        if (d.est && LAKE_KEYS.includes(key)) { anyEst = true; continue; }  // jours estimés : hors stats
         const v = val(d, key);
         if (v == null) continue;
         if (v < mn) mn = v;
@@ -2338,6 +2353,7 @@
         '<span class="stat-row"><span>' + t.statMax + '</span><b>' + f(mx) + unit + '</b></span>'
       );
     });
+    if (anyEst) html += '<div class="stat-note">' + t.estNote + '</div>';
     el.innerHTML = html;
   }
 

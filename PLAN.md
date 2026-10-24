@@ -408,6 +408,47 @@ s'allument, et que graphique + `/daily` marchent pour chaque mesure.
 
 ---
 
+## Tâches — Suites de la panne du quai (sept.–oct. 2026)
+
+Contexte : lien NanoBeam coupé du 2026-09-18 au 2026-10-22, puis Pi débranché
+par accident la nuit du 22 au 23 oct. Fichiers de rattrapage dans
+`D:\Claude desktop\ESPHome\recup\` (hors dépôt).
+
+Fait :
+- [x] Météo de la panne récupérée de la SD du GW3000 (horloge remise au
+      2024-12-31 à chaque reboot → recalée par midi solaire + pression EC
+      Mont-Tremblant) et écrite dans `/readings` (9718 lectures) + `/daily`
+      (2026-09-18 → 2026-10-21) via `recup/backfill.py`.
+- [x] Correctifs HA : `airv`/`hum` via `num()` (plus de faux 0.0) et agrégation
+      `/daily` tolérante aux lectures sans sondes du lac.
+- [x] Site remis en service (revert du mode hors service, commit `e235d01`) ;
+      watchdog Pushover réactivé.
+- [x] Switch quai TL-SG108PE : IP fixe 192.168.11.253 dans le switch, ESP32 sur
+      le port 2 avec PoE Auto Recovery (ping .250).
+
+À faire :
+- [x] **ESP32 flashé** avec `api: reboot_timeout: 0s` — firmware ESPHome 2026.10.0
+      compilé le 2026-10-23 07:01, revenu en ligne.
+- [x] **Météo de la nuit du 22-23 oct. rattrapée** (19 h 37 → 6 h 42, 134 lectures)
+      depuis la SD du GW3000 via `recup/backfill_nuit.py`. Sondes du lac perdues.
+- [x] **`/daily` du 2026-10-22 nettoyé** (plus de `airv`/`hum` à 0.0, n=288) et
+      derniers faux 0.0 retirés de `/readings`.
+- [ ] **Estimer la température du lac sur les jours vides** (19 sept., 23-30 sept.,
+      5-21 oct.) : modèle air→eau à pas de 24 h glissant (`recup/modele_horaire.py`,
+      test automne 0,2-0,5 °C d'erreur), ancres = jours mesurés. Écrire dans
+      `/daily` avec `est: 1`, jamais dans `/readings`. Jours partiels (20 et
+      22 sept., 1er-4 oct.) = moyenne des vraies mesures, sans marque.
+- [ ] **Front end** : afficher les jours `est: 1` en pointillé, mention « estimé »
+      dans l'infobulle, exclus des Min/Moy/Max.
+- [ ] **Pousser** le commit `e235d01` (branche `weather-station`).
+- [ ] Rebrancher le capteur de la véranda après les rénos.
+- [ ] Renommer les capteurs ESPHome « Delta surface / 4 pi » et « Delta surface /
+      air » (le « / » deviendra une erreur dans ESPHome 2027.7.0).
+- [ ] Optionnel : retirer le POST vers le téléphone (.251) de la config ESPHome si
+      le téléphone collecteur est récupéré.
+
+---
+
 ## Tâches — Idées futures (non implémentées, à planifier)
 
 Backlog capturé le 2026-07-07, rien de ceci n'est implémenté — à détailler et
