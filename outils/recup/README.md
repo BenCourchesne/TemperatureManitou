@@ -16,6 +16,7 @@ demandent le mot de passe du compte Firebase `ha-writer` (jamais stocké).
 |---|---|
 | `backfill.py` | Météo de la panne depuis la SD du GW3000 (horloge remise au 2024-12-31 à chaque reboot, recalée par midi solaire + pression EC Mont-Tremblant) + sondes du téléphone → `/readings` et `/daily`. **Déjà écrit — ne pas relancer.** |
 | `backfill_nuit.py` | Météo de la nuit du 22-23 oct. (SD bien datée) + nettoyage du `/daily` du 22 oct. **Déjà écrit.** |
+| `backfill_24oct.py` | Coupures du 24 oct. (radio côté maison au disjoncteur) : météo de la SD + surface/4 pi interpolés et air ESP32 reconstruit (`est: 1` dans `/readings`), puis `/daily` du 24 recalculé. **Déjà écrit.** |
 | `estime_lac.py` | Estimation surface / 4 pieds des jours sans mesures → `/daily` avec `est: 1`. **Ré-exécutable** : recale le modèle sur toutes les données et réécrit les mêmes jours. Paramètres du dernier calage : `estime_lac_params.json`. |
 | `modele_variantes.py` | Comparaison air seul / air + soleil / + humidité, en validation croisée (trous d'été cachés + vraies heures d'automne cachées). |
 | `modele_horaire.py` | Validation du modèle à pas de 24 h glissant (celui utilisé en production). |
