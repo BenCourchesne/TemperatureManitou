@@ -451,10 +451,11 @@ Fait :
       fondées sur 2 périodes d'automne seulement.
 - [x] **Poussé** sur GitHub (branche `weather-station`, jusqu'à `395b114`).
 - [ ] Rebrancher le capteur de la véranda après les rénos.
-- [ ] Renommer les capteurs ESPHome « Delta surface / 4 pi » et « Delta surface /
-      air » (le « / » deviendra une erreur dans ESPHome 2027.7.0).
-- [ ] Optionnel : retirer le POST vers le téléphone (.251) de la config ESPHome si
-      le téléphone collecteur est récupéré.
+- [x] **Flasher l'ESP32** — fait le 2026-10-24 :
+      capteurs renommés « Delta surface - 4 pi » / « Delta surface - air » (le
+      « / » deviendra une erreur dans ESPHome 2027.7.0) et POST vers le téléphone
+      (.251) retiré — téléphone collecteur récupéré du quai. Vérifié : API 6053
+      joignable, `/readings` aux 5 min sans interruption.
 
 ---
 
